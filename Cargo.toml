@@ -1,6 +1,6 @@
 [package]
-name = "rust-embedded"
-authors = ["SebastianBraun01 <NetRunner10@protonmail.com>"]
+name = "rustuino"
+authors = ["SebastianBraun01 <SebastianBraun-Ost@protonmail.com>"]
 edition = "2018"
 version = "0.1.0"
 
@@ -15,7 +15,7 @@ features = ["stm32f446", "rt"]
 
 # this lets you use `cargo fix`!
 [[bin]]
-name = "rust-embedded"
+name = "rustuino"
 test = false
 bench = false
 
