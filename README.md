@@ -11,24 +11,24 @@ Because there are many types of embedded devices out there, I want to make this 
 
 ## Roadmap
 ### Software
-- [] Basic functions for using the GPIO-pins
-- [] Delay and time related functions
-- [] Functions for simple communication over the serial busses
-- [] Framework for Hardware Interrupts
-- [] More to come!
+- [ ] Basic functions for using the GPIO-pins
+- [ ] Delay and time related functions
+- [ ] Functions for simple communication over the serial busses
+- [ ] Framework for Hardware Interrupts
+- [ ] More to come!
 
 ### Hardware
-- [] stm32f0
-- [] stm32f1
-- [] stm32f2
-- [] stm32f3
-- [] stm32f4
-- [] stm32f7
-- [] There will be more!
+- [ ] stm32f0
+- [ ] stm32f1
+- [ ] stm32f2
+- [ ] stm32f3
+- [ ] stm32f4
+- [ ] stm32f7
+- [ ] There will be more!
 
 ### Other
-- [] Begin to write a documentation/reference
-- [] Clean up Project and make it easier for beginners
+- [ ] Begin to write a documentation/reference
+- [ ] Clean up Project and make it easier for beginners
 
 ## Contributing
 I always appreciate bugreports, suggestions, etc., this project will take a lot of time and effort and if someone wants to help I would welcome it.
