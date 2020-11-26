@@ -8,6 +8,7 @@ version = "0.1.0"
 cortex-m = "0.7.0"
 cortex-m-rt = "0.6.13"
 panic-halt = "0.2.0"
+panic-semihosting = "0.5.6"
 
 [dependencies.stm32f4]
 version = "0.12.1"

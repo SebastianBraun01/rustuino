@@ -7,7 +7,7 @@ Rust is a languange that has souriously taken off the last couple of years. As a
 My vision for this project is to provide a Arduino-like Framework for Rust Embedded Development. My crate will provide high level functions to controll gpio-pins or communicate over UART while still offering precise register level control for those wo want to use more advanced functionalities (there will be also functions for advances stuff, don´t worry ;) ).
 
 ### Hardware
-Because there are many types of embedded devices out there, I want to make this project as portable as possible. I will start with supporting the lineup of the stm32f chips because they are the newest and most popular and the Cortex-M0 chips are the goto for the new arduino boards.
+Because there are many types of embedded devices out there, I want to make this project as portable as possible. I will start with supporting the lineup of the stm32f chips because they are the newest and most popular and the Cortex-M0 chips are the goto for the new arduino boards. I currently have many of the Arduino SAMD Boards and the stm32f446, so I will start with supporting those.
 
 ## Roadmap
 ### Software

@@ -7,10 +7,10 @@ use rustuino::*;
 
 #[entry]
 fn main() -> ! {
-    pin_mode("b", 0, true);
-    pin_mode("b", 1, true);
-    pin_mode("b", 2, true);
-    pin_mode("b", 3, true);
+    pin_mode("b", 0, Mode::Output);
+    pin_mode("b", 1, Mode::Output);
+    pin_mode("b", 2, Mode::Output);
+    pin_mode("b", 3, Mode::Output);
 
     uart_init(115200);
     sprintln("Startup");
@@ -20,11 +20,11 @@ fn main() -> ! {
         pin_write("b", 1, true);
         pin_write("b", 2, true);
         pin_write("b", 3, true);
-        delay(1000);
+        delay(500);
         pin_write("b", 0, false);
         pin_write("b", 1, false);
         pin_write("b", 2, false);
         pin_write("b", 3, false);
-        delay(1000);
+        delay(500);
     }
 }
