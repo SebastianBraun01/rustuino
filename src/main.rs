@@ -1,30 +1,26 @@
 #![no_std]
 #![no_main]
+#![feature(alloc_error_handler)]
 #![allow(unused_imports)]
+
+
 
 mod rustuino;
 use rustuino::*;
 
 #[entry]
 fn main() -> ! {
-    pin_mode("b", 0, Mode::Output);
-    pin_mode("b", 1, Mode::Output);
-    pin_mode("b", 2, Mode::Output);
-    pin_mode("b", 3, Mode::Output);
+    init_heap();
 
     uart_init(115200);
-    sprintln("Startup");
+    sprintln!("UART gestartet!");
+    analog_read_init();
+    sprintln!("ADC gestartet!");
+    let mut buffer: u16;
 
     loop {
-        pin_write("b", 0, true);
-        pin_write("b", 1, true);
-        pin_write("b", 2, true);
-        pin_write("b", 3, true);
-        delay(500);
-        pin_write("b", 0, false);
-        pin_write("b", 1, false);
-        pin_write("b", 2, false);
-        pin_write("b", 3, false);
-        delay(500);
+        buffer = analog_get();
+        sprintln!(buffer);
+        delay(250);
     }
 }

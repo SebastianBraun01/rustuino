@@ -1,1 +1,1 @@
-[{"node":"GPIOB","expanded":true,"format":0},{"node":"GPIOB.MODER","expanded":true,"format":0},{"node":"GPIOB.ODR","expanded":true,"format":0},{"node":"TIM2","expanded":true,"format":0},{"node":"TIM2.PSC","expanded":true,"format":0}]
+[{"node":"ADC1.DR","expanded":true,"format":0},{"node":"TIM2.PSC","expanded":true,"format":0}]

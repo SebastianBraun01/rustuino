@@ -3,6 +3,16 @@
 pub use cortex_m_rt::entry;
 pub use panic_semihosting as _;
 
+pub extern crate alloc;
+
+pub use core::alloc::Layout;
+pub use alloc_cortex_m::CortexMHeap;
+pub use alloc::vec::Vec;
+pub use alloc::string::String;
+
+#[global_allocator]
+static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
+
 pub enum Mode {
   Input,
   Output,
@@ -143,25 +153,19 @@ pub fn pin_read(block: &str, pin: u8) -> bool {
 }
 
 pub fn delay(ms: u32) {
-  let rcc_ptr = stm32f4::stm32f446::RCC::ptr();
-  let tim2_ptr = stm32f4::stm32f446::TIM2::ptr();
+  // 2MHz mit 2000 PSC -> 1kHz
+  let systick_psc = 2000000 / 1000;
+  let systick_ptr = stm32f4::stm32f446::STK::ptr();
 
   unsafe {
-    (*rcc_ptr).apb1enr.modify(|_, w| w.tim6en().enabled());
+    (*systick_ptr).ctrl.modify(|_, w| w.enable().clear_bit());
+    (*systick_ptr).load.write(|w| w.reload().bits(systick_psc * ms));
+    (*systick_ptr).val.write(|w| w.current().bits(0));
+    (*systick_ptr).ctrl.modify(|_, w| w.enable().set_bit());
 
-    (*tim2_ptr).cr1.modify(|_, w| {
-      w.opm().enabled();
-      w.cen().disabled()
-    });
-    
-  
-    (*tim2_ptr).psc.write(|w| w.psc().bits(7999));
-    (*tim2_ptr).arr.write(|w| w.arr().bits(ms));
-    (*tim2_ptr).cr1.modify(|_, w| w.cen().enabled());
-  
-    while !(*tim2_ptr).sr.read().uif().bit_is_set() {}
-  
-    (*tim2_ptr).sr.modify(|_, w| (w.uif().clear_bit()));
+    while !(*systick_ptr).ctrl.read().countflag().bit_is_set() {}
+    (*systick_ptr).ctrl.modify(|_, w| w.countflag().clear_bit());
+    (*systick_ptr).ctrl.modify(|_, w| w.enable().clear_bit());
   }
 }
 
@@ -202,7 +206,7 @@ pub fn uart_init(baud: u32) {
   }
 }
 
-pub fn sprint(data: &str){
+pub fn serial_print(data: String){
   let usart2_ptr = stm32f4::stm32f446::USART2::ptr();
 
   unsafe {
@@ -213,44 +217,66 @@ pub fn sprint(data: &str){
   }
 }
 
-pub fn sprintln(data: &str){
-  let usart2_ptr = stm32f4::stm32f446::USART2::ptr();
-
-  unsafe {
-    for c in data.chars() {
-      (*usart2_ptr).dr.write(|w| w.dr().bits(c as u16));
-      while (*usart2_ptr).sr.read().tc().bit_is_clear() {}
-    }
-    
-    (*usart2_ptr).dr.write(|w| w.dr().bits('\r' as u16));
-    while (*usart2_ptr).sr.read().tc().bit_is_clear() {}
-    (*usart2_ptr).dr.write(|w| w.dr().bits('\n' as u16));
-    while (*usart2_ptr).sr.read().tc().bit_is_clear() {}
-  }
-}
-
-pub fn simple_pwm(duty: u8) {
+pub fn analog_read_init() {
   let rcc_ptr = stm32f4::stm32f446::RCC::ptr();
-  let gpiob_ptr = stm32f4::stm32f446::GPIOB::ptr();
-  let tim3_ptr = stm32f4::stm32f446::TIM3::ptr();
+  let gpioa_ptr = stm32f4::stm32f446::GPIOA::ptr();
+  let adc1_ptr = stm32f4::stm32f446::ADC1::ptr();
+  let adcc_ptr = stm32f4::stm32f446::ADC_COMMON::ptr();
 
   unsafe {
-    (*rcc_ptr).ahb1enr.modify(|_, w| w.gpioben().enabled());
-    (*rcc_ptr).apb1enr.modify(|_, w| w.tim3en().enabled());
+    (*adcc_ptr).ccr.modify(|_, w| w.adcpre().div2());
 
-    (*gpiob_ptr).moder.modify(|_, w| w.moder4().alternate());
+    (*rcc_ptr).ahb1enr.modify(|_, w| w.gpioaen().enabled());
+    (*rcc_ptr).apb2enr.modify(|_, w| w.adc1en().enabled());
 
-    (*tim3_ptr).arr.write(|w| w.bits(255));
-    (*tim3_ptr).psc.write(|w| w.bits(2));
-    (*tim3_ptr).cr1.modify(|_, w| {
-      w.cms().center_aligned1();
-      w.arpe().enabled();
-      w.cen().enabled()
+    (*gpioa_ptr).moder.modify(|_, w| w.moder1().analog());
+
+    (*adc1_ptr).smpr2.modify(|_, w| w.smp1().cycles480());
+    (*adc1_ptr).sqr3.modify(|_, w| w.sq1().bits(0x1));
+
+    (*adc1_ptr).cr2.modify(|_, w| {
+      w.cont().continuous();
+      w.adon().enabled()
     });
 
-    (*tim3_ptr).ccmr1_output().modify(|_, w| {
-      w.oc1m().pwm_mode1();
-      w.oc1pe().enabled()
-    });
+    (*adc1_ptr).cr2.modify(|_, w| w.swstart().start());
   }
+}
+
+pub fn analog_get() -> u16 {
+  let adc1_ptr = stm32f4::stm32f446::ADC1::ptr();
+  let buffer: u16;
+
+  unsafe {buffer = (*adc1_ptr).dr.read().data().bits();}
+
+  return buffer;
+}
+
+pub fn init_heap() {
+  // Initialize the allocator BEFORE you use it
+  unsafe { ALLOCATOR.init(cortex_m_rt::heap_start() as usize, 1024); }
+}
+
+#[alloc_error_handler]
+fn oom(_: Layout) -> ! {
+    loop {}
+}
+
+#[macro_export]
+macro_rules! sprint {
+  ($param:expr) => {
+    
+    let text_buffer = String::from(alloc::format!("{}", format_args!("{}", $param)));
+    serial_print(text_buffer);
+  };
+}
+
+#[macro_export]
+macro_rules! sprintln {
+  ($param:expr) => {
+    let mut text_buffer = String::from(alloc::format!("{}", format_args!("{}", $param)));
+    text_buffer.push('\r');
+    text_buffer.push('\n');
+    serial_print(text_buffer);
+  };
 }
