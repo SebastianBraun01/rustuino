@@ -3,8 +3,6 @@
 #![feature(alloc_error_handler)]
 #![allow(unused_imports)]
 
-
-
 mod rustuino;
 use rustuino::*;
 
@@ -12,7 +10,10 @@ use rustuino::*;
 fn main() -> ! {
     init_heap();
 
-    uart_init(115200);
+    pin_mode("a", 2, Mode::AlterateFunction(7));
+    pin_mode("a", 2, Mode::AlterateFunction(7));
+
+    uart_init(2, 115200);
     sprintln!("UART gestartet!");
     analog_read_init();
     sprintln!("ADC gestartet!");

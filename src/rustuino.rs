@@ -4,10 +4,8 @@ pub use cortex_m_rt::entry;
 pub use panic_semihosting as _;
 
 pub extern crate alloc;
-
 pub use core::alloc::Layout;
 pub use alloc_cortex_m::CortexMHeap;
-pub use alloc::vec::Vec;
 pub use alloc::string::String;
 
 #[global_allocator]
@@ -169,40 +167,104 @@ pub fn delay(ms: u32) {
   }
 }
 
-pub fn uart_init(baud: u32) {
+pub fn uart_init(num: u8, baud: u32) {
+  // UART1: PA9_TX|PA10_RX,   PB6_TX|PB7_RX
+  // UART2: PA2_TX|PA3_RX,    PD5_TX|PD6_RX
+  // UART3: PB10_TX|PB11_RX,  PC10_TX|PC11_RX,  PD8_TX|PD9_RX
+  // UART4: PA0_TX|PA1_RX,    PC10_TX|PC11_RX
+  // UART5: PE8_TX|PE7_RX
+  // UART6: PC6_TX|PC7_RX,    PG14_TX|PG9_RX
+
   let rcc_ptr = stm32f4::stm32f446::RCC::ptr();
-  let usart2_ptr = stm32f4::stm32f446::USART2::ptr();
-  let gpioa_ptr = stm32f4::stm32f446::GPIOA::ptr();
+  let uart1_ptr = stm32f4::stm32f446::USART1::ptr();
+  let uart2_ptr = stm32f4::stm32f446::USART2::ptr();
+  let uart3_ptr = stm32f4::stm32f446::USART3::ptr();
+  let uart4_ptr = stm32f4::stm32f446::UART4::ptr();
+  let uart5_ptr = stm32f4::stm32f446::UART5::ptr();
+  let uart6_ptr = stm32f4::stm32f446::USART6::ptr();
 
   let psc = match baud {
-    9600 => (104, 3),
-    115200 => (8, 11),
-    _ => (8, 11)
+    9600 => (104, 2),
+    115200 => (8, 7),
+    _ => (8, 7)
   };
 
   unsafe {
-    (*rcc_ptr).apb1enr.modify(|_, w| w.usart2en().enabled());
-    (*rcc_ptr).ahb1enr.modify(|_, w| w.gpioaen().enabled());
-  
-    (*gpioa_ptr).moder.modify(|_, w| {
-      w.moder2().alternate();
-      w.moder3().alternate()
-    });
-    (*gpioa_ptr).afrl.modify(|_, w| {
-      w.afrl2().bits(7);
-      w.afrl3().bits(7)
-    });
-  
-    (*usart2_ptr).cr1.modify(|_, w| {
-      w.ue().enabled();
-      w.te().enabled();
-      w.re().enabled()
-    });
-  
-    (*usart2_ptr).brr.modify(|_, w| {
-      w.div_mantissa().bits(psc.0);
-      w.div_fraction().bits(psc.1)
-    });
+    match num {
+      1 => {
+        (*rcc_ptr).apb2enr.modify(|_, w| w.usart1en().enabled());
+        (*uart1_ptr).cr1.modify(|_, w| {
+          w.ue().enabled();
+          w.te().enabled();
+          w.re().enabled()
+        });
+        (*uart1_ptr).brr.modify(|_, w| {
+          w.div_mantissa().bits(psc.0);
+          w.div_fraction().bits(psc.1)
+        });
+      },
+      2 => {
+        (*rcc_ptr).apb1enr.modify(|_, w| w.usart2en().enabled());
+        (*uart2_ptr).cr1.modify(|_, w| {
+          w.ue().enabled();
+          w.te().enabled();
+          w.re().enabled()
+        });
+        (*uart2_ptr).brr.modify(|_, w| {
+          w.div_mantissa().bits(psc.0);
+          w.div_fraction().bits(psc.1)
+        });
+      },
+      3 => {
+        (*rcc_ptr).apb1enr.modify(|_, w| w.usart3en().enabled());
+        (*uart3_ptr).cr1.modify(|_, w| {
+          w.ue().enabled();
+          w.te().enabled();
+          w.re().enabled()
+        });
+        (*uart3_ptr).brr.modify(|_, w| {
+          w.div_mantissa().bits(psc.0);
+          w.div_fraction().bits(psc.1)
+        });
+      },
+      4 => {
+        (*rcc_ptr).apb1enr.modify(|_, w| w.uart4en().enabled());
+        (*uart4_ptr).cr1.modify(|_, w| {
+          w.ue().enabled();
+          w.te().enabled();
+          w.re().enabled()
+        });
+        (*uart4_ptr).brr.modify(|_, w| {
+          w.div_mantissa().bits(psc.0);
+          w.div_fraction().bits(psc.1)
+        });
+      },
+      5 => {
+        (*rcc_ptr).apb1enr.modify(|_, w| w.uart5en().enabled());
+        (*uart5_ptr).cr1.modify(|_, w| {
+          w.ue().enabled();
+          w.te().enabled();
+          w.re().enabled()
+        });
+        (*uart5_ptr).brr.modify(|_, w| {
+          w.div_mantissa().bits(psc.0);
+          w.div_fraction().bits(psc.1)
+        });
+      },
+      6 => {
+        (*rcc_ptr).apb2enr.modify(|_, w| w.usart6en().enabled());
+        (*uart6_ptr).cr1.modify(|_, w| {
+          w.ue().enabled();
+          w.te().enabled();
+          w.re().enabled()
+        });
+        (*uart6_ptr).brr.modify(|_, w| {
+          w.div_mantissa().bits(psc.0);
+          w.div_fraction().bits(psc.1)
+        });
+      },
+      _   => panic!("{} is not a valid UART peripheral!", num)
+    };
   }
 }
 
@@ -255,6 +317,10 @@ pub fn analog_get() -> u16 {
 pub fn init_heap() {
   // Initialize the allocator BEFORE you use it
   unsafe { ALLOCATOR.init(cortex_m_rt::heap_start() as usize, 1024); }
+}
+
+pub fn pwm_init() {
+  
 }
 
 #[alloc_error_handler]
