@@ -279,37 +279,69 @@ pub fn serial_print(data: String){
   }
 }
 
-pub fn analog_read_init() {
+pub fn adc_init(num: u8, channel: u8) {
   let rcc_ptr = stm32f4::stm32f446::RCC::ptr();
-  let gpioa_ptr = stm32f4::stm32f446::GPIOA::ptr();
   let adc1_ptr = stm32f4::stm32f446::ADC1::ptr();
+  let adc2_ptr = stm32f4::stm32f446::ADC2::ptr();
+  let adc3_ptr = stm32f4::stm32f446::ADC3::ptr();
   let adcc_ptr = stm32f4::stm32f446::ADC_COMMON::ptr();
 
   unsafe {
     (*adcc_ptr).ccr.modify(|_, w| w.adcpre().div2());
 
-    (*rcc_ptr).ahb1enr.modify(|_, w| w.gpioaen().enabled());
-    (*rcc_ptr).apb2enr.modify(|_, w| w.adc1en().enabled());
-
-    (*gpioa_ptr).moder.modify(|_, w| w.moder1().analog());
-
-    (*adc1_ptr).smpr2.modify(|_, w| w.smp1().cycles480());
-    (*adc1_ptr).sqr3.modify(|_, w| w.sq1().bits(0x1));
-
-    (*adc1_ptr).cr2.modify(|_, w| {
-      w.cont().continuous();
-      w.adon().enabled()
-    });
-
-    (*adc1_ptr).cr2.modify(|_, w| w.swstart().start());
+    match num {
+      1 => {
+        (*rcc_ptr).apb2enr.modify(|_, w| w.adc1en().enabled());
+        if channel < 10 {(*adc1_ptr).smpr2.modify(|r, w| w.bits(r.bits() | (0x7 << (channel * 3))));}
+        else {(*adc1_ptr).smpr1.modify(|r, w| w.bits(r.bits() | (0x7 << ((channel - 10) * 3))));}
+        (*adc1_ptr).sqr3.modify(|_, w| w.sq1().bits(channel));
+        (*adc1_ptr).cr2.modify(|_, w| {
+          w.cont().continuous();
+          w.adon().enabled()
+        });
+        (*adc1_ptr).cr2.modify(|_, w| w.swstart().start());
+      },
+      2 => {
+        (*rcc_ptr).apb2enr.modify(|_, w| w.adc2en().enabled());
+        if channel < 10 {(*adc2_ptr).smpr2.modify(|r, w| w.bits(r.bits() | (0x7 << (channel * 3))));}
+        else {(*adc2_ptr).smpr1.modify(|r, w| w.bits(r.bits() | (0x7 << ((channel - 10) * 3))));}
+        (*adc2_ptr).sqr3.modify(|_, w| w.sq1().bits(channel));
+        (*adc2_ptr).cr2.modify(|_, w| {
+          w.cont().continuous();
+          w.adon().enabled()
+        });
+        (*adc2_ptr).cr2.modify(|_, w| w.swstart().start());
+      },
+      3 => {
+        (*rcc_ptr).apb2enr.modify(|_, w| w.adc3en().enabled());
+        if channel < 10 {(*adc3_ptr).smpr2.modify(|r, w| w.bits(r.bits() | (0x7 << (channel * 3))));}
+        else {(*adc3_ptr).smpr1.modify(|r, w| w.bits(r.bits() | (0x7 << ((channel - 10) * 3))));}
+        (*adc3_ptr).sqr3.modify(|_, w| w.sq1().bits(channel));
+        (*adc3_ptr).cr2.modify(|_, w| {
+          w.cont().continuous();
+          w.adon().enabled()
+        });
+        (*adc3_ptr).cr2.modify(|_, w| w.swstart().start());
+      },
+      _ => panic!("{} is not a valid adc!", num),
+    }    
   }
 }
 
-pub fn analog_get() -> u16 {
+pub fn analog_read(num: u8) -> u16 {
   let adc1_ptr = stm32f4::stm32f446::ADC1::ptr();
+  let adc2_ptr = stm32f4::stm32f446::ADC2::ptr();
+  let adc3_ptr = stm32f4::stm32f446::ADC3::ptr();
   let buffer: u16;
 
-  unsafe {buffer = (*adc1_ptr).dr.read().data().bits();}
+  unsafe {
+    buffer = match num {
+      1 => (*adc1_ptr).dr.read().data().bits(),
+      2 => (*adc2_ptr).dr.read().data().bits(),
+      3 => (*adc3_ptr).dr.read().data().bits(),
+      _ => panic!("{} is not a valid adc!", num),
+    }
+  }
 
   return buffer;
 }
