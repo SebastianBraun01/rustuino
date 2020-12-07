@@ -12,16 +12,16 @@ fn main() -> ! {
 
     pin_mode("a", 2, Mode::AlterateFunction(7));
     pin_mode("a", 2, Mode::AlterateFunction(7));
+    pin_mode("b", 0, Mode::AlterateFunction(2));
 
     uart_init(2, 115200);
     sprintln!("UART gestartet!");
-    analog_read_init();
-    sprintln!("ADC gestartet!");
-    let mut buffer: u16;
+    pwm_init(3, 3);
 
     loop {
-        buffer = analog_get();
-        sprintln!(buffer);
-        delay(250);
+        for i in 0..255 {
+            pin_write_pwm(3, 3, i);
+            delay(10);
+        }
     }
 }
