@@ -104,7 +104,7 @@ pub fn pin_write(block: &str, pin: u8, write: bool) {
   }
 
   unsafe {
-    if write == true {
+    if write {
       match block {
         "a" => (*gpioa_ptr).bsrr.write(|w| w.bits(1 << pin)),
         "b" => (*gpiob_ptr).bsrr.write(|w| w.bits(1 << pin)),
@@ -113,9 +113,9 @@ pub fn pin_write(block: &str, pin: u8, write: bool) {
       }
     } else {
       match block {
-        "a" => (*gpioa_ptr).bsrr.write(|w| w.bits(1 << pin + 16)),
-        "b" => (*gpiob_ptr).bsrr.write(|w| w.bits(1 << pin + 16)),
-        "c" => (*gpioc_ptr).bsrr.write(|w| w.bits(1 << pin + 16)),
+        "a" => (*gpioa_ptr).bsrr.write(|w| w.bits(1 << (pin + 16))),
+        "b" => (*gpiob_ptr).bsrr.write(|w| w.bits(1 << (pin + 16))),
+        "c" => (*gpioc_ptr).bsrr.write(|w| w.bits(1 << (pin + 16))),
         _   => panic!("{} is not an available GPIO Block!", block),
       }
     }
@@ -146,7 +146,7 @@ pub fn pin_read(block: &str, pin: u8) -> bool {
       state = false;
     }
   
-    return state;
+   state
   }
 }
 
@@ -343,7 +343,7 @@ pub fn analog_read(num: u8) -> u16 {
     }
   }
 
-  return buffer;
+  buffer
 }
 
 pub fn init_heap() {
