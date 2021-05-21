@@ -3,6 +3,12 @@
 #![feature(alloc_error_handler)]
 #![allow(unused_imports)]
 
+// use stm32f4::stm32f446::{self, Peripherals, interrupt};
+// unsafe {cortex_m::peripheral::NVIC::unmask(stm32f446::Interrupt::TIM2);}
+// #[interrupt]
+// fn TIM2() {
+// }
+
 mod rustuino;
 use rustuino::*;
 

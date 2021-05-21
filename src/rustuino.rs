@@ -268,7 +268,7 @@ pub fn uart_init(num: u8, baud: u32) {
   }
 }
 
-pub fn serial_print(data: String){
+pub fn serial_print(data: String) {
   let usart2_ptr = stm32f4::stm32f446::USART2::ptr();
 
   unsafe {
