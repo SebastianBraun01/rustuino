@@ -146,7 +146,7 @@ pub fn pin_read(block: &str, pin: u8) -> bool {
       state = false;
     }
   
-   state
+   return state;
   }
 }
 
@@ -343,7 +343,7 @@ pub fn analog_read(num: u8) -> u16 {
     }
   }
 
-  buffer
+  return buffer;
 }
 
 pub fn init_heap() {
