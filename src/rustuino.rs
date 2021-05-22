@@ -146,7 +146,7 @@ pub fn pin_read(block: &str, pin: u8) -> bool {
       state = false;
     }
   
-   return state;
+    return state;
   }
 }
 
