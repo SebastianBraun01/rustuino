@@ -12,11 +12,74 @@ pub use heapless::String as HLS;
 #[global_allocator]
 static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
 
+pub fn init_heap() {
+  // Initialize the allocator BEFORE you use it
+  unsafe { ALLOCATOR.init(cortex_m_rt::heap_start() as usize, 1024); }
+}
+
+#[alloc_error_handler]
+fn oom(_: Layout) -> ! {
+  loop {}
+}
+
 pub enum Mode {
   Input,
   Output,
   AlterateFunction(u32),
   Analog,
+}
+
+pub mod pins {
+  pub const PA0: (u8, char) = (0, 'a');
+  pub const PA1: (u8, char) = (1, 'a');
+  pub const PA2: (u8, char) = (2, 'a');
+  pub const PA3: (u8, char) = (3, 'a');
+  pub const PA4: (u8, char) = (4, 'a');
+  pub const PA5: (u8, char) = (5, 'a');
+  pub const PA6: (u8, char) = (6, 'a');
+  pub const PA7: (u8, char) = (7, 'a');
+  pub const PA8: (u8, char) = (8, 'a');
+  pub const PA9: (u8, char) = (9, 'a');
+  pub const PA10: (u8, char) = (10, 'a');
+  pub const PA11: (u8, char) = (11, 'a');
+  pub const PA12: (u8, char) = (12, 'a');
+  pub const PA13: (u8, char) = (13, 'a');
+  pub const PA14: (u8, char) = (14, 'a');
+  pub const PA15: (u8, char) = (15, 'a');
+
+  pub const PB0: (u8, char) = (0, 'b');
+  pub const PB1: (u8, char) = (1, 'b');
+  pub const PB2: (u8, char) = (2, 'b');
+  pub const PB3: (u8, char) = (3, 'b');
+  pub const PB4: (u8, char) = (4, 'b');
+  pub const PB5: (u8, char) = (5, 'b');
+  pub const PB6: (u8, char) = (6, 'b');
+  pub const PB7: (u8, char) = (7, 'b');
+  pub const PB8: (u8, char) = (8, 'b');
+  pub const PB9: (u8, char) = (9, 'b');
+  pub const PB10: (u8, char) = (10, 'b');
+  pub const PB11: (u8, char) = (11, 'b');
+  pub const PB12: (u8, char) = (12, 'b');
+  pub const PB13: (u8, char) = (13, 'b');
+  pub const PB14: (u8, char) = (14, 'b');
+  pub const PB15: (u8, char) = (15, 'b');
+
+  pub const PC0: (u8, char) = (0, 'c');
+  pub const PC1: (u8, char) = (1, 'c');
+  pub const PC2: (u8, char) = (2, 'c');
+  pub const PC3: (u8, char) = (3, 'c');
+  pub const PC4: (u8, char) = (4, 'c');
+  pub const PC5: (u8, char) = (5, 'c');
+  pub const PC6: (u8, char) = (6, 'c');
+  pub const PC7: (u8, char) = (7, 'c');
+  pub const PC8: (u8, char) = (8, 'c');
+  pub const PC9: (u8, char) = (9, 'c');
+  pub const PC10: (u8, char) = (10, 'c');
+  pub const PC11: (u8, char) = (11, 'c');
+  pub const PC12: (u8, char) = (12, 'c');
+  pub const PC13: (u8, char) = (13, 'c');
+  pub const PC14: (u8, char) = (14, 'c');
+  pub const PC15: (u8, char) = (15, 'c');
 }
 
 pub mod reg {
@@ -47,70 +110,70 @@ pub mod gpio_d {
   use super::Mode;
   use super::reg::{RCC_PTR, GPIOA_PTR, GPIOB_PTR, GPIOC_PTR};
 
-  pub fn pin_mode(block: &str, pin: u8, mode: Mode) {  
-    if pin > 15 {
-      panic!("{} is not an available GPIO Pin", pin)
+  pub fn pin_mode(pin: (u8, char), mode: Mode) {  
+    if pin.0 > 15 {
+      panic!("{} is not an available GPIO Pin", pin.0)
     }
   
     unsafe {
-      match block {
-        "a" => (*RCC_PTR).ahb1enr.modify(|_, w| w.gpioaen().enabled()),
-        "b" => (*RCC_PTR).ahb1enr.modify(|_, w| w.gpioben().enabled()),
-        "c" => (*RCC_PTR).ahb1enr.modify(|_, w| w.gpiocen().enabled()),
-        _   => panic!("{} is not an available GPIO Block!", block),
+      match pin.1 {
+        'a' => (*RCC_PTR).ahb1enr.modify(|_, w| w.gpioaen().enabled()),
+        'b' => (*RCC_PTR).ahb1enr.modify(|_, w| w.gpioben().enabled()),
+        'c' => (*RCC_PTR).ahb1enr.modify(|_, w| w.gpiocen().enabled()),
+        _   => panic!("{} is not an available GPIO Block!", pin.1),
       };
   
       match mode {
         Mode::Input => {
-          match block {
-            "a" => (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))))),
-            "b" => (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))))),
-            "c" => (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))))),
+          match pin.1 {
+            'a' => (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))))),
+            'b' => (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))))),
+            'c' => (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))))),
             _   => return,
           }
         },
         Mode::Output => {
-          match block {
-            "a" => (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))) | (1 << (pin * 2)))),
-            "b" => (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))) | (1 << (pin * 2)))),
-            "c" => (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))) | (1 << (pin * 2)))),
+          match pin.1 {
+            'a' => (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))) | (1 << (pin.0 * 2)))),
+            'b' => (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))) | (1 << (pin.0 * 2)))),
+            'c' => (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))) | (1 << (pin.0 * 2)))),
             _   => return,
           }
         },
         Mode::AlterateFunction(func) => {
-          match block {
-            "a" => {
-              (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))) | (2 << (pin * 2))));
-              if pin < 8 {
-                (*GPIOA_PTR).afrl.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin * 4))) | (func << (pin * 4))));
+          match pin.1 {
+            'a' => {
+              (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))) | (2 << (pin.0 * 2))));
+              if pin.0 < 8 {
+                (*GPIOA_PTR).afrl.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin.0 * 4))) | (func << (pin.0 * 4))));
               } else {
-                (*GPIOA_PTR).afrh.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin * 4))) | (func << (pin * 4))));
+                (*GPIOA_PTR).afrh.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin.0 * 4))) | (func << (pin.0 * 4))));
               }
             },
-            "b" => {
-              (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))) | (2 << (pin * 2))));
-              if pin < 8 {
-                (*GPIOB_PTR).afrl.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin * 4))) | (func << (pin * 4))));
+            'b' => {
+              (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))) | (2 << (pin.0 * 2))));
+              if pin.0 < 8 {
+                (*GPIOB_PTR).afrl.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin.0 * 4))) | (func << (pin.0 * 4))));
               } else {
-                (*GPIOB_PTR).afrh.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin * 4))) | (func << (pin * 4))));
+                (*GPIOB_PTR).afrh.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin.0 * 4))) | (func << (pin.0 * 4))));
               }
             },
-            "c" => {
-              (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))) | (2 << (pin * 2))));
-              if pin < 8 {
-                (*GPIOC_PTR).afrl.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin * 4))) | (func << (pin * 4))));
+            'c' => {
+              (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))) | (2 << (pin.0 * 2))));
+              if pin.0 < 8 {
+                (*GPIOC_PTR).afrl.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin.0 * 4))) | (func << (pin.0 * 4))));
               } else {
-                (*GPIOC_PTR).afrh.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin * 4))) | (func << (pin * 4))));
+                (*GPIOC_PTR).afrh.modify(|r, w| w.bits(r.bits() & (!(0xF << (pin.0 * 4))) | (func << (pin.0 * 4))));
               }
             },
             _   => return,
           };
         }
         Mode::Analog => {
-          match block {
-            "a" => (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))) | (3 << (pin * 2)))),
-            "b" => (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))) | (3 << (pin * 2)))),
-            "c" => (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin * 2))) | (3 << (pin * 2)))),
+          match pin.1 {
+            'a' => (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))) | (3 << (pin.0 * 2)))),
+            'b' => (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))) | (3 << (pin.0 * 2)))),
+            'c' => (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() & (!(3 << (pin.0 * 2))) | (3 << (pin.0 * 2)))),
             _   => return,
           }
         }
@@ -118,46 +181,46 @@ pub mod gpio_d {
     }
   }
   
-  pub fn pin_write(block: &str, pin: u8, write: bool) {  
-    if pin > 15 {
-      panic!("{} is not an available GPIO Pin", pin)
+  pub fn pin_write(pin: (u8, char), write: bool) {  
+    if pin.0 > 15 {
+      panic!("{} is not an available GPIO Pin", pin.0)
     }
   
     unsafe {
       if write {
-        match block {
-          "a" => (*GPIOA_PTR).bsrr.write(|w| w.bits(1 << pin)),
-          "b" => (*GPIOB_PTR).bsrr.write(|w| w.bits(1 << pin)),
-          "c" => (*GPIOC_PTR).bsrr.write(|w| w.bits(1 << pin)),
-          _   => panic!("{} is not an available GPIO Block!", block),
+        match pin.1 {
+          'a' => (*GPIOA_PTR).bsrr.write(|w| w.bits(1 << pin.0)),
+          'b' => (*GPIOB_PTR).bsrr.write(|w| w.bits(1 << pin.0)),
+          'c' => (*GPIOC_PTR).bsrr.write(|w| w.bits(1 << pin.0)),
+          _   => panic!("{} is not an available GPIO Block!", pin.1),
         }
       } else {
-        match block {
-          "a" => (*GPIOA_PTR).bsrr.write(|w| w.bits(1 << (pin + 16))),
-          "b" => (*GPIOB_PTR).bsrr.write(|w| w.bits(1 << (pin + 16))),
-          "c" => (*GPIOC_PTR).bsrr.write(|w| w.bits(1 << (pin + 16))),
-          _   => panic!("{} is not an available GPIO Block!", block),
+        match pin.1 {
+          'a' => (*GPIOA_PTR).bsrr.write(|w| w.bits(1 << (pin.0 + 16))),
+          'b' => (*GPIOB_PTR).bsrr.write(|w| w.bits(1 << (pin.0 + 16))),
+          'c' => (*GPIOC_PTR).bsrr.write(|w| w.bits(1 << (pin.0 + 16))),
+          _   => panic!("{} is not an available GPIO Block!", pin.1),
         }
       }
     }
   }
   
-  pub fn pin_read(block: &str, pin: u8) -> bool {
+  pub fn pin_read(pin: (u8, char)) -> bool {
     let state: bool;
   
-    if pin > 15 {
-      panic!("{} is not an available GPIO Pin", pin)
+    if pin.0 > 15 {
+      panic!("{} is not an available GPIO Pin", pin.0)
     }
   
     unsafe {
-      let bits = match block {
-        "a" => (*GPIOA_PTR).idr.read().bits(),
-        "b" => (*GPIOB_PTR).idr.read().bits(),
-        "c" => (*GPIOC_PTR).idr.read().bits(),
-        _   => panic!("{} is not an available GPIO Block!", block),
+      let bits = match pin.1 {
+        'a' => (*GPIOA_PTR).idr.read().bits(),
+        'b' => (*GPIOB_PTR).idr.read().bits(),
+        'c' => (*GPIOC_PTR).idr.read().bits(),
+        _   => panic!("{} is not an available GPIO Block!", pin.1),
       };
     
-      if bits & (1 << pin) == (2 << pin) {
+      if bits & (1 << pin.0) == (2 << pin.0) {
         state = true;
       } else {
         state = false;
@@ -627,16 +690,6 @@ pub mod pwm {
       }
     }
   }
-}
-
-pub fn init_heap() {
-  // Initialize the allocator BEFORE you use it
-  unsafe { ALLOCATOR.init(cortex_m_rt::heap_start() as usize, 1024); }
-}
-
-#[alloc_error_handler]
-fn oom(_: Layout) -> ! {
-    loop {}
 }
 
 #[macro_export]

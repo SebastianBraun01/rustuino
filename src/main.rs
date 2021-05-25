@@ -10,23 +10,23 @@
 // }
 
 mod rustuino;
-use rustuino::*;
+use rustuino::{pins::*, gpio_d::*, uart::*, pwm::*, time::*, init_heap, *};
 
 #[entry]
 fn main() -> ! {
     init_heap();
 
-    gpio_d::pin_mode("a", 2, Mode::AlterateFunction(7));
-    gpio_d::pin_mode("a", 2, Mode::AlterateFunction(7));
-    gpio_d::pin_mode("b", 0, Mode::AlterateFunction(2));
+    pin_mode(PA2, Mode::AlterateFunction(7));
+    pin_mode(PA3, Mode::AlterateFunction(7));
+    pin_mode(PB0, Mode::AlterateFunction(2));
 
-    uart::uart_init(2, 115200);
+    uart_init(2, 115200);
     sprintln!("UART gestartet!");
-    pwm::pwm_init(3, 3);
+    pwm_init(3, 3);
 
     loop {
         for i in 0..255 {
-            pwm::pin_write_pwm(3, 3, i);
+            pin_write_pwm(3, 3, i);
             time::delay(10);
         }
     }
