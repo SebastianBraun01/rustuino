@@ -10,11 +10,11 @@
 // }
 
 mod rustuino;
-use rustuino::{pins::*, gpio_d::*, uart::*, pwm::*, time::*, init_heap, *};
+use rustuino::{pins::*, gpio_d::*, uart::*, pwm::*, time::*, *};
 
 #[entry]
 fn main() -> ! {
-    init_heap();
+    // init_heap();
 
     pin_mode(PA2, Mode::AlterateFunction(7));
     pin_mode(PA3, Mode::AlterateFunction(7));
