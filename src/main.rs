@@ -16,18 +16,18 @@ use rustuino::*;
 fn main() -> ! {
     init_heap();
 
-    pin_mode("a", 2, Mode::AlterateFunction(7));
-    pin_mode("a", 2, Mode::AlterateFunction(7));
-    pin_mode("b", 0, Mode::AlterateFunction(2));
+    gpio_d::pin_mode("a", 2, Mode::AlterateFunction(7));
+    gpio_d::pin_mode("a", 2, Mode::AlterateFunction(7));
+    gpio_d::pin_mode("b", 0, Mode::AlterateFunction(2));
 
-    uart_init(2, 115200);
+    uart::uart_init(2, 115200);
     sprintln!("UART gestartet!");
-    pwm_init(3, 3);
+    pwm::pwm_init(3, 3);
 
     loop {
         for i in 0..255 {
-            pin_write_pwm(3, 3, i);
-            delay(10);
+            pwm::pin_write_pwm(3, 3, i);
+            time::delay(10);
         }
     }
 }
