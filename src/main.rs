@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(alloc_error_handler)]
 #![allow(unused_imports)]
 
 // use stm32f4::stm32f446::{self, Peripherals, interrupt};
@@ -10,12 +9,10 @@
 // }
 
 mod rustuino;
-use rustuino::{pins::*, gpio_d::*, uart::*, pwm::*, time::*, *};
+use rustuino::{include::*, gpio_d::*, uart::*, pwm::*, time::*, *};
 
 #[entry]
 fn main() -> ! {
-    // init_heap();
-
     pin_mode(PA2, Mode::AlterateFunction(7));
     pin_mode(PA3, Mode::AlterateFunction(7));
     pin_mode(PB0, Mode::AlterateFunction(2));
