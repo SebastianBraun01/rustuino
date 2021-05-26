@@ -9,10 +9,12 @@
 // }
 
 mod rustuino;
-use rustuino::{include::*, gpio_d::*, uart::*, pwm::*, time::*, *};
+use rustuino::*;
 
 #[entry]
 fn main() -> ! {
+    // adc_init_test([PA0, PA1]);
+
     pin_mode(PA2, Mode::AlterateFunction(7));
     pin_mode(PA3, Mode::AlterateFunction(7));
     pin_mode(PB0, Mode::AlterateFunction(2));

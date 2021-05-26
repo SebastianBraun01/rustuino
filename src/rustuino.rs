@@ -1,80 +1,56 @@
 #![allow(dead_code)]
 
+// Library includes ===============================================================================
 pub use cortex_m_rt::entry;
 pub use panic_semihosting as _;
 pub use heapless::{Vec, String};
 
+pub use {include::*, gpio_d::*, uart::*, pwm::*, time::*};
+
+
+// Struct and Enum declerations ===================================================================
 pub enum Mode {
   Input,
   Output,
   AlterateFunction(u32),
-  Analog
+  // false: ADC, true: DAC
+  Analog(bool)
 }
 
+pub enum Speed {
+  Low,
+  Medium,
+  Fast,
+  High
+}
+
+pub enum Bias {
+  None,
+  Pullup,
+  Pulldown
+}
+
+pub struct Config {
+  pin: Vec<(u8, char), 25>,
+  // config: {0: input, 1: output, 2: alternate, 3: analog}
+  config: Vec<u8, 25>,
+  // alternate: {<16: func_number, 16: none}
+  alternate: Vec<u32, 25>,
+  // analog: {0: none, 1: adc, 2: dac}
+  analog: Vec<u8, 25>
+}
+
+pub struct ADCMap {
+  pin: [(u8, char); 16],
+  channel: [u8; 16],
+  active: [bool; 16]
+}
+
+
+// Submodule includes =============================================================================
 pub mod include;
 pub mod gpio_d;
-
-pub mod gpio_a {
-  use super::include::{RCC_PTR, ADCC_PTR, ADC1_PTR, ADC2_PTR, ADC3_PTR};
-
-  pub fn adc_init(num: u8, channel: u8) {
-    unsafe {
-      (*ADCC_PTR).ccr.modify(|_, w| w.adcpre().div2());
-  
-      match num {
-        1 => {
-          (*RCC_PTR).apb2enr.modify(|_, w| w.adc1en().enabled());
-          if channel < 10 {(*ADC1_PTR).smpr2.modify(|r, w| w.bits(r.bits() | (0x7 << (channel * 3))));}
-          else {(*ADC1_PTR).smpr1.modify(|r, w| w.bits(r.bits() | (0x7 << ((channel - 10) * 3))));}
-          (*ADC1_PTR).sqr3.modify(|_, w| w.sq1().bits(channel));
-          (*ADC1_PTR).cr2.modify(|_, w| {
-            w.cont().continuous();
-            w.adon().enabled()
-          });
-          (*ADC1_PTR).cr2.modify(|_, w| w.swstart().start());
-        },
-        2 => {
-          (*RCC_PTR).apb2enr.modify(|_, w| w.adc2en().enabled());
-          if channel < 10 {(*ADC2_PTR).smpr2.modify(|r, w| w.bits(r.bits() | (0x7 << (channel * 3))));}
-          else {(*ADC2_PTR).smpr1.modify(|r, w| w.bits(r.bits() | (0x7 << ((channel - 10) * 3))));}
-          (*ADC2_PTR).sqr3.modify(|_, w| w.sq1().bits(channel));
-          (*ADC2_PTR).cr2.modify(|_, w| {
-            w.cont().continuous();
-            w.adon().enabled()
-          });
-          (*ADC2_PTR).cr2.modify(|_, w| w.swstart().start());
-        },
-        3 => {
-          (*RCC_PTR).apb2enr.modify(|_, w| w.adc3en().enabled());
-          if channel < 10 {(*ADC3_PTR).smpr2.modify(|r, w| w.bits(r.bits() | (0x7 << (channel * 3))));}
-          else {(*ADC3_PTR).smpr1.modify(|r, w| w.bits(r.bits() | (0x7 << ((channel - 10) * 3))));}
-          (*ADC3_PTR).sqr3.modify(|_, w| w.sq1().bits(channel));
-          (*ADC3_PTR).cr2.modify(|_, w| {
-            w.cont().continuous();
-            w.adon().enabled()
-          });
-          (*ADC3_PTR).cr2.modify(|_, w| w.swstart().start());
-        },
-        _ => panic!("{} is not a valid adc!", num),
-      }    
-    }
-  }
-  
-  pub fn analog_read(num: u8) -> u16 {
-    let buffer: u16;
-  
-    unsafe {
-      buffer = match num {
-        1 => (*ADC1_PTR).dr.read().data().bits(),
-        2 => (*ADC2_PTR).dr.read().data().bits(),
-        3 => (*ADC3_PTR).dr.read().data().bits(),
-        _ => panic!("{} is not a valid adc!", num),
-      }
-    }
-  
-    return buffer;
-  }
-}
+pub mod gpio_a;
 
 pub mod time {
   use super::include::SYSTICK_PTR;
@@ -476,6 +452,8 @@ pub mod pwm {
   }
 }
 
+
+// Macro declerations =============================================================================
 #[macro_export]
 macro_rules! sprint {
   ($param:expr) => {

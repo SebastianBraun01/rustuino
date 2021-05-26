@@ -1,4 +1,6 @@
+use super::{Config, ADCMap};
 use stm32f4::stm32f446;
+use heapless::Vec;
 
 // Pin Identifiers ================================================================================
 pub const PA0: (u8, char) = (0, 'a');
@@ -143,3 +145,19 @@ pub const TIM2_PTR: *const stm32f446::tim2::RegisterBlock = stm32f446::TIM2::ptr
 pub const TIM3_PTR: *const stm32f446::tim3::RegisterBlock = stm32f446::TIM3::ptr();
 pub const TIM4_PTR: *const stm32f446::tim3::RegisterBlock = stm32f446::TIM4::ptr();
 pub const TIM5_PTR: *const stm32f446::tim5::RegisterBlock = stm32f446::TIM5::ptr();
+
+
+// Pin config struct ==============================================================================
+pub static mut CONFIG: Config = Config{
+  pin: Vec::new(),
+  config: Vec::new(),
+  alternate: Vec::new(),
+  analog: Vec::new()
+};
+
+// Analog pin config map ==========================================================================
+pub static mut ADC_MAP: ADCMap = ADCMap{
+  pin: [PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PB0, PB1, PC0, PC1, PC2, PC3, PC4, PC5],
+  channel: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+  active: [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]
+};
