@@ -1,20 +1,16 @@
-use heapless::Vec;
 use super::include::{*, CONFIG, ADC_MAP, DAC_MAP};
 use super::include::RCC_PTR;
 use super::include::DAC_PTR;
 use super::include::{ADCC_PTR, ADC1_PTR};
 
-// TODO: Implement advanced parameters
-pub fn adc_init() {
-  let mut channels: Vec<u8, 16> = Vec::new();
-
+pub fn adc_init(resolution: u8, eocint: bool) {
   unsafe {
+    if ADC_MAP.active.contains(&true) {panic!("ADC is already configured!");}
+
     for i in 0..CONFIG.analog.len() {
       if CONFIG.analog[i] == 1 {
         // Check if pin is available for adc connection
         if ADC_MAP.pin.contains(&CONFIG.pin[i]) {
-          channels.push(ADC_MAP.channel[ADC_MAP.pin.iter().position(|&r| r == CONFIG.pin[i]).unwrap()])
-          .expect("Could not configure ADC for channel");
           ADC_MAP.active[ADC_MAP.pin.iter().position(|&r| r == CONFIG.pin[i]).unwrap()] = true;
         }
         else {
@@ -23,23 +19,22 @@ pub fn adc_init() {
       }
     }
     
-    (*ADCC_PTR).ccr.modify(|_, w| w.adcpre().div2());
     (*RCC_PTR).apb2enr.modify(|_, w| w.adc1en().enabled());
+    (*ADCC_PTR).ccr.modify(|_, w| w.adcpre().div2());
 
-    for i in 0..channels.len() {
-      if channels[i] < 10 {(*ADC1_PTR).smpr2.modify(|r, w| w.bits(r.bits() | (7 << (channels[i] * 3))));}
-      else {(*ADC1_PTR).smpr1.modify(|r, w| w.bits(r.bits() | (7 << ((channels[i] - 10) * 3))));}
+    if eocint == true {(*ADC1_PTR).cr1.modify(|_, w| w.eocie().enabled());}
 
-      if i < 6 {(*ADC1_PTR).sqr3.modify(|r, w| w.bits(r.bits() | ((channels[i] as u32) << (i * 5))));}
-      else if i >= 6 && i < 12 {(*ADC1_PTR).sqr2.modify(|r, w| w.bits(r.bits() | ((channels[i] as u32) << ((i - 6) * 5))));}
-      else {(*ADC1_PTR).sqr1.modify(|r, w| w.bits(r.bits() | ((channels[i] as u32) << ((i - 12) * 5))));}
-    }
+    (*ADC1_PTR).smpr2.modify(|_, w| w.smp0().cycles144());
 
-    (*ADC1_PTR).cr2.modify(|_, w| {
-      w.cont().continuous();
-      w.adon().enabled()
-    });
-    (*ADC1_PTR).cr2.modify(|_, w| w.swstart().start());
+    match resolution {
+      12 => (*ADC1_PTR).cr1.modify(|_, w| w.res().twelve_bit()),
+      10 => (*ADC1_PTR).cr1.modify(|_, w| w.res().ten_bit()),
+      8  => (*ADC1_PTR).cr1.modify(|_, w| w.res().eight_bit()),
+      6  => (*ADC1_PTR).cr1.modify(|_, w| w.res().six_bit()),
+      _  => panic!("{} is not a valid ADC resolution!", resolution)
+    };
+
+    (*ADC1_PTR).cr2.modify(|_, w| w.adon().enabled());
   }
 }
 
@@ -48,7 +43,12 @@ pub fn analog_read(pin: (u8, char)) -> u16 {
 
   unsafe {
     if ADC_MAP.pin.contains(&pin) {
-      if ADC_MAP.active[ADC_MAP.pin.iter().position(|&i| i == pin).unwrap()] == true {
+      if ADC_MAP.active[ADC_MAP.pin.iter().position(|&i| i == pin).unwrap()] == false {
+        let channel = ADC_MAP.channel[ADC_MAP.pin.iter().position(|&i| i == pin).unwrap()];
+        (*ADC1_PTR).sqr3.modify(|_, w| w.sq1().bits(channel));
+
+        (*ADC1_PTR).cr2.write(|w| w.swstart().start());
+        while (*ADC1_PTR).sr.read().eoc().is_not_complete() == true {}
         buffer = (*ADC1_PTR).dr.read().data().bits();
       }
       else {

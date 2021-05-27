@@ -164,9 +164,9 @@ pub static mut CONFIG: Config = Config{
 
 // Analog pin config map ==========================================================================
 pub static mut ADC_MAP: ADCMap = ADCMap{
-  pin: [PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PB0, PB1, PC0, PC1, PC2, PC3, PC4, PC5],
-  channel: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-  active: [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]
+  pin:     [PA0,   PA1,   PA2,   PA3,   PA4,   PA5,   PA6,   PA7,   PB0,   PB1,   PC0,   PC1,   PC2,   PC3,   PC4,   PC5],
+  channel: [0,     1,     2,     3,     4,     5,     6,     7,     8,     9,     10,    11,    12,    13,    14,    15],
+  active:  [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]
 };
 
 
@@ -180,10 +180,10 @@ pub static mut TIME_COUNTER: usize = 0;
 
 // UART pin config map ============================================================================
 pub static mut UART_MAP: UARTMap = UARTMap{
-  tx_pin: [PA9, PB6, PB10, PC10, PA0, PC6],
-  rx_pin: [PA10, PB7, PB11, PC11, PA1, PC7],
-  channel: [1, 1, 3, 3, 4, 6],
-  active: [false, false, false, false, false, false]
+  tx_pin:  [PA9,   PB6,   PB10,  PC10,  PA0,   PC6],
+  rx_pin:  [PA10,  PB7,   PB11,  PC11,  PA1,   PC7],
+  channel: [1,     1,     3,     3,     4,     6],
+  active:  [false, false, false, false, false, false]
 };
 
 pub static mut UART_USB: bool = false;

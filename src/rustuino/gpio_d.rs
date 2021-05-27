@@ -7,6 +7,8 @@ pub fn pin_mode(pin: (u8, char), mode: Mode) {
   if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
   
   unsafe {
+    if CONFIG.pin.contains(&pin) == true {panic!("P{}{} is already configured!", pin.1.to_uppercase(), pin.0);}
+
     match pin.1 {
       'a' => {
         (*RCC_PTR).ahb1enr.modify(|_, w| w.gpioaen().enabled());
@@ -181,33 +183,34 @@ pub fn pin_write(pin: (u8, char), write: bool) {
   }
 }
 
-// TODO: Chage function with struct
 pub fn pin_read(pin: (u8, char)) -> bool {  
   if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
 
+  let bits: u32;
+
   unsafe {
-    if (*GPIOA_PTR).moder.read().bits() & (3 << (2 * pin.0)) == 0 {
-      let bits = match pin.1 {
-        'a' => (*GPIOA_PTR).idr.read().bits(),
-        'b' => (*GPIOB_PTR).idr.read().bits(),
-        'c' => (*GPIOC_PTR).idr.read().bits(),
-        _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
-      };
-
-      if bits & (1 << pin.0) == (1 << pin.0) {return true;}
-      else {return false;}
+    if CONFIG.pin.contains(&pin) {
+      if CONFIG.config[CONFIG.pin.iter().position(|&i| i == pin).unwrap()] == 0 {
+        bits = match pin.1 {
+          'a' => (*GPIOA_PTR).idr.read().bits(),
+          'b' => (*GPIOB_PTR).idr.read().bits(),
+          'c' => (*GPIOC_PTR).idr.read().bits(),
+          _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
+        };
+      }
+      else if CONFIG.config[CONFIG.pin.iter().position(|&i| i == pin).unwrap()] == 1 {
+        bits = match pin.1 {
+          'a' => (*GPIOA_PTR).odr.read().bits(),
+          'b' => (*GPIOB_PTR).odr.read().bits(),
+          'c' => (*GPIOC_PTR).odr.read().bits(),
+          _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
+        };
+      }
+      else {panic!("P{}{} is no readable in the configuration!", pin.1.to_uppercase(), pin.0);}
     }
-    else if (*GPIOA_PTR).moder.read().bits() & (3 << (2 * pin.0)) == (1 << (2 * pin.0)) {
-      let bits = match pin.1 {
-        'a' => (*GPIOA_PTR).odr.read().bits(),
-        'b' => (*GPIOB_PTR).odr.read().bits(),
-        'c' => (*GPIOC_PTR).odr.read().bits(),
-        _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
-      };
-
-      if bits & (1 << pin.0) == (1 << pin.0) {return true;}
-      else {return false;}
-    }
-    else {panic!("Cannot read GPIO Pin in this Configuration!");}
+    else {panic!("P{}{} is not configured!", pin.1.to_uppercase(), pin.0);}
   }
+
+  if bits & (1 << pin.0) == (1 << pin.0) {return true;}
+  else {return false;}
 }

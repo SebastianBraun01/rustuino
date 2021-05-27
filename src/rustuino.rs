@@ -1,11 +1,10 @@
 #![allow(dead_code)]
 
-use cortex_m::peripheral::itm::Stim;
 // Library includes ===============================================================================
 pub use cortex_m_rt::entry;
 pub use panic_semihosting as _;
 pub use heapless::{Vec, String};
-
+pub use libm::*;
 pub use {include::*, gpio_d::*, uart::*, pwm::*, time::*};
 
 
@@ -385,10 +384,3 @@ macro_rules! sreads {
     string
   };
 }
-
-
-// Interrupts =====================================================================================
-// #[interrupt]
-// fn TIM9() {
-
-// }

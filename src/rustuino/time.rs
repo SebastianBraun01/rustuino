@@ -1,7 +1,8 @@
-use super::include::TIME_COUNTER;
-use super::include::SYSTICK_PTR;
-use super::include::RCC_PTR;
-use super::include::TIM9_PTR;
+#![allow(non_snake_case)]
+
+use cortex_m::peripheral::NVIC;
+use stm32f4::stm32f446::{Interrupt, interrupt};
+use super::include::{TIME_COUNTER, SYSTICK_PTR, RCC_PTR, TIM9_PTR};
 
 pub fn delay(ms: u32) {
   // 2MHz mit 2000 PSC -> 1kHz
@@ -21,11 +22,13 @@ pub fn delay(ms: u32) {
   }
 }
 
-// TODO: setup timer interrupt
 pub fn start_time() {
   unsafe {
     (*RCC_PTR).apb2enr.modify(|_, w| w.tim9en().enabled());
     (*TIM9_PTR).dier.modify(|_, w| w.uie().enabled());
+
+    NVIC::unmask(Interrupt::TIM8_UP_TIM13);
+
     (*TIM9_PTR).arr.modify(|_, w| w.arr().bits(8000));
     (*TIM9_PTR).egr.write(|w| w.ug().update());
     (*TIM9_PTR).cr1.modify(|_, w| w.cen().enabled());
@@ -46,3 +49,11 @@ pub fn millis() -> usize {
 }
 
 // TODO: timer_init function!!!!!
+pub fn timer_init(timer: u8, time: usize) {
+
+}
+
+#[interrupt]
+fn TIM8_UP_TIM13() {
+  unsafe {TIME_COUNTER += 1;}
+}
