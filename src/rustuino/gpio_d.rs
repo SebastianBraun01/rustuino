@@ -4,9 +4,7 @@ use super::include::RCC_PTR;
 use super::include::{GPIOA_PTR, GPIOB_PTR, GPIOC_PTR};
 
 pub fn pin_mode(pin: (u8, char), mode: Mode) {  
-  if pin.0 > 15 {
-    panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);
-  }
+  if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
   
   unsafe {
     match pin.1 {
@@ -101,9 +99,7 @@ pub fn pin_mode(pin: (u8, char), mode: Mode) {
 }
 
 pub fn pin_config(pin: (u8, char), open_drain: bool, speed: Speed, bias: Bias) {
-  if pin.0 > 15 {
-    panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);
-  }
+  if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
 
   unsafe {
     match pin.1 {
@@ -164,9 +160,7 @@ pub fn pin_config(pin: (u8, char), open_drain: bool, speed: Speed, bias: Bias) {
 }
 
 pub fn pin_write(pin: (u8, char), write: bool) {  
-  if pin.0 > 15 {
-    panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);
-  }
+  if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
 
   unsafe {
     match pin.1 {
@@ -189,9 +183,7 @@ pub fn pin_write(pin: (u8, char), write: bool) {
 
 // TODO: Chage function with struct
 pub fn pin_read(pin: (u8, char)) -> bool {  
-  if pin.0 > 15 {
-    panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);
-  }
+  if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
 
   unsafe {
     if (*GPIOA_PTR).moder.read().bits() & (3 << (2 * pin.0)) == 0 {

@@ -46,49 +46,40 @@ pub struct ADCMap {
   active: [bool; 16]
 }
 
+pub struct UARTMap {
+  tx_pin: [(u8, char); 7],
+  rx_pin: [(u8, char); 7],
+  channel: [u8; 7],
+  active: [bool; 7]
+}
+
 
 // Submodule includes =============================================================================
 pub mod include;
 pub mod gpio_d;
 pub mod gpio_a;
-
-pub mod time {
-  use super::include::SYSTICK_PTR;
-
-  pub fn delay(ms: u32) {
-    // 2MHz mit 2000 PSC -> 1kHz
-    let systick_psc = 2000000 / 1000;
-  
-    unsafe {
-      (*SYSTICK_PTR).ctrl.modify(|_, w| w.enable().clear_bit());
-      (*SYSTICK_PTR).load.write(|w| w.reload().bits(systick_psc * ms));
-      (*SYSTICK_PTR).val.write(|w| w.current().bits(0));
-      (*SYSTICK_PTR).ctrl.modify(|_, w| w.enable().set_bit());
-  
-      while !(*SYSTICK_PTR).ctrl.read().countflag().bit_is_set() {}
-      (*SYSTICK_PTR).ctrl.modify(|_, w| w.countflag().clear_bit());
-      (*SYSTICK_PTR).ctrl.modify(|_, w| w.enable().clear_bit());
-    }
-  }
-}
+pub mod time;
 
 pub mod uart {
-  // use super::alloc::string::String;
   use heapless::String;
-  use super::include::{RCC_PTR, USART1_PTR, USART2_PTR, USART3_PTR, UART4_PTR, UART5_PTR, USART6_PTR};
+  use super::include::RCC_PTR;
+  use super::include::{USART1_PTR, USART2_PTR, USART3_PTR, UART4_PTR, UART5_PTR, USART6_PTR};
 
-  pub fn uart_init(num: u8, baud: u32) {
-    // UART1: PA9_TX|PA10_RX,   PB6_TX|PB7_RX
-    // UART2: PA2_TX|PA3_RX,    PD5_TX|PD6_RX
-    // UART3: PB10_TX|PB11_RX,  PC10_TX|PC11_RX,  PD8_TX|PD9_RX
-    // UART4: PA0_TX|PA1_RX,    PC10_TX|PC11_RX
-    // UART5: PE8_TX|PE7_RX
-    // UART6: PC6_TX|PC7_RX,    PG14_TX|PG9_RX
-  
+  pub fn uart_init_test(channel: u8, baud: u32) {
     let psc = match baud {
       9600 => (104, 2),
       115200 => (8, 7),
-      _ => (8, 7)
+      _ => (104, 2)
+    };
+  }
+
+
+
+  pub fn uart_init(num: u8, baud: u32) {  
+    let psc = match baud {
+      9600 => (104, 2),
+      115200 => (8, 7),
+      _ => (104, 2)
     };
   
     unsafe {
@@ -465,9 +456,16 @@ macro_rules! sprint {
 #[macro_export]
 macro_rules! sprintln {
   ($param:expr) => {
-    let mut text_buffer = String::from($param);
-    text_buffer.push('\r');
-    text_buffer.push('\n');
-    uart::serial_print(text_buffer);
+    // let mut text_buffer = String::from($param);
+    // text_buffer.push('\r');
+    // text_buffer.push('\n');
+    // uart::serial_print(text_buffer);
   };
 }
+
+
+// Interrupts =====================================================================================
+// #[interrupt]
+// fn TIM9() {
+
+// }
