@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use cortex_m::peripheral::itm::Stim;
 // Library includes ===============================================================================
 pub use cortex_m_rt::entry;
 pub use panic_semihosting as _;
@@ -338,18 +339,50 @@ pub mod pwm {
 #[macro_export]
 macro_rules! sprint {
   ($param:expr) => {
-    let text_buffer = String::from(alloc::format!("{}", format_args!("{}", $param)));
-    serial_print(text_buffer);
+    let text_buffer: String<50> = String::from($param);
+    for char in text_buffer.chars() {
+      if char.is_ascii() == true {
+        send_char_usb(char);
+      }
+      else {panic!("{} is not an ASCII character!", char)}
+    }
   };
 }
 
 #[macro_export]
 macro_rules! sprintln {
   ($param:expr) => {
-    // let mut text_buffer = String::from($param);
-    // text_buffer.push('\r');
-    // text_buffer.push('\n');
-    // uart::serial_print(text_buffer);
+    let text_buffer: String<50> = String::from($param);
+    for char in text_buffer.chars() {
+      if char.is_ascii() == true {
+        send_char_usb(char);
+      }
+      else {panic!("{} is not an ASCII character!", char)}
+    }
+    send_char_usb('\r');
+    send_char_usb('\n');
+  };
+}
+
+#[macro_export]
+macro_rules! sread {
+  () => {
+    let text_buffer: char = recieve_char_usb();  
+    text_buffer
+  };
+}
+
+#[macro_export]
+macro_rules! sreads {
+  ($stop:expr) => {
+    let mut string: String<50> = String::new();
+    let mut buffer: char;
+    loop {
+      buffer = recieve_char_usb();
+      if buffer == $stop as char {break;}
+      string.push(buffer).expect("String buffer full!");
+    }
+    string
   };
 }
 
