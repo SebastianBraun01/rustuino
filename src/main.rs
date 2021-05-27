@@ -19,7 +19,7 @@ fn main() -> ! {
     pin_mode(PA3, Mode::AlterateFunction(7));
     pin_mode(PB0, Mode::AlterateFunction(2));
 
-    uart_init(2, 115200);
+    // uart_init(2, 115200);
     sprintln!("UART gestartet!");
     pwm_init(3, 3);
 

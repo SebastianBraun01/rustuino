@@ -47,10 +47,10 @@ pub struct ADCMap {
 }
 
 pub struct UARTMap {
-  tx_pin: [(u8, char); 7],
-  rx_pin: [(u8, char); 7],
-  channel: [u8; 7],
-  active: [bool; 7]
+  tx_pin: [(u8, char); 6],
+  rx_pin: [(u8, char); 6],
+  channel: [u8; 6],
+  active: [bool; 6]
 }
 
 
@@ -59,117 +59,7 @@ pub mod include;
 pub mod gpio_d;
 pub mod gpio_a;
 pub mod time;
-
-pub mod uart {
-  use heapless::String;
-  use super::include::RCC_PTR;
-  use super::include::{USART1_PTR, USART2_PTR, USART3_PTR, UART4_PTR, UART5_PTR, USART6_PTR};
-
-  pub fn uart_init_test(channel: u8, baud: u32) {
-    let psc = match baud {
-      9600 => (104, 2),
-      115200 => (8, 7),
-      _ => (104, 2)
-    };
-  }
-
-
-
-  pub fn uart_init(num: u8, baud: u32) {  
-    let psc = match baud {
-      9600 => (104, 2),
-      115200 => (8, 7),
-      _ => (104, 2)
-    };
-  
-    unsafe {
-      match num {
-        1 => {
-          (*RCC_PTR).apb2enr.modify(|_, w| w.usart1en().enabled());
-          (*USART1_PTR).cr1.modify(|_, w| {
-            w.ue().enabled();
-            w.te().enabled();
-            w.re().enabled()
-          });
-          (*USART1_PTR).brr.modify(|_, w| {
-            w.div_mantissa().bits(psc.0);
-            w.div_fraction().bits(psc.1)
-          });
-        },
-        2 => {
-          (*RCC_PTR).apb1enr.modify(|_, w| w.usart2en().enabled());
-          (*USART2_PTR).cr1.modify(|_, w| {
-            w.ue().enabled();
-            w.te().enabled();
-            w.re().enabled()
-          });
-          (*USART2_PTR).brr.modify(|_, w| {
-            w.div_mantissa().bits(psc.0);
-            w.div_fraction().bits(psc.1)
-          });
-        },
-        3 => {
-          (*RCC_PTR).apb1enr.modify(|_, w| w.usart3en().enabled());
-          (*USART3_PTR).cr1.modify(|_, w| {
-            w.ue().enabled();
-            w.te().enabled();
-            w.re().enabled()
-          });
-          (*USART3_PTR).brr.modify(|_, w| {
-            w.div_mantissa().bits(psc.0);
-            w.div_fraction().bits(psc.1)
-          });
-        },
-        4 => {
-          (*RCC_PTR).apb1enr.modify(|_, w| w.uart4en().enabled());
-          (*UART4_PTR).cr1.modify(|_, w| {
-            w.ue().enabled();
-            w.te().enabled();
-            w.re().enabled()
-          });
-          (*UART4_PTR).brr.modify(|_, w| {
-            w.div_mantissa().bits(psc.0);
-            w.div_fraction().bits(psc.1)
-          });
-        },
-        5 => {
-          (*RCC_PTR).apb1enr.modify(|_, w| w.uart5en().enabled());
-          (*UART5_PTR).cr1.modify(|_, w| {
-            w.ue().enabled();
-            w.te().enabled();
-            w.re().enabled()
-          });
-          (*UART5_PTR).brr.modify(|_, w| {
-            w.div_mantissa().bits(psc.0);
-            w.div_fraction().bits(psc.1)
-          });
-        },
-        6 => {
-          (*RCC_PTR).apb2enr.modify(|_, w| w.usart6en().enabled());
-          (*USART6_PTR).cr1.modify(|_, w| {
-            w.ue().enabled();
-            w.te().enabled();
-            w.re().enabled()
-          });
-          (*USART6_PTR).brr.modify(|_, w| {
-            w.div_mantissa().bits(psc.0);
-            w.div_fraction().bits(psc.1)
-          });
-        },
-        _ => panic!("{} is not a valid UART peripheral!", num)
-      };
-    }
-  }
-  
-  pub fn serial_print(data: String<20>) {
-    unsafe {
-      for c in data.chars() {
-        (*USART2_PTR).dr.write(|w| w.dr().bits(c as u16));
-        while (*USART2_PTR).sr.read().tc().bit_is_clear() {}
-      }
-    }
-  }
-}
+pub mod uart;
 
 pub mod pwm {
   use super::include::{RCC_PTR, TIM2_PTR, TIM3_PTR, TIM4_PTR, TIM5_PTR};

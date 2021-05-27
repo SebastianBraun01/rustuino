@@ -180,8 +180,10 @@ pub static mut TIME_COUNTER: usize = 0;
 
 // UART pin config map ============================================================================
 pub static mut UART_MAP: UARTMap = UARTMap{
-  tx_pin: [PA9, PB6, PA2, PB10, PC10, PA0, PC6],
-  rx_pin: [PA10, PB7, PA3, PB11, PC11, PA1, PC7],
-  channel: [1, 1, 2, 3, 3, 4, 6],
-  active: [false, false, false, false, false, false, false]
+  tx_pin: [PA9, PB6, PB10, PC10, PA0, PC6],
+  rx_pin: [PA10, PB7, PB11, PC11, PA1, PC7],
+  channel: [1, 1, 3, 3, 4, 6],
+  active: [false, false, false, false, false, false]
 };
+
+pub static mut UART_USB: bool = false;

@@ -44,3 +44,5 @@ pub fn millis() -> usize {
 
   return buffer;
 }
+
+// TODO: timer_init function!!!!!
