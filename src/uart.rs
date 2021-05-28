@@ -1,4 +1,4 @@
-use heapless::{String, Vec};
+use heapless::Vec;
 use libm::*;
 use super::Mode;
 use super::include::{*, UART_MAP, UART_USB};
@@ -61,7 +61,7 @@ pub fn recieve_char_usb() -> char {
   return buffer as char;
 }
 
-// TODO: finish not usb uart functions
+// TODO: finish not usb uart functions + better uart map
 pub fn uart_init(baud: u32, rxint: bool, txint: bool) {  
   // (Mantisse, Fractal)
   let usartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));

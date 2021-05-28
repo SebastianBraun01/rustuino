@@ -1,4 +1,4 @@
-use super::{Config, ADCMap, UARTMap};
+use super::{Config, ADCMap, UARTMap, TIMERMap};
 use stm32f4::stm32f446;
 use heapless::Vec;
 
@@ -142,10 +142,14 @@ pub const USART3_PTR: *const stm32f446::usart1::RegisterBlock = stm32f446::USART
 pub const UART4_PTR: *const stm32f446::uart4::RegisterBlock = stm32f446::UART4::ptr();
 pub const UART5_PTR: *const stm32f446::uart4::RegisterBlock = stm32f446::UART5::ptr();
 pub const USART6_PTR: *const stm32f446::usart1::RegisterBlock = stm32f446::USART6::ptr();
+pub const TIM1_PTR: *const stm32f446::tim1::RegisterBlock = stm32f446::TIM1::ptr();
 pub const TIM2_PTR: *const stm32f446::tim2::RegisterBlock = stm32f446::TIM2::ptr();
 pub const TIM3_PTR: *const stm32f446::tim3::RegisterBlock = stm32f446::TIM3::ptr();
 pub const TIM4_PTR: *const stm32f446::tim3::RegisterBlock = stm32f446::TIM4::ptr();
 pub const TIM5_PTR: *const stm32f446::tim5::RegisterBlock = stm32f446::TIM5::ptr();
+pub const TIM6_PTR: *const stm32f446::tim6::RegisterBlock = stm32f446::TIM6::ptr();
+pub const TIM7_PTR: *const stm32f446::tim6::RegisterBlock = stm32f446::TIM7::ptr();
+pub const TIM8_PTR: *const stm32f446::tim1::RegisterBlock = stm32f446::TIM8::ptr();
 pub const TIM9_PTR: *const stm32f446::tim9::RegisterBlock = stm32f446::TIM9::ptr();
 pub const TIM10_PTR: *const stm32f446::tim10::RegisterBlock = stm32f446::TIM10::ptr();
 pub const TIM11_PTR: *const stm32f446::tim11::RegisterBlock = stm32f446::TIM11::ptr();
@@ -179,11 +183,25 @@ pub static mut TIME_COUNTER: usize = 0;
 
 
 // UART pin config map ============================================================================
+
+// TODO: better uart map
 pub static mut UART_MAP: UARTMap = UARTMap{
-  tx_pin:  [PA9,   PB6,   PB10,  PC10,  PA0,   PC6],
-  rx_pin:  [PA10,  PB7,   PB11,  PC11,  PA1,   PC7],
-  channel: [1,     1,     3,     3,     4,     6],
-  active:  [false, false, false, false, false, false]
+  tx_pin:  [PA9,   PB6,   PB10,  PC10,  PD5,   PD8,   PA0,   PC6,   PC10,  PC12,  PE8,   PG14],
+  rx_pin:  [PA10,  PB7,   PB11,  PC11,  PD6,   PD9,   PA1,   PC7,   PC11,  PD2,   PE7,   PG9],
+  channel: [1,     1,     3,     3,     2,     3,     4,     6,     4,     5,     5,     6],
+  active:  [false, false, false, false, false, false, false, false, false, false, false, false]
 };
 
 pub static mut UART_USB: bool = false;
+
+
+// PWM pin config map =============================================================================
+pub static mut TIMER_MAP: TIMERMap = TIMERMap{
+  pin: [PA0, PA1, PA2, PA3, PA5, PA8, PA9, PA10, PA11, PA15, PB0, PB1, PB2, PB3, PB8, PB9, PB10, PB11, PB13, PB14, PB15, PE8, PE9, PE10, PE11, PE12, PE13, PE14, PA0, PA1, PA2, PA3, PA6, PA7, PB0, PB1, PB4, PB5, PB6, PB7, PB8, PB9, PC6, PC7, PC8, PC9, PD12, PD13, PD14, PD15, PA2, PA3, PA5, PA7, PB0, PB1, PB8, PB9, PB14, PB15, PC6, PC7, PC8, PC9, PE5, PE6, PF6, PF7, PA6, PA7, PB14, PB15, PF8, PF9],
+
+  timer: [2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 3, 3, 3, 3, 4, 4, 4, 4, 9, 9, 8, 8, 8, 8, 10, 11, 8, 8, 8, 8, 8, 8, 9, 9, 10, 11, 13, 14, 12, 12, 13, 14],
+
+  ccch: [1, 2, 3, 4, 1, 1, 2, 3, 4, 1, 2, 3, 4, 2, 1, 2, 3, 4, 1, 2, 3, 1, 1, 2, 2 ,3, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 1, 1, 2, 3, 1, 1, 2, 3, 1, 2, 3, 4, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1],
+
+  active: [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]
+};

@@ -1,10 +1,13 @@
+#![no_std]
 #![allow(dead_code)]
 
 // Library includes ===============================================================================
 pub use cortex_m_rt::entry;
 pub use panic_semihosting as _;
-pub use heapless::{Vec, String};
+pub use cortex_m::peripheral::NVIC;
+pub use stm32f4::stm32f446::{Interrupt, interrupt};
 pub use libm::*;
+pub use heapless::{Vec, String, FnvIndexMap, FnvIndexSet};
 pub use {include::*, gpio_d::*, uart::*, pwm::*, time::*};
 
 
@@ -47,10 +50,17 @@ pub struct ADCMap {
 }
 
 pub struct UARTMap {
-  tx_pin: [(u8, char); 6],
-  rx_pin: [(u8, char); 6],
-  channel: [u8; 6],
-  active: [bool; 6]
+  tx_pin: [(u8, char); 12],
+  rx_pin: [(u8, char); 12],
+  channel: [u8; 12],
+  active: [bool; 12]
+}
+
+pub struct TIMERMap {
+  pin: [(u8, char); 74],
+  timer: [u8; 74],
+  ccch: [u8; 74],
+  active: [bool; 74]
 }
 
 
@@ -365,15 +375,15 @@ macro_rules! sprintln {
 
 #[macro_export]
 macro_rules! sread {
-  () => {
+  () => {{
     let text_buffer: char = recieve_char_usb();  
     text_buffer
-  };
+  }};
 }
 
 #[macro_export]
 macro_rules! sreads {
-  ($stop:expr) => {
+  ($stop:expr) => {{
     let mut string: String<50> = String::new();
     let mut buffer: char;
     loop {
@@ -382,5 +392,5 @@ macro_rules! sreads {
       string.push(buffer).expect("String buffer full!");
     }
     string
-  };
+  }};
 }
