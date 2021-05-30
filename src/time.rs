@@ -1,8 +1,7 @@
-#![allow(non_snake_case)]
-
 use cortex_m::peripheral::NVIC;
 use stm32f4::stm32f446::{Interrupt, interrupt};
-use super::include::{TIME_COUNTER, SYSTICK_PTR, RCC_PTR, TIM9_PTR};
+use super::include::register::{SYSTICK_PTR, RCC_PTR, TIM9_PTR};
+use super::include::variables::TIME_COUNTER;
 
 pub fn delay(ms: u32) {
   // 2MHz mit 2000 PSC -> 1kHz

@@ -1,13 +1,38 @@
-use super::{Mode, Speed, Bias};
-use super::include::CONFIG;
-use super::include::RCC_PTR;
-use super::include::{GPIOA_PTR, GPIOB_PTR, GPIOC_PTR};
+use super::include::data_maps::PINCONFIG;
+use super::include::register::RCC_PTR;
+use super::include::register::{GPIOA_PTR, GPIOB_PTR, GPIOC_PTR};
+
+#[derive(Debug)]
+pub enum Mode {
+  Input, Output, AlterateFunction(Fn), Analog(Dir)  
+}
+
+#[derive(Debug)]
+pub enum Fn {
+  None, PWM, UART, Timer
+}
+
+#[derive(Debug)]
+pub enum Dir {
+  None, Input, Output
+}
+
+pub enum Speed {
+  Low, Medium, Fast, High
+}
+
+pub enum Bias {
+  None, Pullup, Pulldown
+}
 
 pub fn pin_mode(pin: (u8, char), mode: Mode) {  
   if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
   
   unsafe {
-    if CONFIG.pin.contains(&pin) == true {panic!("P{}{} is already configured!", pin.1.to_uppercase(), pin.0);}
+    if PINCONFIG.pin.contains(&pin) == true {panic!("P{}{} is already configured!", pin.1.to_uppercase(), pin.0);}
+
+    PINCONFIG.pin.push(pin).expect("Could not store pin configuration!");
+    PINCONFIG.mode.push(mode).expect("Could not store pin configuration!");
 
     match pin.1 {
       'a' => {
@@ -73,30 +98,7 @@ pub fn pin_mode(pin: (u8, char), mode: Mode) {
       _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
     };
 
-    CONFIG.pin.push(pin).expect("Could not store pin configuration!");
-    match mode {
-      Mode::Input => {
-        CONFIG.config.push(0).expect("Could not store pin configuration!");
-        CONFIG.alternate.push(16).expect("Could not store pin configuration!");
-        CONFIG.analog.push(0).expect("Could not store pin configuration!");
-      },
-      Mode::Output => {
-        CONFIG.config.push(1).expect("Could not store pin configuration!");
-        CONFIG.alternate.push(16).expect("Could not store pin configuration!");
-        CONFIG.analog.push(0).expect("Could not store pin configuration!");
-      },
-      Mode::AlterateFunction(f) => {
-        CONFIG.config.push(2).expect("Could not store pin configuration!");
-        CONFIG.alternate.push(f).expect("Could not store pin configuration!");
-        CONFIG.analog.push(0).expect("Could not store pin configuration!");
-      },
-      Mode::Analog(f) => {
-        CONFIG.config.push(3).expect("Could not store pin configuration!");
-        CONFIG.alternate.push(16).expect("Could not store pin configuration!");
-        if f == false {CONFIG.analog.push(1).expect("Could not store pin configuration!");}
-        else {CONFIG.analog.push(2).expect("Could not store pin configuration!");}
-      }
-    };
+    
   }
 }
 

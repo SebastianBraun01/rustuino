@@ -1,17 +1,16 @@
-use heapless::Vec;
 use libm::*;
-use super::Mode;
-use super::include::{*, UART_MAP, UART_USB};
-use super::gpio_d::pin_mode;
-use super::include::RCC_PTR;
-use super::include::{USART1_PTR, USART2_PTR, USART3_PTR, UART4_PTR, USART6_PTR};
+use heapless::Vec;
+use super::include::pins::*;
+use super::gpio_d::{Mode, pin_mode};
+use super::include::data_maps::{PINCONFIG, UART_MAP, UART_USB};
+use super::include::register::{RCC_PTR, USART1_PTR, USART2_PTR, USART3_PTR, UART4_PTR, USART6_PTR};
 
 pub fn uart_usb_init(baud: u32, rxint: bool, txint: bool) {
   // (Mantisse, Fractal)
   let usartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));
 
   unsafe {
-    if UART_USB == true {panic!("UART USB channel is already configured!");}
+    if UART_USB == true {panic!("UART USB channel is already PINCONFIGured!");}
 
     (*RCC_PTR).apb1enr.modify(|_, w| w.usart2en().enabled());
 
@@ -38,7 +37,7 @@ pub fn uart_usb_init(baud: u32, rxint: bool, txint: bool) {
 pub fn send_char_usb(c: char) {
   if c.is_ascii() == true {
     unsafe {
-      if UART_USB == false {panic!("UART USB channel ist not configured!");}
+      if UART_USB == false {panic!("UART USB channel ist not PINCONFIGured!");}
 
       while (*USART2_PTR).sr.read().txe().bit_is_set() == true {}
       (*USART2_PTR).dr.write(|w| w.dr().bits(c as u16));
@@ -52,7 +51,7 @@ pub fn recieve_char_usb() -> char {
   let buffer: u8;
 
   unsafe {
-    if UART_USB == false {panic!("UART USB channel ist not configured!");}
+    if UART_USB == false {panic!("UART USB channel ist not PINCONFIGured!");}
 
     while (*USART2_PTR).sr.read().rxne().bit_is_clear() == true {}
     buffer = (*USART2_PTR).dr.read().dr().bits() as u8;
@@ -68,18 +67,18 @@ pub fn uart_init(baud: u32, rxint: bool, txint: bool) {
   let mut channels: Vec<(u8, bool), 5> = Vec::new();
 
   unsafe {
-    for i in 0..CONFIG.pin.len() {
-      if CONFIG.alternate[i] == 7 || CONFIG.alternate[i] == 8 {
-        if UART_MAP.rx_pin.contains(&CONFIG.pin[i]) {
-          channels.push((UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&r| r == CONFIG.pin[i]).unwrap()], false))
-          .expect("Could not configure UART channel!");
-          UART_MAP.active[UART_MAP.rx_pin.iter().position(|&r| r == CONFIG.pin[i]).unwrap()] = true;
-        }else if UART_MAP.tx_pin.contains(&CONFIG.pin[i]) {
-          channels.push((UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&r| r == CONFIG.pin[i]).unwrap()], true))
-          .expect("Could not configure UART channel!");
-          UART_MAP.active[UART_MAP.rx_pin.iter().position(|&r| r == CONFIG.pin[i]).unwrap()] = true;
+    for i in 0..PINCONFIG.pin.len() {
+      if PINCONFIG.alternate[i] == 7 || PINCONFIG.alternate[i] == 8 {
+        if UART_MAP.rx_pin.contains(&PINCONFIG.pin[i]) {
+          channels.push((UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&r| r == PINCONFIG.pin[i]).unwrap()], false))
+          .expect("Could not PINCONFIGure UART channel!");
+          UART_MAP.active[UART_MAP.rx_pin.iter().position(|&r| r == PINCONFIG.pin[i]).unwrap()] = true;
+        }else if UART_MAP.tx_pin.contains(&PINCONFIG.pin[i]) {
+          channels.push((UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&r| r == PINCONFIG.pin[i]).unwrap()], true))
+          .expect("Could not PINCONFIGure UART channel!");
+          UART_MAP.active[UART_MAP.rx_pin.iter().position(|&r| r == PINCONFIG.pin[i]).unwrap()] = true;
         }
-        else {panic!("P{}{} is not available for UART connection!", CONFIG.pin[i].1.to_uppercase(), CONFIG.pin[i].0);}
+        else {panic!("P{}{} is not available for UART connection!", PINCONFIG.pin[i].1.to_uppercase(), PINCONFIG.pin[i].0);}
       }
     }
 
@@ -206,7 +205,7 @@ pub fn send_char(c: char) {
   if c.is_ascii() == true {
     unsafe {
       if UART_USB == false {
-        panic!("UART USB channel ist not configured!");
+        panic!("UART USB channel ist not PINCONFIGured!");
       }
 
       while (*USART2_PTR).sr.read().txe().bit_is_set() == true {}

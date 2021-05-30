@@ -1,20 +1,19 @@
-use super::include::{*, CONFIG, ADC_MAP, DAC_MAP};
-use super::include::RCC_PTR;
-use super::include::DAC_PTR;
-use super::include::{ADCC_PTR, ADC1_PTR};
+use super::include::pins::*;
+use super::include::data_maps::{PINCONFIG, ADC_MAP, DAC_MAP};
+use super::include::register::{RCC_PTR, DAC_PTR, ADCC_PTR, ADC1_PTR};
 
 pub fn adc_init(resolution: u8, eocint: bool) {
   unsafe {
-    if ADC_MAP.active.contains(&true) {panic!("ADC is already configured!");}
+    if ADC_MAP.active.contains(&true) {panic!("ADC is already PINCONFIGured!");}
 
-    for i in 0..CONFIG.analog.len() {
-      if CONFIG.analog[i] == 1 {
+    for i in 0..PINPINCONFIG.analog.len() {
+      if PINCONFIG.analog[i] == 1 {
         // Check if pin is available for adc connection
-        if ADC_MAP.pin.contains(&CONFIG.pin[i]) {
-          ADC_MAP.active[ADC_MAP.pin.iter().position(|&r| r == CONFIG.pin[i]).unwrap()] = true;
+        if ADC_MAP.pin.contains(&PINCONFIG.pin[i]) {
+          ADC_MAP.active[ADC_MAP.pin.iter().position(|&r| r == PINCONFIG.pin[i]).unwrap()] = true;
         }
         else {
-          panic!("P{}{} is not available for analog conversion!", CONFIG.pin[i].1.to_uppercase(), CONFIG.pin[i].0);
+          panic!("P{}{} is not available for analog conversion!", PINCONFIG.pin[i].1.to_uppercase(), PINCONFIG.pin[i].0);
         }
       }
     }
@@ -63,12 +62,12 @@ pub fn analog_read(pin: (u8, char)) -> u16 {
 
 pub fn dac_init() {
   unsafe {
-    for i in 0..CONFIG.analog.len() {
-      if CONFIG.analog[i] == 2 {
+    for i in 0..PINCONFIG.analog.len() {
+      if PINCONFIG.analog[i] == 2 {
         // Check if pin is available for adc connection
-        if CONFIG.pin[i] == PA4 {DAC_MAP.0 = true;}
-        else if CONFIG.pin[i] == PA5 {DAC_MAP.1 = true;}
-        else {panic!("P{}{} is not available for analog conversion!", CONFIG.pin[i].1.to_uppercase(), CONFIG.pin[i].0);}
+        if PINCONFIG.pin[i] == PA4 {DAC_MAP.0 = true;}
+        else if PINCONFIG.pin[i] == PA5 {DAC_MAP.1 = true;}
+        else {panic!("P{}{} is not available for analog conversion!", PINCONFIG.pin[i].1.to_uppercase(), PINCONFIG.pin[i].0);}
       }
     }
 
