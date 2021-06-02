@@ -10,7 +10,7 @@
             "servertype": "openocd",
             "runToMain": true,
             "executable": "./target/thumbv7em-none-eabi/debug/rustuino",
-            "svdFile": "${workspaceRoot}/.vscode/STM32F446.svd",
+            "svdFile": "${workspaceRoot}/.cargo/STM32F446.svd",
             "device": "stm32f446",
             "configFiles": [
                 "interface/stlink-v2-1.cfg",

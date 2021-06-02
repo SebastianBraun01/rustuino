@@ -2,13 +2,13 @@
 #![allow(dead_code)]
 
 // Library includes ===============================================================================
-pub use cortex_m_rt::entry;
+pub use cortex_m_rt::{entry, exception};
 pub use panic_semihosting as _;
-pub use cortex_m::peripheral::NVIC;
-pub use stm32f4::stm32f446::{Interrupt, interrupt};
-pub use libm::*;
+pub use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
+
+pub use {include::*, gpio_d::*, gpio_a::*, time::*, uart::*, pwm::*};
 pub use heapless::{Vec, String, FnvIndexMap, FnvIndexSet};
-pub use {include::*, gpio_d::*, uart::*, pwm::*, time::*};
+pub use libm::*;
 
 
 // Struct and Enum declerations ===================================================================
@@ -348,12 +348,14 @@ pub mod pwm {
 #[macro_export]
 macro_rules! sprint {
   ($param:expr) => {
-    let text_buffer: String<50> = String::from($param);
-    for char in text_buffer.chars() {
-      if char.is_ascii() == true {
-        send_char_usb(char);
-      }
-      else {panic!("{} is not an ASCII character!", char)}
+    use core::fmt;
+
+    let mut txt_buff: String<50> = String::new();
+    if fmt::write(&mut txt_buff, format_args!($param)).is_err() {txt_buff = String::from("~\r\n")};
+  
+    for c in txt_buff.chars() {
+      if c.is_ascii() == true {send_char_usb(c);}
+      else {send_char_usb('?');}
     }
   };
 }
@@ -361,13 +363,16 @@ macro_rules! sprint {
 #[macro_export]
 macro_rules! sprintln {
   ($param:expr) => {
-    let text_buffer: String<50> = String::from($param);
-    for char in text_buffer.chars() {
-      if char.is_ascii() == true {
-        send_char_usb(char);
-      }
-      else {panic!("{} is not an ASCII character!", char)}
+    use core::fmt;
+
+    let mut txt_buff: String<50> = String::new();
+    if fmt::write(&mut txt_buff, format_args!(" ")).is_err() {txt_buff = String::from("~\r\n")};
+  
+    for c in txt_buff.chars() {
+      if c.is_ascii() == true {send_char_usb(c);}
+      else {send_char_usb('?');}
     }
+
     send_char_usb('\r');
     send_char_usb('\n');
   };
@@ -376,21 +381,30 @@ macro_rules! sprintln {
 #[macro_export]
 macro_rules! sread {
   () => {{
-    let text_buffer: char = recieve_char_usb();  
-    text_buffer
+    let c_buff: char = recieve_char_usb();  
+    c_buff
+  }};
+
+  ($c:expr) => {{
+    let found: bool;
+
+    if recieve_char_usb() == $c {found = true;}
+    else {found = false;}
+
+    found
   }};
 }
 
 #[macro_export]
 macro_rules! sreads {
   ($stop:expr) => {{
-    let mut string: String<50> = String::new();
-    let mut buffer: char;
+    let mut str: String<50> = String::new();
+    let mut buff: char;
     loop {
-      buffer = recieve_char_usb();
-      if buffer == $stop as char {break;}
-      string.push(buffer).expect("String buffer full!");
+      buff = recieve_char_usb();
+      if buff == $stop as char {break;}
+      str.push(buff).expect("String buffer full!");
     }
-    string
+    str
   }};
 }

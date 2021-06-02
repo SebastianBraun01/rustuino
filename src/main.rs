@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![allow(unused_imports)]
 
 use rustuino::*;
 
@@ -14,6 +13,6 @@ fn main() -> ! {
 
   loop {
     sprintln!("UART gestartet!");
-    time::delay(500);
+    delay(500);
   }
 }
