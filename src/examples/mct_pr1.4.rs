@@ -12,23 +12,36 @@ fn main() -> ! {
     });
 
     (*GPIOB_PTR).moder.modify(|_, w| w.bits(0x5555));
+    (*GPIOC_PTR).moder.modify(|_, w| w.bits(0x3));
+    
+    (*GPIOB_PTR).ord.write(|w| w.bits(0x1));
+    SysTick_Init();
+  }
+
+  loop {
+    // ---
+  }
+}
+
+fn SysTick_Init() {
+  unsafe {
     (*SYSTICK_PTR).load.write(|w| w.bits(16000000));
     (*SYSTICK_PTR).ctrl.modify(|_, w| {
       w.tickint().set_bit();
       w.enable().set_bit()
     });
   }
-
-  uart_usb_init(115200, false, false);
-  sprintln!("UART gestartet!");
-
-  loop {
-    sprintln!("UART gestartet!");
-    delay(500);
-  }
 }
 
 #[exception]
 fn SysTick() {
+  unsafe {
+    let mut buffer = (*GPIOB_PTR).odr.read().bits();
+
+    if buffer < 127 {buffer = buffer << 1;}
+    else {buffer = 1;}
+
+    (*GPIOB_PTR).odr.write(|w| w.bits(buffer));
+  }
   
 }
