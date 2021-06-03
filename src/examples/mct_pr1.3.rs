@@ -27,7 +27,7 @@ fn main() -> ! {
       output = (*GPIOB_PTR).odr.read().bits() << 1;
 
       input = (*GPIOC_PTR).idr.read().bits();
-      input = ~input & 0x3;
+      input = !input & 0x3;
 
       wait(200 * (input + 1));
     }

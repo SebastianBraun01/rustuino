@@ -1,7 +1,26 @@
-use super::{Mode, Speed, Bias};
 use super::include::CONFIG;
-use super::include::RCC_PTR;
-use super::include::{GPIOA_PTR, GPIOB_PTR, GPIOC_PTR};
+use super::include::{RCC_PTR, GPIOA_PTR, GPIOB_PTR, GPIOC_PTR};
+
+pub enum Mode {
+  Input,
+  Output,
+  AlterateFunction(u32),
+  // false: ADC, true: DAC
+  Analog(bool)
+}
+
+pub enum Speed {
+  Low,
+  Medium,
+  Fast,
+  High
+}
+
+pub enum Bias {
+  None,
+  Pullup,
+  Pulldown
+}
 
 pub fn pin_mode(pin: (u8, char), mode: Mode) {  
   if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}

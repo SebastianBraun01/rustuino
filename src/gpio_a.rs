@@ -1,7 +1,5 @@
 use super::include::{*, CONFIG, ADC_MAP, DAC_MAP};
-use super::include::RCC_PTR;
-use super::include::DAC_PTR;
-use super::include::{ADCC_PTR, ADC1_PTR};
+use super::include::{RCC_PTR, ADCC_PTR, ADC1_PTR, DAC_PTR};
 
 pub fn adc_init(resolution: u8, eocint: bool) {
   unsafe {

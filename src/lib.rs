@@ -3,65 +3,12 @@
 
 // Library includes ===============================================================================
 pub use cortex_m_rt::{entry, exception};
-pub use panic_semihosting as _;
 pub use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
+pub use panic_semihosting as _;
 
 pub use {include::*, gpio_d::*, gpio_a::*, time::*, uart::*, pwm::*};
 pub use heapless::{Vec, String, FnvIndexMap, FnvIndexSet};
 pub use libm::*;
-
-
-// Struct and Enum declerations ===================================================================
-pub enum Mode {
-  Input,
-  Output,
-  AlterateFunction(u32),
-  // false: ADC, true: DAC
-  Analog(bool)
-}
-
-pub enum Speed {
-  Low,
-  Medium,
-  Fast,
-  High
-}
-
-pub enum Bias {
-  None,
-  Pullup,
-  Pulldown
-}
-
-pub struct Config {
-  pin: Vec<(u8, char), 25>,
-  // config: {0: input, 1: output, 2: alternate, 3: analog}
-  config: Vec<u8, 25>,
-  // alternate: {<16: func_number, 16: none}
-  alternate: Vec<u32, 25>,
-  // analog: {0: none, 1: adc, 2: dac}
-  analog: Vec<u8, 25>
-}
-
-pub struct ADCMap {
-  pin: [(u8, char); 16],
-  channel: [u8; 16],
-  active: [bool; 16]
-}
-
-pub struct UARTMap {
-  tx_pin: [(u8, char); 12],
-  rx_pin: [(u8, char); 12],
-  channel: [u8; 12],
-  active: [bool; 12]
-}
-
-pub struct TIMERMap {
-  pin: [(u8, char); 74],
-  timer: [u8; 74],
-  ccch: [u8; 74],
-  active: [bool; 74]
-}
 
 
 // Submodule includes =============================================================================
@@ -341,70 +288,4 @@ pub mod pwm {
       }
     }
   }
-}
-
-
-// Macro declerations =============================================================================
-#[macro_export]
-macro_rules! sprint {
-  ($param:expr) => {
-    use core::fmt;
-
-    let mut txt_buff: String<50> = String::new();
-    if fmt::write(&mut txt_buff, format_args!($param)).is_err() {txt_buff = String::from("~\r\n")};
-  
-    for c in txt_buff.chars() {
-      if c.is_ascii() == true {send_char_usb(c);}
-      else {send_char_usb('?');}
-    }
-  };
-}
-
-#[macro_export]
-macro_rules! sprintln {
-  ($param:expr) => {
-    use core::fmt;
-
-    let mut txt_buff: String<50> = String::new();
-    if fmt::write(&mut txt_buff, format_args!(" ")).is_err() {txt_buff = String::from("~\r\n")};
-  
-    for c in txt_buff.chars() {
-      if c.is_ascii() == true {send_char_usb(c);}
-      else {send_char_usb('?');}
-    }
-
-    send_char_usb('\r');
-    send_char_usb('\n');
-  };
-}
-
-#[macro_export]
-macro_rules! sread {
-  () => {{
-    let c_buff: char = recieve_char_usb();  
-    c_buff
-  }};
-
-  ($c:expr) => {{
-    let found: bool;
-
-    if recieve_char_usb() == $c {found = true;}
-    else {found = false;}
-
-    found
-  }};
-}
-
-#[macro_export]
-macro_rules! sreads {
-  ($stop:expr) => {{
-    let mut str: String<50> = String::new();
-    let mut buff: char;
-    loop {
-      buff = recieve_char_usb();
-      if buff == $stop as char {break;}
-      str.push(buff).expect("String buffer full!");
-    }
-    str
-  }};
 }

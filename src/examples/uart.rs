@@ -2,9 +2,6 @@
 
 use rustuino::*;
 
-
-#define milliseconds 16000/8		// LOAD-Wert für eine Millisekunde
-
 extern int dir;
 
 pub fn InitUSART2() {
@@ -50,53 +47,45 @@ pub fn ReadChar() -> char {
 
 #[interrupt]
 fn USART2() {
-	char buffer;
-	static char string_buffer[4];
-	static int count = 0;
+	let buffer: char;
+	static string_buffer[4]: char;
+	static count: u8 = 0;
 	
+	buffer = (*USART2_PTR).dr.read().bits();
+	WriteChar(buffer);
+		
+	if buffer == '.' {
+		// Befehl ausführen
+		let opcode: char;
+		let value;
+			
+		sscanf(string_buffer, "%c%u", &opcode, &value);
 
-		buffer = USART2->DR;
-		WriteChar(buffer);
-		
-		if(buffer == '.'){
-			// Befehl ausführen
-			char opcode;
-			int value;
-			
-			sscanf(string_buffer, "%c%u", &opcode, &value);
-			
-			switch(opcode){
-				case 'w':
-					SysTick->LOAD = milliseconds * value; 
+		match opcode {
+			'w' => {
+				(*SYSTICK_PTR).load.write(|w| w.bits((16000/8) * value));
+				WriteString("\r\n");
+			},
+			'r' => {
+				if value == 0 || value == 1 {
+					dir = value;
 					WriteString("\r\n");
-				break;
-				
-				case 'r':
-					if(value == 0 || value == 1){
-						dir = value;
-						WriteString("\r\n");
-					}
-					else WriteString("\n\rFehler: Richtung nicht definiert!\r\n");
-				break;
-				
-				default:
-					WriteString("\n\rFehler: Befehl unbekannt!\r\n");
-				break;
-			}
-			
-			count = 0;
-		}
-		else{
-			// Prüfen ob Befehl zu lang ist und Zeichen in Puffer laden
-			if(count > 3){
-				WriteString("\n\rFehler:Befehl Puffer voll!\r\n");
-			}
-			else{
-				string_buffer[count] = buffer;
-				count += 1;
-			}
-		}
+				}
+				else {WriteString("\n\rFehler: Richtung nicht definiert!\r\n");}
+			},
+			_   => WriteString("\n\rFehler: Befehl unbekannt!\r\n")
+		};
 		
+		count = 0;
+	}
+	else{
+		// Prüfen ob Befehl zu lang ist und Zeichen in Puffer laden
+		if count > 3 {WriteString("\n\rFehler:Befehl Puffer voll!\r\n");}
+		else{
+			string_buffer[count] = buffer;
+			count += 1;
+		}
+	}	
 	// char buffer = USART2->DR;
 	// WriteChar(buffer);
 }
