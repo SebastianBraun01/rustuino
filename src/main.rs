@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![allow(unused_imports)]
 
 use rustuino::entry;
 use rustuino::gpio::{GetAsOutput, OutputPin, PB0};

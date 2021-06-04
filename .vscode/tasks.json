@@ -13,6 +13,14 @@
             }
         },
         {
+            "label": "Cargo Check lib",
+            "type": "process",
+            "command": "cargo",
+            "args": ["check", "--lib"],
+            "problemMatcher": ["$rustc"],
+            "group": "build"
+        },
+        {
             "label": "Cargo Build bin",
             "type": "process",
             "command": "cargo",
