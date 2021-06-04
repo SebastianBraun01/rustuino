@@ -70,6 +70,7 @@ pub mod gpio_d;
 pub mod gpio_a;
 pub mod time;
 pub mod uart;
+pub mod gpio;
 
 pub mod pwm {
   use super::include::{RCC_PTR, TIM2_PTR, TIM3_PTR, TIM4_PTR, TIM5_PTR};
