@@ -1,18 +1,29 @@
 #![no_std]
 #![no_main]
 
-use rustuino::*;
+use rustuino::entry;
+use rustuino::gpio::{GetAsOutput, OutputPin, PB0};
 
 #[entry]
 fn main() -> ! {
-  pin_mode(PB0, Mode::Input);
-	pin_mode(PB1, Mode::Output);
+    let mut pin = PB0::get_as_output();
 
-  uart_usb_init(115200, false, false);
-  sprintln!("UART gestartet!");
+    pin.set_value(true);
+    pin.set_speed(rustuino::Speed::Low);
 
-  loop {
-    sprintln!("UART gestartet!");
-    delay(500);
-  }
+    let pin = pin.into_input();
+
+    let value = pin.read_value();
+
+    // Cannot write to input pin!
+    // pin.set_value(true);
+
+    let mut pin = pin.into_output();
+
+    loop {
+        pin.set_value(false);
+        pin.set_value(true);
+    }
 }
+
+
