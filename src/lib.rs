@@ -10,204 +10,213 @@ pub use cortex_m::peripheral::NVIC;
 pub use stm32f4::stm32f446::{Interrupt, interrupt};
 pub use libm::*;
 pub use heapless::{Vec, String, FnvIndexMap, FnvIndexSet};
-pub use {include::pins::*, include::register::*,  gpio_d::*, gpio_a::*, time::*, uart::*};
+pub use {include::pins::*, include::*,  gpio_d::*, analog::*, time::*, uart::*};
 
 
 // Submodule includes =============================================================================
 pub mod include;
 pub mod gpio_d;
-pub mod gpio_a;
+pub mod analog;
 pub mod time;
 pub mod uart;
 pub mod gpio;
+pub mod test;
 
 pub mod pwm {
-  use super::include::register::{RCC_PTR, TIM2_PTR, TIM3_PTR, TIM4_PTR, TIM5_PTR};
+  use super::include::PERIPHERAL_PTR;
 
-  pub fn pwm_init(num: u8, channel: u8) {  
-    unsafe {
+  pub fn pwm_init(num: u8, channel: u8) {
+    let rcc = &PERIPHERAL_PTR.RCC;
+    let tim2 = &PERIPHERAL_PTR.TIM2;
+    let tim3 = &PERIPHERAL_PTR.TIM3;
+    let tim4 = &PERIPHERAL_PTR.TIM4;
+    let tim5 = &PERIPHERAL_PTR.TIM5;
+
       match num {
         2 => {
-          (*RCC_PTR).apb1enr.modify(|_, w| w.tim2en().enabled());
-          (*TIM2_PTR).cr1.modify(|_, w| w.arpe().enabled());
-          (*TIM2_PTR).egr.write(|w| w.ug().set_bit());
-          (*TIM2_PTR).psc.write(|w| w.psc().bits(1000));
-          (*TIM2_PTR).arr.write_with_zero(|w| w.arr().bits(255));
+          rcc.apb1enr.modify(|_, w| w.tim2en().enabled());
+          tim2.cr1.modify(|_, w| w.arpe().enabled());
+          tim2.egr.write(|w| w.ug().set_bit());
+          tim2.psc.write(|w| w.psc().bits(1000));
+          tim2.arr.write_with_zero(|w| w.arr().bits(255));
           match channel {
             1 => {
-              (*TIM2_PTR).ccmr1_output_mut().modify(|_, w| {
+              tim2.ccmr1_output_mut().modify(|_, w| {
                 w.oc1m().pwm_mode1();
                 w.oc1pe().enabled()
               });
-              (*TIM2_PTR).ccer.modify(|_, w| w.cc1e().set_bit());
+              tim2.ccer.modify(|_, w| w.cc1e().set_bit());
             },
             2 => {
-              (*TIM2_PTR).ccmr1_output_mut().modify(|_, w| {
+              tim2.ccmr1_output_mut().modify(|_, w| {
                 w.oc2m().pwm_mode1();
                 w.oc2pe().enabled()
               });
-              (*TIM2_PTR).ccer.modify(|_, w| w.cc2e().set_bit());
+              tim2.ccer.modify(|_, w| w.cc2e().set_bit());
             },
             3 => {
-              (*TIM2_PTR).ccmr2_output_mut().modify(|_, w| {
+              tim2.ccmr2_output_mut().modify(|_, w| {
                 w.oc3m().pwm_mode1();
                 w.oc3pe().enabled()
               });
-              (*TIM2_PTR).ccer.modify(|_, w| w.cc3e().set_bit());
+              tim2.ccer.modify(|_, w| w.cc3e().set_bit());
             },
             4 => {
-              (*TIM2_PTR).ccmr2_output_mut().modify(|_, w| {
+              tim2.ccmr2_output_mut().modify(|_, w| {
                 w.oc4m().pwm_mode1();
                 w.oc4pe().enabled()
               });
-              (*TIM2_PTR).ccer.modify(|_, w| w.cc4e().set_bit());
+              tim2.ccer.modify(|_, w| w.cc4e().set_bit());
             },
             _ => panic!("{} is not a valid channel!", channel),
           }
         },
         3 => {
-          (*RCC_PTR).apb1enr.modify(|_, w| w.tim3en().enabled());
-          (*TIM3_PTR).cr1.modify(|_, w| w.arpe().enabled());
-          (*TIM3_PTR).egr.write(|w| w.ug().set_bit());
-          (*TIM3_PTR).psc.write(|w| w.psc().bits(1000));
-          (*TIM3_PTR).arr.write_with_zero(|w| w.arr().bits(255));
+          rcc.apb1enr.modify(|_, w| w.tim3en().enabled());
+          tim3.cr1.modify(|_, w| w.arpe().enabled());
+          tim3.egr.write(|w| w.ug().set_bit());
+          tim3.psc.write(|w| w.psc().bits(1000));
+          tim3.arr.write_with_zero(|w| w.arr().bits(255));
           match channel {
             1 => {
-              (*TIM3_PTR).ccmr1_output_mut().modify(|_, w| {
+              tim3.ccmr1_output_mut().modify(|_, w| {
                 w.oc1m().pwm_mode1();
                 w.oc1pe().enabled()
               });
-              (*TIM3_PTR).ccer.modify(|_, w| w.cc1e().set_bit());
+              tim3.ccer.modify(|_, w| w.cc1e().set_bit());
             },
             2 => {
-              (*TIM3_PTR).ccmr1_output_mut().modify(|_, w| {
+              tim3.ccmr1_output_mut().modify(|_, w| {
                 w.oc2m().pwm_mode1();
                 w.oc2pe().enabled()
               });
-              (*TIM3_PTR).ccer.modify(|_, w| w.cc2e().set_bit());
+              tim3.ccer.modify(|_, w| w.cc2e().set_bit());
             },
             3 => {
-              (*TIM3_PTR).ccmr2_output_mut().modify(|_, w| {
+              tim3.ccmr2_output_mut().modify(|_, w| {
                 w.oc3m().pwm_mode1();
                 w.oc3pe().enabled()
               });
-              (*TIM3_PTR).ccer.modify(|_, w| w.cc3e().set_bit());
+              tim3.ccer.modify(|_, w| w.cc3e().set_bit());
             },
             4 => {
-              (*TIM3_PTR).ccmr2_output_mut().modify(|_, w| {
+              tim3.ccmr2_output_mut().modify(|_, w| {
                 w.oc4m().pwm_mode1();
                 w.oc4pe().enabled()
               });
-              (*TIM3_PTR).ccer.modify(|_, w| w.cc4e().set_bit());
+              tim3.ccer.modify(|_, w| w.cc4e().set_bit());
             },
             _ => panic!("{} is not a valid channel!", channel),
           }
         },
         4 => {
-          (*RCC_PTR).apb1enr.modify(|_, w| w.tim4en().enabled());
-          (*TIM4_PTR).cr1.modify(|_, w| w.arpe().enabled());
-          (*TIM4_PTR).egr.write(|w| w.ug().set_bit());
-          (*TIM4_PTR).psc.write(|w| w.psc().bits(1000));
-          (*TIM4_PTR).arr.write_with_zero(|w| w.arr().bits(255));
+          rcc.apb1enr.modify(|_, w| w.tim4en().enabled());
+          tim4.cr1.modify(|_, w| w.arpe().enabled());
+          tim4.egr.write(|w| w.ug().set_bit());
+          tim4.psc.write(|w| w.psc().bits(1000));
+          tim4.arr.write_with_zero(|w| w.arr().bits(255));
           match channel {
             1 => {
-              (*TIM4_PTR).ccmr1_output_mut().modify(|_, w| {
+              tim4.ccmr1_output_mut().modify(|_, w| {
                 w.oc1m().pwm_mode1();
                 w.oc1pe().enabled()
               });
-              (*TIM4_PTR).ccer.modify(|_, w| w.cc1e().set_bit());
+              tim4.ccer.modify(|_, w| w.cc1e().set_bit());
             },
             2 => {
-              (*TIM4_PTR).ccmr1_output_mut().modify(|_, w| {
+              tim4.ccmr1_output_mut().modify(|_, w| {
                 w.oc2m().pwm_mode1();
                 w.oc2pe().enabled()
               });
-              (*TIM4_PTR).ccer.modify(|_, w| w.cc2e().set_bit());
+              tim4.ccer.modify(|_, w| w.cc2e().set_bit());
             },
             3 => {
-              (*TIM4_PTR).ccmr2_output_mut().modify(|_, w| {
+              tim4.ccmr2_output_mut().modify(|_, w| {
                 w.oc3m().pwm_mode1();
                 w.oc3pe().enabled()
               });
-              (*TIM4_PTR).ccer.modify(|_, w| w.cc3e().set_bit());
+              tim4.ccer.modify(|_, w| w.cc3e().set_bit());
             },
             4 => {
-              (*TIM4_PTR).ccmr2_output_mut().modify(|_, w| {
+              tim4.ccmr2_output_mut().modify(|_, w| {
                 w.oc4m().pwm_mode1();
                 w.oc4pe().enabled()
               });
-              (*TIM4_PTR).ccer.modify(|_, w| w.cc4e().set_bit());
+              tim4.ccer.modify(|_, w| w.cc4e().set_bit());
             },
             _ => panic!("{} is not a valid channel!", channel),
           }
         },
         5 => {
-          (*RCC_PTR).apb1enr.modify(|_, w| w.tim5en().enabled());
-          (*TIM5_PTR).cr1.modify(|_, w| w.arpe().enabled());
-          (*TIM5_PTR).egr.write(|w| w.ug().set_bit());
-          (*TIM5_PTR).psc.write(|w| w.psc().bits(1000));
-          (*TIM5_PTR).arr.write_with_zero(|w| w.arr().bits(255));
+          rcc.apb1enr.modify(|_, w| w.tim5en().enabled());
+          tim5.cr1.modify(|_, w| w.arpe().enabled());
+          tim5.egr.write(|w| w.ug().set_bit());
+          tim5.psc.write(|w| w.psc().bits(1000));
+          tim5.arr.write_with_zero(|w| w.arr().bits(255));
           match channel {
             1 => {
-              (*TIM5_PTR).ccmr1_output_mut().modify(|_, w| {
+              tim5.ccmr1_output_mut().modify(|_, w| {
                 w.oc1m().pwm_mode1();
                 w.oc1pe().enabled()
               });
-              (*TIM5_PTR).ccer.modify(|_, w| w.cc1e().set_bit());
+              tim5.ccer.modify(|_, w| w.cc1e().set_bit());
             },
             2 => {
-              (*TIM5_PTR).ccmr1_output_mut().modify(|_, w| {
+              tim5.ccmr1_output_mut().modify(|_, w| {
                 w.oc2m().pwm_mode1();
                 w.oc2pe().enabled()
               });
-              (*TIM5_PTR).ccer.modify(|_, w| w.cc2e().set_bit());
+              tim5.ccer.modify(|_, w| w.cc2e().set_bit());
             },
             3 => {
-              (*TIM5_PTR).ccmr2_output_mut().modify(|_, w| {
+              tim5.ccmr2_output_mut().modify(|_, w| {
                 w.oc3m().pwm_mode1();
                 w.oc3pe().enabled()
               });
-              (*TIM5_PTR).ccer.modify(|_, w| w.cc3e().set_bit());
+              tim5.ccer.modify(|_, w| w.cc3e().set_bit());
             },
             4 => {
-              (*TIM5_PTR).ccmr2_output_mut().modify(|_, w| {
+              tim5.ccmr2_output_mut().modify(|_, w| {
                 w.oc4m().pwm_mode1();
                 w.oc4pe().enabled()
               });
-              (*TIM5_PTR).ccer.modify(|_, w| w.cc4e().set_bit());
+              tim5.ccer.modify(|_, w| w.cc4e().set_bit());
             },
             _ => panic!("{} is not a valid channel!", channel),
           }
         },
         _ => panic!("{} is not a valid timer!", num),
       }
-    }
   }
   
   pub fn pin_write_pwm(num: u8, channel: u8, write: u8) {
-    unsafe {
+    let tim2 = &PERIPHERAL_PTR.TIM2;
+    let tim3 = &PERIPHERAL_PTR.TIM3;
+    let tim4 = &PERIPHERAL_PTR.TIM4;
+    let tim5 = &PERIPHERAL_PTR.TIM5;
+
       match num {
         2 => {
           match channel {
             1 => {
-              (*TIM2_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM2_PTR).ccr1.write_with_zero(|w| w.ccr().bits(write as u32));
-              (*TIM2_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim2.cr1.modify(|_, w| w.cen().disabled());
+              tim2.ccr1.write_with_zero(|w| w.ccr().bits(write as u32));
+              tim2.cr1.modify(|_, w| w.cen().enabled());
             },
             2 => {
-              (*TIM2_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM2_PTR).ccr2.write_with_zero(|w| w.ccr().bits(write as u32));
-              (*TIM2_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim2.cr1.modify(|_, w| w.cen().disabled());
+              tim2.ccr2.write_with_zero(|w| w.ccr().bits(write as u32));
+              tim2.cr1.modify(|_, w| w.cen().enabled());
             },
             3 => {
-              (*TIM2_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM2_PTR).ccr3.write_with_zero(|w| w.ccr().bits(write as u32));
-              (*TIM2_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim2.cr1.modify(|_, w| w.cen().disabled());
+              tim2.ccr3.write_with_zero(|w| w.ccr().bits(write as u32));
+              tim2.cr1.modify(|_, w| w.cen().enabled());
             },
             4 => {
-              (*TIM2_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM2_PTR).ccr4.write_with_zero(|w| w.ccr().bits(write as u32));
-              (*TIM2_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim2.cr1.modify(|_, w| w.cen().disabled());
+              tim2.ccr4.write_with_zero(|w| w.ccr().bits(write as u32));
+              tim2.cr1.modify(|_, w| w.cen().enabled());
             },
             _ => panic!("{} is not a valid channel!", channel),
           }
@@ -215,24 +224,24 @@ pub mod pwm {
         3 => {
           match channel {
             1 => {
-              (*TIM3_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM3_PTR).ccr1.write_with_zero(|w| w.ccr().bits(write as u16));
-              (*TIM3_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim3.cr1.modify(|_, w| w.cen().disabled());
+              tim3.ccr1.write_with_zero(|w| w.ccr().bits(write as u16));
+              tim3.cr1.modify(|_, w| w.cen().enabled());
             },
             2 => {
-              (*TIM3_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM3_PTR).ccr2.write_with_zero(|w| w.ccr().bits(write as u16));
-              (*TIM3_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim3.cr1.modify(|_, w| w.cen().disabled());
+              tim3.ccr2.write_with_zero(|w| w.ccr().bits(write as u16));
+              tim3.cr1.modify(|_, w| w.cen().enabled());
             },
             3 => {
-              (*TIM3_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM3_PTR).ccr3.write_with_zero(|w| w.ccr().bits(write as u16));
-              (*TIM3_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim3.cr1.modify(|_, w| w.cen().disabled());
+              tim3.ccr3.write_with_zero(|w| w.ccr().bits(write as u16));
+              tim3.cr1.modify(|_, w| w.cen().enabled());
             },
             4 => {
-              (*TIM3_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM3_PTR).ccr4.write_with_zero(|w| w.ccr().bits(write as u16));
-              (*TIM3_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim3.cr1.modify(|_, w| w.cen().disabled());
+              tim3.ccr4.write_with_zero(|w| w.ccr().bits(write as u16));
+              tim3.cr1.modify(|_, w| w.cen().enabled());
             },
             _ => panic!("{} is not a valid channel!", channel),
           }
@@ -240,24 +249,24 @@ pub mod pwm {
         4 => {
           match channel {
             1 => {
-              (*TIM4_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM4_PTR).ccr1.write_with_zero(|w| w.ccr().bits(write as u16));
-              (*TIM4_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim4.cr1.modify(|_, w| w.cen().disabled());
+              tim4.ccr1.write_with_zero(|w| w.ccr().bits(write as u16));
+              tim4.cr1.modify(|_, w| w.cen().enabled());
             },
             2 => {
-              (*TIM4_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM4_PTR).ccr2.write_with_zero(|w| w.ccr().bits(write as u16));
-              (*TIM4_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim4.cr1.modify(|_, w| w.cen().disabled());
+              tim4.ccr2.write_with_zero(|w| w.ccr().bits(write as u16));
+              tim4.cr1.modify(|_, w| w.cen().enabled());
             },
             3 => {
-              (*TIM4_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM4_PTR).ccr3.write_with_zero(|w| w.ccr().bits(write as u16));
-              (*TIM4_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim4.cr1.modify(|_, w| w.cen().disabled());
+              tim4.ccr3.write_with_zero(|w| w.ccr().bits(write as u16));
+              tim4.cr1.modify(|_, w| w.cen().enabled());
             },
             4 => {
-              (*TIM4_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM4_PTR).ccr4.write_with_zero(|w| w.ccr().bits(write as u16));
-              (*TIM4_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim4.cr1.modify(|_, w| w.cen().disabled());
+              tim4.ccr4.write_with_zero(|w| w.ccr().bits(write as u16));
+              tim4.cr1.modify(|_, w| w.cen().enabled());
             },
             _ => panic!("{} is not a valid channel!", channel),
           }
@@ -265,31 +274,30 @@ pub mod pwm {
         5 => {
           match channel {
             1 => {
-              (*TIM5_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM5_PTR).ccr1.write_with_zero(|w| w.ccr().bits(write as u32));
-              (*TIM5_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim5.cr1.modify(|_, w| w.cen().disabled());
+              tim5.ccr1.write_with_zero(|w| w.ccr().bits(write as u32));
+              tim5.cr1.modify(|_, w| w.cen().enabled());
             },
             2 => {
-              (*TIM5_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM5_PTR).ccr2.write_with_zero(|w| w.ccr().bits(write as u32));
-              (*TIM5_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim5.cr1.modify(|_, w| w.cen().disabled());
+              tim5.ccr2.write_with_zero(|w| w.ccr().bits(write as u32));
+              tim5.cr1.modify(|_, w| w.cen().enabled());
             },
             3 => {
-              (*TIM5_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM5_PTR).ccr3.write_with_zero(|w| w.ccr().bits(write as u32));
-              (*TIM5_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim5.cr1.modify(|_, w| w.cen().disabled());
+              tim5.ccr3.write_with_zero(|w| w.ccr().bits(write as u32));
+              tim5.cr1.modify(|_, w| w.cen().enabled());
             },
             4 => {
-              (*TIM5_PTR).cr1.modify(|_, w| w.cen().disabled());
-              (*TIM5_PTR).ccr4.write_with_zero(|w| w.ccr().bits(write as u32));
-              (*TIM5_PTR).cr1.modify(|_, w| w.cen().enabled());
+              tim5.cr1.modify(|_, w| w.cen().disabled());
+              tim5.ccr4.write_with_zero(|w| w.ccr().bits(write as u32));
+              tim5.cr1.modify(|_, w| w.cen().enabled());
             },
             _ => panic!("{} is not a valid channel!", channel),
           }
         },
         _ => panic!("{} is not a valid timer!", num),
       }
-    }
   }
 }
 

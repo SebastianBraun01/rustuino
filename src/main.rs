@@ -1,11 +1,15 @@
 #![no_std]
 #![no_main]
 
-use rustuino::entry;
+use rustuino::{Mode, entry, pin_mode};
 use rustuino::gpio::{GetAsOutput, OutputPin, PB0};
 
 #[entry]
 fn main() -> ! {
+    pin_mode(PA2, Mode::Input);
+
+    let peri = stm32f4::stm32f446::Peripherals::take().unwrap();
+
     let mut pin = PB0::get_as_output();
 
     pin.set_value(true);
@@ -25,5 +29,3 @@ fn main() -> ! {
         pin.set_value(true);
     }
 }
-
-

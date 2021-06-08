@@ -1,4 +1,4 @@
-use super::include::{GPIOB_PTR, RCC_PTR};
+use super::include::PERIPHERAL_PTR;
 use super::{Bias, Speed};
 
 /// Defines a common interface for all pin types.
@@ -142,12 +142,12 @@ unsafe fn configure_pin_as_input(
 
 impl GpioInput for PB0 {
     unsafe fn configure_as_input(&self) {
-        (*RCC_PTR).ahb1enr.modify(|_, w| w.gpioben().enabled());
+        &PERIPHERAL_PTR.RCC.ahb1enr.modify(|_, w| w.gpioben().enabled());
         configure_pin_as_input(GPIOB_PTR, 0);
     }
 
     fn read_value(&self) -> bool {
-        let bits = unsafe { (*GPIOB_PTR).idr.read().bits() };
+        let bits = unsafe { &PERIPHERAL_PTR.GPIOB.idr.read().bits() };
         bits & (1 << 0) == (1 << 0)
     }
 
@@ -155,17 +155,17 @@ impl GpioInput for PB0 {
         unsafe {
             match bias {
                 Bias::None => {
-                    (*GPIOB_PTR)
+                    &PERIPHERAL_PTR.GPIOB
                         .pupdr
                         .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0))));
                 }
                 Bias::Pullup => {
-                    (*GPIOB_PTR)
+                    &PERIPHERAL_PTR.GPIOB
                         .pupdr
                         .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0)) | (1 << (2 * 0))));
                 }
                 Bias::Pulldown => {
-                    (*GPIOB_PTR)
+                    &PERIPHERAL_PTR.GPIOB
                         .pupdr
                         .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0)) | (2 << (2 * 0))));
                 }
@@ -185,7 +185,7 @@ unsafe fn configure_pin_as_output(
 
 impl GpioOutput for PB0 {
     unsafe fn configure_as_output(&self) {
-        (*RCC_PTR).ahb1enr.modify(|_, w| w.gpioben().enabled());
+        &PERIPHERAL_PTR.RCC.ahb1enr.modify(|_, w| w.gpioben().enabled());
         configure_pin_as_output(GPIOB_PTR, 0);
     }
 
@@ -193,22 +193,22 @@ impl GpioOutput for PB0 {
         unsafe {
             match speed {
                 Speed::Low => {
-                    (*GPIOB_PTR)
+                    &PERIPHERAL_PTR.GPIOB
                         .ospeedr
                         .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0))));
                 }
                 Speed::Medium => {
-                    (*GPIOB_PTR)
+                    &PERIPHERAL_PTR.GPIOB
                         .ospeedr
                         .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0)) | (1 << (2 * 0))));
                 }
                 Speed::Fast => {
-                    (*GPIOB_PTR)
+                    &PERIPHERAL_PTR.GPIOB
                         .ospeedr
                         .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0)) | (2 << (2 * 0))));
                 }
                 Speed::High => {
-                    (*GPIOB_PTR)
+                    &PERIPHERAL_PTR.GPIOB
                         .ospeedr
                         .modify(|r, w| w.bits(r.bits() | (3 << (2 * 0))));
                 }
@@ -223,7 +223,7 @@ impl GpioOutput for PB0 {
             0x10000 // start at bit 16
         };
         unsafe {
-            (*GPIOB_PTR).bsrr.write(|w| w.bits(start_bit << 0));
+            &PERIPHERAL_PTR.GPIOB.bsrr.write(|w| w.bits(start_bit << 0));
         }
     }
 }

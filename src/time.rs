@@ -1,48 +1,48 @@
+use super::include::PERIPHERAL_PTR;
 use cortex_m::peripheral::NVIC;
 use stm32f4::stm32f446::{Interrupt, interrupt};
-use super::include::register::{SYSTICK_PTR, RCC_PTR, TIM9_PTR};
 use super::include::variables::TIME_COUNTER;
 
 pub fn delay(ms: u32) {
+  let systick = &PERIPHERAL_PTR.STK;
+
   // 2MHz mit 2000 PSC -> 1kHz
   let systick_psc = 2000000 / 1000;
 
   if ms * systick_psc > (2^24) - 1 {panic!("Delay value too large for Timer!");}
 
-  unsafe {
-    (*SYSTICK_PTR).ctrl.modify(|_, w| w.enable().clear_bit());
-    (*SYSTICK_PTR).load.write(|w| w.reload().bits(systick_psc * ms));
-    (*SYSTICK_PTR).val.write(|w| w.current().bits(0));
-    (*SYSTICK_PTR).ctrl.modify(|_, w| w.enable().set_bit());
+  systick.ctrl.modify(|_, w| w.enable().clear_bit());
+  systick.load.write(|w| unsafe {w.reload().bits(systick_psc * ms)});
+  systick.val.write(|w| unsafe {w.current().bits(0)});
+  systick.ctrl.modify(|_, w| w.enable().set_bit());
 
-    while !(*SYSTICK_PTR).ctrl.read().countflag().bit_is_set() {}
-    (*SYSTICK_PTR).ctrl.modify(|_, w| w.countflag().clear_bit());
-    (*SYSTICK_PTR).ctrl.modify(|_, w| w.enable().clear_bit());
-  }
+  while !systick.ctrl.read().countflag().bit_is_set() {}
+  systick.ctrl.modify(|_, w| w.countflag().clear_bit());
+  systick.ctrl.modify(|_, w| w.enable().clear_bit());
 }
 
 pub fn start_time() {
-  unsafe {
-    (*RCC_PTR).apb2enr.modify(|_, w| w.tim9en().enabled());
-    (*TIM9_PTR).dier.modify(|_, w| w.uie().enabled());
+  let rcc = &PERIPHERAL_PTR.RCC;
+  let tim9 = &PERIPHERAL_PTR.TIM9;
 
-    NVIC::unmask(Interrupt::TIM8_UP_TIM13);
+  rcc.apb2enr.modify(|_, w| w.tim9en().enabled());
+  tim9.dier.modify(|_, w| w.uie().enabled());
 
-    (*TIM9_PTR).arr.modify(|_, w| w.arr().bits(8000));
-    (*TIM9_PTR).egr.write(|w| w.ug().update());
-    (*TIM9_PTR).cr1.modify(|_, w| w.cen().enabled());
-  }
+  unsafe {NVIC::unmask(Interrupt::TIM8_UP_TIM13);}
+ 
+  tim9.arr.modify(|_, w| unsafe {w.arr().bits(8000)});
+  tim9.egr.write(|w| w.ug().update());
+  tim9.cr1.modify(|_, w| w.cen().enabled());
 }
 
 pub fn millis() -> usize {
+  let tim9 = &PERIPHERAL_PTR.TIM9;
   let buffer: usize;
 
-  unsafe {
-    (*TIM9_PTR).cr1.modify(|_, w| w.cen().disabled());
-    while (*TIM9_PTR).sr.read().uif().bit_is_clear() == false {}
-    buffer = TIME_COUNTER;
-    (*TIM9_PTR).cr1.modify(|_, w| w.cen().enabled());
-  }
+  tim9.cr1.modify(|_, w| w.cen().disabled());
+  while tim9.sr.read().uif().bit_is_clear() == false {}
+  unsafe {buffer = TIME_COUNTER;}
+  tim9.cr1.modify(|_, w| w.cen().enabled());
 
   return buffer;
 }
