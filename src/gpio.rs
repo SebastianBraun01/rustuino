@@ -1,4 +1,5 @@
 use super::include::PERIPHERAL_PTR;
+use stm32f4::stm32f446;
 use super::{Bias, Speed};
 
 /// Defines a common interface for all pin types.
@@ -143,7 +144,7 @@ unsafe fn configure_pin_as_input(
 impl GpioInput for PB0 {
     unsafe fn configure_as_input(&self) {
         &PERIPHERAL_PTR.RCC.ahb1enr.modify(|_, w| w.gpioben().enabled());
-        configure_pin_as_input(GPIOB_PTR, 0);
+        configure_pin_as_input(stm32f446::GPIOB::ptr(), 0);
     }
 
     fn read_value(&self) -> bool {
@@ -186,7 +187,7 @@ unsafe fn configure_pin_as_output(
 impl GpioOutput for PB0 {
     unsafe fn configure_as_output(&self) {
         &PERIPHERAL_PTR.RCC.ahb1enr.modify(|_, w| w.gpioben().enabled());
-        configure_pin_as_output(GPIOB_PTR, 0);
+        configure_pin_as_output(stm32f446::GPIOB::ptr(), 0);
     }
 
     fn set_speed(&self, speed: Speed) {
