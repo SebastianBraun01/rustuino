@@ -6,10 +6,9 @@ pub use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 pub use panic_semihosting as _;
 
 // Für benutzer
-pub use cortex_m::peripheral::NVIC;
 pub use libm::*;
 pub use heapless::{Vec, String, FnvIndexMap};
-pub use {include::pins::*, include::*,  gpio_d::*, analog::*, time::*, uart::*};
+pub use {include::*,  gpio_d::*, analog::*, time::*, uart::*};
 
 
 // Submodule includes =============================================================================
