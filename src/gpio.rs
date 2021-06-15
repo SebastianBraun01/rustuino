@@ -1,38 +1,38 @@
 use super::include::PERIPHERAL_PTR;
 use super::{Bias, Mode, Speed};
 
-impl Mode {
-  const fn bit_value(&self) -> u32 {
-    match self {
-      Mode::Input => 0,
-      Mode::Output => 1,
-      Mode::AlterateFunction(_) => 2,
-      Mode::Analog(_) => 3,
-    }
-  }
+
+// Define pin types ===============================================================================
+pub type PB0 = GpioPin<GpioB, 0>;
+pub type PB1 = GpioPin<GpioB, 1>;
+pub type PB2 = GpioPin<GpioB, 2>;
+pub type PB3 = GpioPin<GpioB, 3>;
+pub type PB4 = GpioPin<GpioB, 4>;
+pub type PB5 = GpioPin<GpioB, 5>;
+pub type PB6 = GpioPin<GpioB, 6>;
+pub type PB7 = GpioPin<GpioB, 7>;
+pub type PB8 = GpioPin<GpioB, 8>;
+
+
+// Structs ========================================================================================
+pub struct GpioB {}
+
+/// Gerneric type used for automatically implementing GPIO pins
+pub struct GpioPin<R: GpioRegister, const N: u8> {
+  register: core::marker::PhantomData<R>
 }
 
-impl Speed {
-  const fn bit_value(&self) -> u32 {
-    match self {
-      Speed::Low => 0,
-      Speed::Medium => 1,
-      Speed::High => 2,
-      Speed::Fast => 3,
-    }
-  }
+// State machine implemeting a safe interface for GPIO pins
+pub struct InputPin<T: GpioInput> {
+  inner: T,
 }
 
-impl Bias {
-  const fn bit_value(&self) -> u32 {
-    match self {
-      Bias::None => 0,
-      Bias::Pullup => 1,
-      Bias::Pulldown => 2,
-    }
-  }
+pub struct OutputPin<T: GpioOutput> {
+  inner: T,
 }
 
+
+// Traits =========================================================================================
 /// Common interface for all GPIO registers
 pub trait GpioRegister {
   fn initialize();
@@ -41,88 +41,6 @@ pub trait GpioRegister {
   fn set_bias(pin_number: u8, bias: Bias);
   fn write_output(pin_number: u8, value: bool);
   fn read_pin(pin_number: u8) -> bool;
-}
-
-pub struct GpioB {}
-
-impl GpioRegister for GpioB {
-  fn initialize() {
-    PERIPHERAL_PTR.RCC.ahb1enr.modify(|_, w| w.gpioben().enabled());
-  }
-
-  fn set_pin_mode(pin_number: u8, mode: Mode) {
-    PERIPHERAL_PTR.GPIOB.moder.modify(|r, w| {
-      unsafe {w.bits(r.bits() & !(3 << (2 * pin_number)) | (mode.bit_value() << (2 * pin_number)))}
-    })
-  }
-
-  fn set_speed(pin_number: u8, speed: Speed) {
-    PERIPHERAL_PTR.GPIOB.ospeedr.modify(|r, w| {
-        unsafe {w.bits(r.bits() & !(3 << (2 * pin_number)) | (speed.bit_value() << (2 * pin_number)))}
-    });
-  }
-
-  fn set_bias(pin_number: u8, bias: Bias) {
-    PERIPHERAL_PTR.GPIOB.pupdr.modify(|r, w| {
-        unsafe {w.bits(r.bits() & !(3 << (2 * pin_number)) | (bias.bit_value() << (2 * pin_number)))}
-    });
-  }
-
-  fn write_output(pin_number: u8, value: bool) {
-    let start_bit = if value {
-      1
-    } else {
-      0x10000 // start at bit 16
-    };
-    PERIPHERAL_PTR.GPIOB.bsrr.write(|w| unsafe {w.bits(start_bit << pin_number)});
-  }
-
-  fn read_pin(pin_number: u8) -> bool {
-    let bits = PERIPHERAL_PTR.GPIOB.idr.read().bits();
-    bits & (1 << pin_number) == (1 << pin_number)
-  }
-}
-
-/// Gerneric type used for automatically implementing GPIO pins
-pub struct GpioPin<R: GpioRegister, const N: u8> {
-  register: core::marker::PhantomData<R>,
-}
-
-impl<R: GpioRegister, const N: u8> Pin for GpioPin<R, N> {
-  unsafe fn initialize() -> Self {
-    R::initialize();
-    GpioPin {
-      register: core::marker::PhantomData,
-    }
-  }
-}
-
-impl<R: GpioRegister, const N: u8> GpioOutput for GpioPin<R, N> {
-  unsafe fn configure_as_output(&self) {
-    R::set_pin_mode(N, Mode::Output);
-  }
-
-  unsafe fn set_speed(&self, speed: Speed) {
-    R::set_speed(N, speed);
-  }
-
-  unsafe fn set_value(&self, value: bool) {
-    R::write_output(N, value);
-  }
-}
-
-impl<R: GpioRegister, const N: u8> GpioInput for GpioPin<R, N> {
-  unsafe fn configure_as_input(&self) {
-    R::set_pin_mode(N, Mode::Input);
-  }
-
-  unsafe fn set_bias(&self, bias: Bias) {
-    R::set_bias(N, bias);
-  }
-
-  unsafe fn read_value(&self) -> bool {
-    R::read_pin(N)
-  }
 }
 
 /// Defines a common interface for all pin types.
@@ -193,13 +111,113 @@ pub trait GpioOutput: Sized + Pin {
   }
 }
 
-// State machine implemeting a safe interface for GPIO pins
-pub struct InputPin<T: GpioInput> {
-  inner: T,
+
+// Implementations ================================================================================
+impl Mode {
+  const fn bit_value(&self) -> u32 {
+    match self {
+      Mode::Input => 0,
+      Mode::Output => 1,
+      Mode::AlterateFunction(_) => 2,
+      Mode::Analog(_) => 3,
+    }
+  }
 }
 
-pub struct OutputPin<T: GpioOutput> {
-  inner: T,
+impl Speed {
+  const fn bit_value(&self) -> u32 {
+    match self {
+      Speed::Low => 0,
+      Speed::Medium => 1,
+      Speed::High => 2,
+      Speed::Fast => 3,
+    }
+  }
+}
+
+impl Bias {
+  const fn bit_value(&self) -> u32 {
+    match self {
+      Bias::None => 0,
+      Bias::Pullup => 1,
+      Bias::Pulldown => 2,
+    }
+  }
+}
+
+impl GpioRegister for GpioB {
+  fn initialize() {
+    PERIPHERAL_PTR.RCC.ahb1enr.modify(|_, w| w.gpioben().enabled());
+  }
+
+  fn set_pin_mode(pin_number: u8, mode: Mode) {
+    PERIPHERAL_PTR.GPIOB.moder.modify(|r, w| {
+      unsafe {w.bits(r.bits() & !(3 << (2 * pin_number)) | (mode.bit_value() << (2 * pin_number)))}
+    })
+  }
+
+  fn set_speed(pin_number: u8, speed: Speed) {
+    PERIPHERAL_PTR.GPIOB.ospeedr.modify(|r, w| {
+      unsafe {w.bits(r.bits() & !(3 << (2 * pin_number)) | (speed.bit_value() << (2 * pin_number)))}
+    });
+  }
+
+  fn set_bias(pin_number: u8, bias: Bias) {
+    PERIPHERAL_PTR.GPIOB.pupdr.modify(|r, w| {
+      unsafe {w.bits(r.bits() & !(3 << (2 * pin_number)) | (bias.bit_value() << (2 * pin_number)))}
+    });
+  }
+
+  fn write_output(pin_number: u8, value: bool) {
+    let start_bit = if value {
+      1
+    } else {
+      0x10000 // start at bit 16
+    };
+    PERIPHERAL_PTR.GPIOB.bsrr.write(|w| unsafe {w.bits(start_bit << pin_number)});
+  }
+
+  fn read_pin(pin_number: u8) -> bool {
+    let bits = PERIPHERAL_PTR.GPIOB.idr.read().bits();
+    bits & (1 << pin_number) == (1 << pin_number)
+  }
+}
+
+impl<R: GpioRegister, const N: u8> Pin for GpioPin<R, N> {
+  unsafe fn initialize() -> Self {
+    R::initialize();
+    GpioPin {
+      register: core::marker::PhantomData,
+    }
+  }
+}
+
+impl<R: GpioRegister, const N: u8> GpioOutput for GpioPin<R, N> {
+  unsafe fn configure_as_output(&self) {
+    R::set_pin_mode(N, Mode::Output);
+  }
+
+  unsafe fn set_speed(&self, speed: Speed) {
+    R::set_speed(N, speed);
+  }
+
+  unsafe fn set_value(&self, value: bool) {
+    R::write_output(N, value);
+  }
+}
+
+impl<R: GpioRegister, const N: u8> GpioInput for GpioPin<R, N> {
+  unsafe fn configure_as_input(&self) {
+    R::set_pin_mode(N, Mode::Input);
+  }
+
+  unsafe fn set_bias(&self, bias: Bias) {
+    R::set_bias(N, bias);
+  }
+
+  unsafe fn read_value(&self) -> bool {
+    R::read_pin(N)
+  }
 }
 
 impl<T: GpioInput> InputPin<T> {
@@ -214,14 +232,6 @@ impl<T: GpioInput> InputPin<T> {
   }
 }
 
-pub fn read_value<T: GpioInput>(pin: &InputPin<T>) -> bool {
-  pin.read_value()
-}
-
-pub fn set_bias<T: GpioInput>(pin: &mut InputPin<T>, bias: Bias) {
-  pin.set_bias(bias);
-}
-
 impl<T: GpioInput + GpioOutput> InputPin<T> {
   pub fn into_output(self) -> OutputPin<T> {
     unsafe {
@@ -229,10 +239,6 @@ impl<T: GpioInput + GpioOutput> InputPin<T> {
     }
     OutputPin { inner: self.inner }
   }
-}
-
-pub fn into_output<T: GpioInput + GpioOutput>(pin: InputPin<T>) -> OutputPin<T> {
-  pin.into_output()
 }
 
 impl<T: GpioOutput> OutputPin<T> {
@@ -249,14 +255,6 @@ impl<T: GpioOutput> OutputPin<T> {
   }
 }
 
-pub fn set_value<T: GpioOutput>(pin: &mut OutputPin<T>, value: bool) {
-  pin.set_value(value);
-}
-
-pub fn set_speed<T: GpioOutput>(pin: &mut OutputPin<T>, speed: Speed) {
-  pin.set_speed(speed);
-}
-
 impl<T: GpioInput + GpioOutput> OutputPin<T> {
   pub fn into_input(self) -> InputPin<T> {
     unsafe {
@@ -266,20 +264,32 @@ impl<T: GpioInput + GpioOutput> OutputPin<T> {
   }
 }
 
+
+// Functions ======================================================================================
+pub fn read_value<T: GpioInput>(pin: &InputPin<T>) -> bool {
+  pin.read_value()
+}
+
+pub fn set_bias<T: GpioInput>(pin: &mut InputPin<T>, bias: Bias) {
+  pin.set_bias(bias);
+}
+
+pub fn into_output<T: GpioInput + GpioOutput>(pin: InputPin<T>) -> OutputPin<T> {
+  pin.into_output()
+}
+
+pub fn set_value<T: GpioOutput>(pin: &mut OutputPin<T>, value: bool) {
+  pin.set_value(value);
+}
+
+pub fn set_speed<T: GpioOutput>(pin: &mut OutputPin<T>, speed: Speed) {
+  pin.set_speed(speed);
+}
+
 pub fn into_input<T: GpioInput + GpioOutput>(pin: OutputPin<T>) -> InputPin<T> {
   pin.into_input()
 }
 
-// Define pin types
-pub type PB0 = GpioPin<GpioB, 0>;
-pub type PB1 = GpioPin<GpioB, 1>;
-pub type PB2 = GpioPin<GpioB, 2>;
-pub type PB3 = GpioPin<GpioB, 3>;
-pub type PB4 = GpioPin<GpioB, 4>;
-pub type PB5 = GpioPin<GpioB, 5>;
-pub type PB6 = GpioPin<GpioB, 6>;
-pub type PB7 = GpioPin<GpioB, 7>;
-pub type PB8 = GpioPin<GpioB, 8>;
 
 /*pub struct PB0;
 impl Pin for PB0 {
