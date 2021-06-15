@@ -1,227 +1,200 @@
-use super::include::CONFIG;
-use super::include::{RCC_PTR, GPIOA_PTR, GPIOB_PTR, GPIOC_PTR};
+use crate::PERIPHERAL_PTR;
+use super::include::data_maps::PINCONFIG;
 
+#[derive(Debug)]
 pub enum Mode {
-  Input,
-  Output,
-  AlterateFunction(u32),
-  // false: ADC, true: DAC
-  Analog(bool)
+  Input, Output, AlterateFunction(Fn), Analog(Dir)  
+}
+
+#[derive(Debug)]
+pub enum Fn {
+  None, PWM, UART, Timer
+}
+
+#[derive(Debug)]
+pub enum Dir {
+  None, Input, Output
 }
 
 pub enum Speed {
-  Low,
-  Medium,
-  Fast,
-  High
+  Low, Medium, Fast, High
 }
 
 pub enum Bias {
-  None,
-  Pullup,
-  Pulldown
+  None, Pullup, Pulldown
 }
 
-pub fn pin_mode(pin: (u8, char), mode: Mode) {  
+pub fn pin_mode(pin: (u8, char), mode: Mode) {
+  let rcc = &PERIPHERAL_PTR.RCC;
+  let gpioa = &PERIPHERAL_PTR.GPIOA;
+  let gpiob = &PERIPHERAL_PTR.GPIOB;
+  let gpioc = &PERIPHERAL_PTR.GPIOC;
+
   if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
-  
+
   unsafe {
-    if CONFIG.pin.contains(&pin) == true {panic!("P{}{} is already configured!", pin.1.to_uppercase(), pin.0);}
-
-    match pin.1 {
-      'a' => {
-        (*RCC_PTR).ahb1enr.modify(|_, w| w.gpioaen().enabled());
-
-        match mode {
-          Mode::Input => (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)))),
-
-          Mode::Output => (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))),
-
-          Mode::AlterateFunction(func) => {
-            (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0))));
-            if pin.0 < 8 {
-              (*GPIOA_PTR).afrl.modify(|r, w| w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0))));
-            } else {
-              (*GPIOA_PTR).afrh.modify(|r, w| w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0))));
-            }
-          },
-
-          Mode::Analog(_) => (*GPIOA_PTR).moder.modify(|r, w| w.bits(r.bits() | (3 << (2 * pin.0))))
-        }
-      },
-      'b' => {
-        (*RCC_PTR).ahb1enr.modify(|_, w| w.gpioben().enabled());
-
-        match mode {
-          Mode::Input => (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)))),
-
-          Mode::Output => (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))),
-
-          Mode::AlterateFunction(func) => {
-            (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0))));
-            if pin.0 < 8 {
-              (*GPIOB_PTR).afrl.modify(|r, w| w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0))));
-            } else {
-              (*GPIOB_PTR).afrh.modify(|r, w| w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0))));
-            }
-          },
-
-          Mode::Analog(_) => (*GPIOB_PTR).moder.modify(|r, w| w.bits(r.bits() | (3 << (2 * pin.0))))
-        }
-      },
-      'c' => {
-        (*RCC_PTR).ahb1enr.modify(|_, w| w.gpiocen().enabled());
-
-        match mode {
-          Mode::Input => (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)))),
-
-          Mode::Output => (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))),
-
-          Mode::AlterateFunction(func) => {
-            (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0))));
-            if pin.0 < 8 {
-              (*GPIOC_PTR).afrl.modify(|r, w| w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0))));
-            } else {
-              (*GPIOC_PTR).afrh.modify(|r, w| w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0))));
-            }
-          },
-
-          Mode::Analog(_) => (*GPIOC_PTR).moder.modify(|r, w| w.bits(r.bits() | (3 << (2 * pin.0))))
-        }
-      },
-      _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
-    };
-
-    CONFIG.pin.push(pin).expect("Could not store pin configuration!");
-    match mode {
-      Mode::Input => {
-        CONFIG.config.push(0).expect("Could not store pin configuration!");
-        CONFIG.alternate.push(16).expect("Could not store pin configuration!");
-        CONFIG.analog.push(0).expect("Could not store pin configuration!");
-      },
-      Mode::Output => {
-        CONFIG.config.push(1).expect("Could not store pin configuration!");
-        CONFIG.alternate.push(16).expect("Could not store pin configuration!");
-        CONFIG.analog.push(0).expect("Could not store pin configuration!");
-      },
-      Mode::AlterateFunction(f) => {
-        CONFIG.config.push(2).expect("Could not store pin configuration!");
-        CONFIG.alternate.push(f).expect("Could not store pin configuration!");
-        CONFIG.analog.push(0).expect("Could not store pin configuration!");
-      },
-      Mode::Analog(f) => {
-        CONFIG.config.push(3).expect("Could not store pin configuration!");
-        CONFIG.alternate.push(16).expect("Could not store pin configuration!");
-        if f == false {CONFIG.analog.push(1).expect("Could not store pin configuration!");}
-        else {CONFIG.analog.push(2).expect("Could not store pin configuration!");}
-      }
-    };
+    if PINCONFIG.pin.contains(&pin) == true {panic!("P{}{} is already configured!", pin.1.to_uppercase(), pin.0);}
+    PINCONFIG.pin.push(pin).expect("Could not store pin configuration!");
+    PINCONFIG.mode.push(mode).expect("Could not store pin configuration!");
   }
+  
+  match pin.1 {
+    'a' => {
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+
+      match mode {
+        Mode::Input => gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)))}),
+        Mode::Output => gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))}),
+        Mode::AlterateFunction(func) => {
+          gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0)))});
+          if pin.0 < 8 {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0)))});}
+          else {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0)))});}
+        },
+        Mode::Analog(_) => gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.0)))})
+      };
+    },
+    'b' => {
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+
+      match mode {
+        Mode::Input => gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)))}),
+        Mode::Output => gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))}),
+        Mode::AlterateFunction(func) => {
+          gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0)))});
+          if pin.0 < 8 {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0)))});}
+          else {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0)))});}
+        },
+        Mode::Analog(_) => gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.0)))})
+      }
+    },
+    'c' => {
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+
+      match mode {
+        Mode::Input => gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)))}),
+        Mode::Output => gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))}),
+        Mode::AlterateFunction(func) => {
+          gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0)))});
+          if pin.0 < 8 {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0)))});}
+          else {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() & !(0xF << (4 * pin.0)) | (func << (4 * pin.0)))});}
+        },
+        Mode::Analog(_) => gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.0)))})
+      }
+    },
+    _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
+  };
 }
 
 pub fn pin_config(pin: (u8, char), open_drain: bool, speed: Speed, bias: Bias) {
+  let gpioa = &PERIPHERAL_PTR.GPIOA;
+  let gpiob = &PERIPHERAL_PTR.GPIOB;
+  let gpioc = &PERIPHERAL_PTR.GPIOC;
+
   if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
 
-  unsafe {
-    match pin.1 {
-      'a' => {
-        if open_drain == true {(*GPIOA_PTR).otyper.modify(|r, w| w.bits(r.bits() | (1 << pin.0)));}
-        else {(*GPIOA_PTR).otyper.modify(|r, w| w.bits(r.bits() & !(1 << pin.0)));}
+  match pin.1 {
+    'a' => { 
+      if open_drain == true {gpioa.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.0))});}
+      else {gpioa.otyper.modify(|r, w| unsafe {w.bits(r.bits() & !(1 << pin.0))});}
 
-        match speed {
-          Speed::Low => {(*GPIOA_PTR).ospeedr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0))));},
-          Speed::Medium => {(*GPIOA_PTR).ospeedr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0))));},
-          Speed::Fast => {(*GPIOA_PTR).ospeedr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0))));},
-          Speed::High => {(*GPIOA_PTR).ospeedr.modify(|r, w| w.bits(r.bits() | (3 << (2 * pin.0))));}
-        };
+      match speed {
+        Speed::Low => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)))}),
+        Speed::Medium => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))}),
+        Speed::Fast => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0)))}),
+        Speed::High => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.0)))})
+      };
 
-        match bias {
-          Bias::None => {(*GPIOA_PTR).pupdr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0))));},
-          Bias::Pullup => {(*GPIOA_PTR).pupdr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0))));},
-          Bias::Pulldown => {(*GPIOA_PTR).pupdr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0))));}
-        };
-      },
-      'b' => {
-        if open_drain == true {(*GPIOB_PTR).otyper.modify(|r, w| w.bits(r.bits() | (1 << pin.0)));}
-        else {(*GPIOB_PTR).otyper.modify(|r, w| w.bits(r.bits() & !(1 << pin.0)));}
+      match bias {
+        Bias::None => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)))}),
+        Bias::Pullup => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))}),
+        Bias::Pulldown => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0)))})
+      };
+    },
+    'b' => {   
+      if open_drain == true {gpiob.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.0))});}
+      else {gpiob.otyper.modify(|r, w| unsafe {w.bits(r.bits() & !(1 << pin.0))});}
 
-        match speed {
-          Speed::Low => {(*GPIOB_PTR).ospeedr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0))));},
-          Speed::Medium => {(*GPIOB_PTR).ospeedr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0))));},
-          Speed::Fast => {(*GPIOB_PTR).ospeedr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0))));},
-          Speed::High => {(*GPIOB_PTR).ospeedr.modify(|r, w| w.bits(r.bits() | (3 << (2 * pin.0))));}
-        };
+      match speed {
+        Speed::Low => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)))}),
+        Speed::Medium => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))}),
+        Speed::Fast => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0)))}),
+        Speed::High => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.0)))})
+      };
 
-        match bias {
-          Bias::None => {(*GPIOB_PTR).pupdr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0))));},
-          Bias::Pullup => {(*GPIOB_PTR).pupdr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0))));},
-          Bias::Pulldown => {(*GPIOB_PTR).pupdr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0))));}
-        };
-      },
-      'c' => {
-        if open_drain == true {(*GPIOC_PTR).otyper.modify(|r, w| w.bits(r.bits() | (1 << pin.0)));}
-        else {(*GPIOC_PTR).otyper.modify(|r, w| w.bits(r.bits() & !(1 << pin.0)));}
+      match bias {
+        Bias::None => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)))}),
+        Bias::Pullup => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))}),
+        Bias::Pulldown => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0)))})
+      };
+    },
+    'c' => {  
+      if open_drain == true {gpioc.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.0))});}
+      else {gpioc.otyper.modify(|r, w| unsafe {w.bits(r.bits() & !(1 << pin.0))});}
 
-        match speed {
-          Speed::Low => {(*GPIOC_PTR).ospeedr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0))));},
-          Speed::Medium => {(*GPIOC_PTR).ospeedr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0))));},
-          Speed::Fast => {(*GPIOC_PTR).ospeedr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0))));},
-          Speed::High => {(*GPIOC_PTR).ospeedr.modify(|r, w| w.bits(r.bits() | (3 << (2 * pin.0))));}
-        };
+      match speed {
+        Speed::Low => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)))}),
+        Speed::Medium => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))}),
+        Speed::Fast => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0)))}),
+        Speed::High => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.0)))})
+      };
 
-        match bias {
-          Bias::None => {(*GPIOC_PTR).pupdr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0))));},
-          Bias::Pullup => {(*GPIOC_PTR).pupdr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0))));},
-          Bias::Pulldown => {(*GPIOC_PTR).pupdr.modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0))));}
-        };
-      },
-      _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
-    };
-  }
+      match bias {
+        Bias::None => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)))}),
+        Bias::Pullup => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (1 << (2 * pin.0)))}),
+        Bias::Pulldown => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.0)) | (2 << (2 * pin.0)))})
+      };
+    },
+    _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
+  };
 }
 
-pub fn pin_write(pin: (u8, char), write: bool) {  
+pub fn pin_write(pin: (u8, char), write: bool) {
+  let gpioa = &PERIPHERAL_PTR.GPIOA;
+  let gpiob = &PERIPHERAL_PTR.GPIOB;
+  let gpioc = &PERIPHERAL_PTR.GPIOC;
+
   if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
 
-  unsafe {
-    match pin.1 {
-      'a' => {
-        if write == true {(*GPIOA_PTR).bsrr.write(|w| w.bits(1 << pin.0));}
-        else {(*GPIOA_PTR).bsrr.write(|w| w.bits(1 << (pin.0 + 16)));}
-      },
-      'b' => {
-        if write == true {(*GPIOB_PTR).bsrr.write(|w| w.bits(1 << pin.0));}
-        else {(*GPIOB_PTR).bsrr.write(|w| w.bits(1 << (pin.0 + 16)));}
-      },
-      'c' => {
-        if write == true {(*GPIOC_PTR).bsrr.write(|w| w.bits(1 << pin.0));}
-        else {(*GPIOC_PTR).bsrr.write(|w| w.bits(1 << (pin.0 + 16)));}
-      },
+  match pin.1 {
+    'a' => {       
+      if write == true {gpioa.bsrr.write(|w| unsafe {w.bits(1 << pin.0)});}
+      else {gpioa.bsrr.write(|w| unsafe {w.bits(1 << (pin.0 + 16))});}
+    },
+    'b' => {
+      if write == true {gpiob.bsrr.write(|w| unsafe {w.bits(1 << pin.0)});}
+      else {gpiob.bsrr.write(|w| unsafe {w.bits(1 << (pin.0 + 16))});}
+    },
+    'c' => {
+      if write == true {gpioc.bsrr.write(|w| unsafe {w.bits(1 << pin.0)});}
+      else {gpioc.bsrr.write(|w| unsafe {w.bits(1 << (pin.0 + 16))});}
+    },
       _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
-    };
-  }
+  };
 }
 
-pub fn pin_read(pin: (u8, char)) -> bool {  
-  if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
-
+pub fn pin_read(pin: (u8, char)) -> bool {
+  let gpioa = &PERIPHERAL_PTR.GPIOA;
+  let gpiob = &PERIPHERAL_PTR.GPIOB;
+  let gpioc = &PERIPHERAL_PTR.GPIOC;
   let bits: u32;
 
+  if pin.0 > 15 {panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0);}
+
   unsafe {
-    if CONFIG.pin.contains(&pin) {
-      if CONFIG.config[CONFIG.pin.iter().position(|&i| i == pin).unwrap()] == 0 {
+    if PINCONFIG.pin.contains(&pin) {
+      if PINCONFIG.config[PINCONFIG.pin.iter().position(|&i| i == pin).unwrap()] == 0 {
         bits = match pin.1 {
-          'a' => (*GPIOA_PTR).idr.read().bits(),
-          'b' => (*GPIOB_PTR).idr.read().bits(),
-          'c' => (*GPIOC_PTR).idr.read().bits(),
+          'a' => gpioa.idr.read().bits(),
+          'b' => gpiob.idr.read().bits(),
+          'c' => gpioc.idr.read().bits(),
           _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
         };
       }
-      else if CONFIG.config[CONFIG.pin.iter().position(|&i| i == pin).unwrap()] == 1 {
+      else if PINCONFIG.config[PINCONFIG.pin.iter().position(|&i| i == pin).unwrap()] == 1 {
         bits = match pin.1 {
-          'a' => (*GPIOA_PTR).odr.read().bits(),
-          'b' => (*GPIOB_PTR).odr.read().bits(),
-          'c' => (*GPIOC_PTR).odr.read().bits(),
+          'a' => gpioa.odr.read().bits(),
+          'b' => gpiob.odr.read().bits(),
+          'c' => gpioc.odr.read().bits(),
           _   => panic!("P{}{} is not an available GPIO Pin", pin.1.to_uppercase(), pin.0)
         };
       }
@@ -229,6 +202,8 @@ pub fn pin_read(pin: (u8, char)) -> bool {
     }
     else {panic!("P{}{} is not configured!", pin.1.to_uppercase(), pin.0);}
   }
+
+  
 
   if bits & (1 << pin.0) == (1 << pin.0) {return true;}
   else {return false;}
