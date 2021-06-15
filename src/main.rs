@@ -2,28 +2,26 @@
 #![no_main]
 
 use rustuino::entry;
-use rustuino::gpio::{GetAsOutput, OutputPin, PB0};
+use rustuino::gpio::*;
 
 #[entry]
 fn main() -> ! {
-    let mut pin = PB0::get_as_output();
+  let mut pin = PB1::get_as_output();
 
-    pin.set_value(true);
-    pin.set_speed(rustuino::Speed::Low);
+  set_value(&mut pin, true);
+  set_speed(&mut pin, rustuino::Speed::Low);
 
-    let pin = pin.into_input();
+  let pin = into_input(pin);
 
-    let value = pin.read_value();
+  let _value = read_value(&pin);
 
-    // Cannot write to input pin!
-    // pin.set_value(true);
+  // Cannot write to input pin!
+  // set_value(&mut pin, true);
 
-    let mut pin = pin.into_output();
+  let mut pin = into_output(pin);
 
-    loop {
-        pin.set_value(false);
-        pin.set_value(true);
-    }
+  loop {
+    set_value(&mut pin, false);
+    set_value(&mut pin, true);
+  }
 }
-
-
