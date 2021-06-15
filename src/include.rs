@@ -125,39 +125,7 @@ pub mod pins {
 
 // Register pointers ==============================================================================
 pub const PERIPHERAL_PTR: stm32f4::stm32f446::Peripherals = stm32f4::stm32f446::Peripherals::take().unwrap();
-pub const CORE_PHERIPHERAL_PTR: cortex_m::Peripherals = cortex_m::Peripherals::take().unwrap();
-
-// pub const RCC_PTR: *const stm32f446::rcc::RegisterBlock = stm32f446::RCC::ptr();
-// pub const SYSTICK_PTR: *const stm32f446::stk::RegisterBlock = stm32f446::STK::ptr();
-// pub const GPIOA_PTR: *const stm32f446::gpioa::RegisterBlock = stm32f446::GPIOA::ptr();
-// pub const GPIOB_PTR: *const stm32f446::gpiob::RegisterBlock = stm32f446::GPIOB::ptr();
-// pub const GPIOC_PTR: *const stm32f446::gpioh::RegisterBlock = stm32f446::GPIOC::ptr();
-// pub const ADCC_PTR: *const stm32f446::adc_common::RegisterBlock = stm32f446::ADC_COMMON::ptr();
-// pub const ADC1_PTR: *const stm32f446::adc1::RegisterBlock = stm32f446::ADC1::ptr();
-// pub const ADC2_PTR: *const stm32f446::adc1::RegisterBlock = stm32f446::ADC2::ptr();
-// pub const ADC3_PTR: *const stm32f446::adc1::RegisterBlock = stm32f446::ADC3::ptr();
-// pub const DAC_PTR: *const stm32f446::dac::RegisterBlock = stm32f446::DAC::ptr();
-// pub const USART1_PTR: *const stm32f446::usart1::RegisterBlock = stm32f446::USART1::ptr();
-// pub const USART2_PTR: *const stm32f446::usart1::RegisterBlock = stm32f446::USART2::ptr();
-// pub const USART3_PTR: *const stm32f446::usart1::RegisterBlock = stm32f446::USART3::ptr();
-// pub const UART4_PTR: *const stm32f446::uart4::RegisterBlock = stm32f446::UART4::ptr();
-// pub const UART5_PTR: *const stm32f446::uart4::RegisterBlock = stm32f446::UART5::ptr();
-// pub const USART6_PTR: *const stm32f446::usart1::RegisterBlock = stm32f446::USART6::ptr();
-// pub const TIM1_PTR: *const stm32f446::tim1::RegisterBlock = stm32f446::TIM1::ptr();
-// pub const TIM2_PTR: *const stm32f446::tim2::RegisterBlock = stm32f446::TIM2::ptr();
-// pub const TIM3_PTR: *const stm32f446::tim3::RegisterBlock = stm32f446::TIM3::ptr();
-// pub const TIM4_PTR: *const stm32f446::tim3::RegisterBlock = stm32f446::TIM4::ptr();
-// pub const TIM5_PTR: *const stm32f446::tim5::RegisterBlock = stm32f446::TIM5::ptr();
-// pub const TIM6_PTR: *const stm32f446::tim6::RegisterBlock = stm32f446::TIM6::ptr();
-// pub const TIM7_PTR: *const stm32f446::tim6::RegisterBlock = stm32f446::TIM7::ptr();
-// pub const TIM8_PTR: *const stm32f446::tim1::RegisterBlock = stm32f446::TIM8::ptr();
-// pub const TIM9_PTR: *const stm32f446::tim9::RegisterBlock = stm32f446::TIM9::ptr();
-// pub const TIM10_PTR: *const stm32f446::tim10::RegisterBlock = stm32f446::TIM10::ptr();
-// pub const TIM11_PTR: *const stm32f446::tim11::RegisterBlock = stm32f446::TIM11::ptr();
-// pub const TIM12_PTR: *const stm32f446::tim9::RegisterBlock = stm32f446::TIM12::ptr();
-// pub const TIM13_PTR: *const stm32f446::tim10::RegisterBlock = stm32f446::TIM13::ptr();
-// pub const TIM14_PTR: *const stm32f446::tim10::RegisterBlock = stm32f446::TIM14::ptr();
-
+pub const CORE_PERIPHERAL_PTR: cortex_m::Peripherals = cortex_m::Peripherals::take().unwrap();
 
 
 // Data maps ======================================================================================

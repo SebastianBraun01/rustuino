@@ -1,5 +1,4 @@
 #![no_std]
-#![allow(dead_code)]
 
 // Library includes ===============================================================================
 pub use cortex_m_rt::entry;
@@ -9,7 +8,7 @@ pub use panic_semihosting as _;
 pub use cortex_m::peripheral::NVIC;
 pub use stm32f4::stm32f446::{Interrupt, interrupt};
 pub use libm::*;
-pub use heapless::{Vec, String, FnvIndexMap, FnvIndexSet};
+pub use heapless::{Vec, String, FnvIndexMap};
 pub use {include::pins::*, include::*,  gpio_d::*, analog::*, time::*, uart::*};
 
 
