@@ -1,17 +1,30 @@
 use super::include::PERIPHERAL_PTR;
 use super::{Bias, Mode, Speed};
 
+// struct Number<const N: u8> {}
 
-// Define pin types ===============================================================================
-pub type PB0 = GpioPin<GpioB, 0>;
-pub type PB1 = GpioPin<GpioB, 1>;
-pub type PB2 = GpioPin<GpioB, 2>;
-pub type PB3 = GpioPin<GpioB, 3>;
-pub type PB4 = GpioPin<GpioB, 4>;
-pub type PB5 = GpioPin<GpioB, 5>;
-pub type PB6 = GpioPin<GpioB, 6>;
-pub type PB7 = GpioPin<GpioB, 7>;
-pub type PB8 = GpioPin<GpioB, 8>;
+// trait Test {fn test(self) -> bool;}
+
+// impl<const N: u8> Number<N> {
+//   fn get() -> Number<N> {
+//     return Number {};
+//   }
+// }
+
+// impl Test for Number<2> {
+//   fn test(self) -> bool {return false;}
+// }
+
+// type Number1 = Number<1>;
+// type Number2 = Number<2>;
+
+// pub fn call() {
+//   let one = Number1::get();
+//   let two = Number2::get();
+
+//   // let get_one = one.test();
+//   let get_two = two.test();
+// }
 
 
 // Structs ========================================================================================
@@ -21,6 +34,16 @@ pub struct GpioB {}
 pub struct GpioPin<R: GpioRegister, const N: u8> {
   register: core::marker::PhantomData<R>
 }
+
+pub type PB0 = GpioPin<GpioB, 0>;
+pub type PB1 = GpioPin<GpioB, 1>;
+pub type PB2 = GpioPin<GpioB, 2>;
+pub type PB3 = GpioPin<GpioB, 3>;
+pub type PB4 = GpioPin<GpioB, 4>;
+pub type PB5 = GpioPin<GpioB, 5>;
+pub type PB6 = GpioPin<GpioB, 6>;
+pub type PB7 = GpioPin<GpioB, 7>;
+pub type PB8 = GpioPin<GpioB, 8>;
 
 // State machine implemeting a safe interface for GPIO pins
 pub struct InputPin<T: GpioInput> {
@@ -289,93 +312,3 @@ pub fn set_speed<T: GpioOutput>(pin: &mut OutputPin<T>, speed: Speed) {
 pub fn into_input<T: GpioInput + GpioOutput>(pin: OutputPin<T>) -> InputPin<T> {
   pin.into_input()
 }
-
-
-/*pub struct PB0;
-impl Pin for PB0 {
-  unsafe fn initialize() -> Self {
-    (*RCC_PTR).ahb1enr.modify(|_, w| w.gpioben().enabled());
-    PB0
-  }
-}
-unsafe fn configure_pin_as_input(
-  register: *const stm32f4::stm32f446::gpiob::RegisterBlock,
-  pin_number: u8,
-) {
-  (*register)
-    .moder
-    .modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin_number))));
-}
-impl GpioInput for PB0 {
-  unsafe fn configure_as_input(&self) {
-    configure_pin_as_input(GPIOB_PTR, 0);
-  }
-  unsafe fn read_value(&self) -> bool {
-    let bits = (*GPIOB_PTR).idr.read().bits();
-    bits & (1 << 0) == (1 << 0)
-  }
-  unsafe fn set_bias(&self, bias: Bias) {
-    match bias {
-      Bias::None => {
-        (*GPIOB_PTR)
-          .pupdr
-          .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0))));
-      }
-      Bias::Pullup => {
-        (*GPIOB_PTR)
-          .pupdr
-          .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0)) | (1 << (2 * 0))));
-      }
-      Bias::Pulldown => {
-        (*GPIOB_PTR)
-          .pupdr
-          .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0)) | (2 << (2 * 0))));
-      }
-    }
-  }
-}
-unsafe fn configure_pin_as_output(
-  register: *const stm32f4::stm32f446::gpiob::RegisterBlock,
-  pin_number: u8,
-) {
-  (*register)
-    .moder
-    .modify(|r, w| w.bits(r.bits() & !(3 << (2 * pin_number)) | (1 << (2 * pin_number))));
-}
-impl GpioOutput for PB0 {
-  unsafe fn configure_as_output(&self) {
-    configure_pin_as_output(GPIOB_PTR, 0);
-  }
-  unsafe fn set_speed(&self, speed: Speed) {
-    match speed {
-      Speed::Low => {
-        (*GPIOB_PTR)
-          .ospeedr
-          .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0))));
-      }
-      Speed::Medium => {
-        (*GPIOB_PTR)
-          .ospeedr
-          .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0)) | (1 << (2 * 0))));
-      }
-      Speed::Fast => {
-        (*GPIOB_PTR)
-          .ospeedr
-          .modify(|r, w| w.bits(r.bits() & !(3 << (2 * 0)) | (2 << (2 * 0))));
-      }
-      Speed::High => {
-        (*GPIOB_PTR)
-          .ospeedr
-          .modify(|r, w| w.bits(r.bits() | (3 << (2 * 0))));
-      }
-    }
-  }
-  unsafe fn set_value(&self, value: bool) {
-    let start_bit = if value {
-      1
-    } else {
-      0x10000 // start at bit 16
-    };
-    (*GPIOB_PTR).bsrr.write(|w| w.bits(start_bit << 0));
-  }
-}*/
