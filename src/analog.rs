@@ -114,3 +114,36 @@ pub fn analog_write(pin: (u8, char), value: u16) {
   }
   else {panic!("P{}{} is not available for analog conversion!", pin.1.to_uppercase(), pin.0);}
 }
+
+impl<const B: char, const P: u8, const M: u8> Analog for AnalogPin<GpioPin<B, P, M>> {
+  fn analog_read(&self) -> u16 {
+    let block = B;
+    let pin = P;
+
+    let buffer = if block == 'f' {
+      let adc3 = &PERIPHERAL_PTR.ADC3;
+      let channel = ADC3_MAP.channel[ADC3_MAP.pin.iter().position(|&i| i == pin).unwrap()];
+      adc3.sqr3.modify(|_, w| unsafe {w.sq1().bits(channel)});
+
+      adc3.cr2.write(|w| w.swstart().start());
+      while adc3.sr.read().eoc().is_not_complete() == true {}
+      adc3.dr.read().data().bits() as u16
+    }
+    else {
+      let adc1 = &PERIPHERAL_PTR.ADC1;
+      let channel = ADC1_MAP.channel[ADC1_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()];
+      adc1.sqr3.modify(|_, w| unsafe {w.sq1().bits(channel)});
+      adc1.cr2.write(|w| w.swstart().start());
+      while adc1.sr.read().eoc().is_not_complete() == true {}
+      adc1.dr.read().data().bits() as u16
+    };
+
+    return buffer;
+  }
+}
+
+impl<const B: char, const P: u8> AnalogConfig for GpioPin<B, P, 3> {
+  fn set_as_analog(self) -> AnalogPin<Self> {
+    unimplemented!();
+  }
+}

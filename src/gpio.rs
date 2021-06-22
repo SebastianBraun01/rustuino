@@ -1,314 +1,489 @@
 use super::include::PERIPHERAL_PTR;
-use super::{Bias, Mode, Speed};
+use super::common::*;
 
-// struct Number<const N: u8> {}
-
-// trait Test {fn test(self) -> bool;}
-
-// impl<const N: u8> Number<N> {
-//   fn get() -> Number<N> {
-//     return Number {};
-//   }
-// }
-
-// impl Test for Number<2> {
-//   fn test(self) -> bool {return false;}
-// }
-
-// type Number1 = Number<1>;
-// type Number2 = Number<2>;
-
-// pub fn call() {
-//   let one = Number1::get();
-//   let two = Number2::get();
-
-//   // let get_one = one.test();
-//   let get_two = two.test();
-// }
-
-
-// Structs ========================================================================================
-pub struct GpioB {}
-
-/// Gerneric type used for automatically implementing GPIO pins
-pub struct GpioPin<R: GpioRegister, const N: u8> {
-  register: core::marker::PhantomData<R>
+pub enum Speed {
+  Low, Medium, Fast, High
 }
 
-pub type PB0 = GpioPin<GpioB, 0>;
-pub type PB1 = GpioPin<GpioB, 1>;
-pub type PB2 = GpioPin<GpioB, 2>;
-pub type PB3 = GpioPin<GpioB, 3>;
-pub type PB4 = GpioPin<GpioB, 4>;
-pub type PB5 = GpioPin<GpioB, 5>;
-pub type PB6 = GpioPin<GpioB, 6>;
-pub type PB7 = GpioPin<GpioB, 7>;
-pub type PB8 = GpioPin<GpioB, 8>;
-
-// State machine implemeting a safe interface for GPIO pins
-pub struct InputPin<T: GpioInput> {
-  inner: T,
-}
-
-pub struct OutputPin<T: GpioOutput> {
-  inner: T,
-}
-
-
-// Traits =========================================================================================
-/// Common interface for all GPIO registers
-pub trait GpioRegister {
-  fn initialize();
-  fn set_pin_mode(pin_number: u8, mode: Mode);
-  fn set_speed(pin_number: u8, speed: Speed);
-  fn set_bias(pin_number: u8, bias: Bias);
-  fn write_output(pin_number: u8, value: bool);
-  fn read_pin(pin_number: u8) -> bool;
-}
-
-/// Defines a common interface for all pin types.
-pub trait Pin: Sized {
-  /// Intitialize the pin and get pin struct.
-  /// # Safety
-  /// This is unsafe because this type does not enforce any guarantees to prevent misuse.
-  /// Only use this function to write save wrappers around this API.
-  unsafe fn initialize() -> Self;
-}
-
-/// Defines an unsafe common interface for all input pins.
-///
-/// This should only be used to create safe wrappers around this interface.
-pub trait GpioInput: Sized + Pin {
-  /// Configure pin as input.
-  /// # Safety
-  /// This function just flips a bunch of registers and doesn't care what configuration was used before.
-  /// Make sure to reset the pin if needed before calling this function.
-  unsafe fn configure_as_input(&self);
-
-  /// # Safety
-  /// This function is only safe to be called on a pin configured as input.
-  unsafe fn set_bias(&self, bias: Bias);
-
-  /// # Safety
-  /// This function is only safe to be called on a pin configured as input.
-  unsafe fn read_value(&self) -> bool;
-
-  /// Receive input pin inside a wrapper stuct that guarantees save usage.
-  fn get_as_input() -> InputPin<Self> {
-    InputPin {
-      inner: unsafe {
-        let pin = Self::initialize();
-        pin.configure_as_input();
-        pin
-      },
-    }
-  }
-}
-
-/// Defines a common interface for all output pins.
-/// This should only be used to create safe wrappers around this interface.
-pub trait GpioOutput: Sized + Pin {
-  /// Configure pin as input.
-  /// # Safety
-  /// This function just flips a bunch of registers and doesn't care what configuration was used before.
-  /// Make sure to reset the pin if needed before calling this function.
-  unsafe fn configure_as_output(&self);
-
-  /// # Safety
-  /// This function is only safe to be called on a pin configured as output.
-  unsafe fn set_speed(&self, speed: Speed);
-
-  /// # Safety
-  /// This function is only safe to be called on a pin configured as output.
-  unsafe fn set_value(&self, value: bool);
-
-  /// Receive output pin inside a wrapper stuct that guarantees save usage.
-  fn get_as_output() -> OutputPin<Self> {
-    OutputPin {
-      inner: unsafe {
-        let pin = Self::initialize();
-        pin.configure_as_output();
-        pin
-      },
-    }
-  }
+pub enum Bias {
+  None, Pullup, Pulldown
 }
 
 
 // Implementations ================================================================================
-impl Mode {
-  const fn bit_value(&self) -> u32 {
-    match self {
-      Mode::Input => 0,
-      Mode::Output => 1,
-      Mode::AlterateFunction(_) => 2,
-      Mode::Analog(_) => 3,
-    }
-  }
-}
+impl<const B: char, const P: u8, const M: u8> Pin for GpioPin<B, P, M> {
+  fn input(self) -> InputPin<Self> {
+    self.block = B;
+    self.pin = P;
 
-impl Speed {
-  const fn bit_value(&self) -> u32 {
-    match self {
-      Speed::Low => 0,
-      Speed::Medium => 1,
-      Speed::High => 2,
-      Speed::Fast => 3,
-    }
-  }
-}
+    let rcc = &PERIPHERAL_PTR.RCC;
 
-impl Bias {
-  const fn bit_value(&self) -> u32 {
-    match self {
-      Bias::None => 0,
-      Bias::Pullup => 1,
-      Bias::Pulldown => 2,
-    }
-  }
-}
-
-impl GpioRegister for GpioB {
-  fn initialize() {
-    PERIPHERAL_PTR.RCC.ahb1enr.modify(|_, w| w.gpioben().enabled());
-  }
-
-  fn set_pin_mode(pin_number: u8, mode: Mode) {
-    PERIPHERAL_PTR.GPIOB.moder.modify(|r, w| {
-      unsafe {w.bits(r.bits() & !(3 << (2 * pin_number)) | (mode.bit_value() << (2 * pin_number)))}
-    })
-  }
-
-  fn set_speed(pin_number: u8, speed: Speed) {
-    PERIPHERAL_PTR.GPIOB.ospeedr.modify(|r, w| {
-      unsafe {w.bits(r.bits() & !(3 << (2 * pin_number)) | (speed.bit_value() << (2 * pin_number)))}
-    });
-  }
-
-  fn set_bias(pin_number: u8, bias: Bias) {
-    PERIPHERAL_PTR.GPIOB.pupdr.modify(|r, w| {
-      unsafe {w.bits(r.bits() & !(3 << (2 * pin_number)) | (bias.bit_value() << (2 * pin_number)))}
-    });
-  }
-
-  fn write_output(pin_number: u8, value: bool) {
-    let start_bit = if value {
-      1
-    } else {
-      0x10000 // start at bit 16
+    match self.block {
+      'a' => {
+        let gpioa = &PERIPHERAL_PTR.GPIOA;
+        rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+        gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)))});
+      },
+      'b' => {
+        let gpiob = &PERIPHERAL_PTR.GPIOB;
+        rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+        gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)))});
+      },
+      'c' => {
+        let gpioc = &PERIPHERAL_PTR.GPIOC;
+        rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+        gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)))});
+      },
+      'd' => {
+        let gpiod = &PERIPHERAL_PTR.GPIOD;
+        rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+        gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)))});
+      },
+      'e' => {
+        let gpioe = &PERIPHERAL_PTR.GPIOE;
+        rcc.ahb1enr.modify(|_, w| w.gpioeen().enabled());
+        gpioe.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)))});
+      },
+      'f' => {
+        let gpiof = &PERIPHERAL_PTR.GPIOF;
+        rcc.ahb1enr.modify(|_, w| w.gpiofen().enabled());
+        gpiof.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)))});
+      },
+      'g' => {
+        let gpiog = &PERIPHERAL_PTR.GPIOG;
+        rcc.ahb1enr.modify(|_, w| w.gpiogen().enabled());
+        gpiog.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)))});
+      },
+      'h' => {
+        let gpioh = &PERIPHERAL_PTR.GPIOH;
+        rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+        gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)))});
+      },
+      _   => panic!("P{}{} is not an available GPIO Pin", self.block.to_uppercase(), self.pin)
     };
-    PERIPHERAL_PTR.GPIOB.bsrr.write(|w| unsafe {w.bits(start_bit << pin_number)});
+
+    return InputPin {
+      inner: self
+    };
   }
 
-  fn read_pin(pin_number: u8) -> bool {
-    let bits = PERIPHERAL_PTR.GPIOB.idr.read().bits();
-    bits & (1 << pin_number) == (1 << pin_number)
-  }
-}
+  fn output(self) -> OutputPin<Self> {
+    self.block = B;
+    self.pin = P;
 
-impl<R: GpioRegister, const N: u8> Pin for GpioPin<R, N> {
-  unsafe fn initialize() -> Self {
-    R::initialize();
-    GpioPin {
-      register: core::marker::PhantomData,
-    }
-  }
-}
+    let rcc = &PERIPHERAL_PTR.RCC;
 
-impl<R: GpioRegister, const N: u8> GpioOutput for GpioPin<R, N> {
-  unsafe fn configure_as_output(&self) {
-    R::set_pin_mode(N, Mode::Output);
-  }
+    match self.block {
+      'a' => {
+        let gpioa = &PERIPHERAL_PTR.GPIOA;
+        rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+        gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)) | (1 << (2 * self.pin)))});
+      },
+      'b' => {
+        let gpiob = &PERIPHERAL_PTR.GPIOB;
+        rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+        gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)) | (1 << (2 * self.pin)))});
+      },
+      'c' => {
+        let gpioc = &PERIPHERAL_PTR.GPIOC;
+        rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+        gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)) | (1 << (2 * self.pin)))});
+      },
+      'd' => {
+        let gpiod = &PERIPHERAL_PTR.GPIOD;
+        rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+        gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)) | (1 << (2 * self.pin)))});
+      },
+      'e' => {
+        let gpioe = &PERIPHERAL_PTR.GPIOE;
+        rcc.ahb1enr.modify(|_, w| w.gpioeen().enabled());
+        gpioe.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)) | (1 << (2 * self.pin)))});
+      },
+      'f' => {
+        let gpiof = &PERIPHERAL_PTR.GPIOF;
+        rcc.ahb1enr.modify(|_, w| w.gpiofen().enabled());
+        gpiof.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)) | (1 << (2 * self.pin)))});
+      },
+      'g' => {
+        let gpiog = &PERIPHERAL_PTR.GPIOG;
+        rcc.ahb1enr.modify(|_, w| w.gpiogen().enabled());
+        gpiog.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)) | (1 << (2 * self.pin)))});
+      },
+      'h' => {
+        let gpioh = &PERIPHERAL_PTR.GPIOH;
+        rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+        gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * self.pin)) | (1 << (2 * self.pin)))});
+      },
+      _   => panic!("P{}{} is not an available GPIO Pin", self.block.to_uppercase(), self.pin)
+    };
 
-  unsafe fn set_speed(&self, speed: Speed) {
-    R::set_speed(N, speed);
-  }
-
-  unsafe fn set_value(&self, value: bool) {
-    R::write_output(N, value);
-  }
-}
-
-impl<R: GpioRegister, const N: u8> GpioInput for GpioPin<R, N> {
-  unsafe fn configure_as_input(&self) {
-    R::set_pin_mode(N, Mode::Input);
-  }
-
-  unsafe fn set_bias(&self, bias: Bias) {
-    R::set_bias(N, bias);
-  }
-
-  unsafe fn read_value(&self) -> bool {
-    R::read_pin(N)
-  }
-}
-
-impl<T: GpioInput> InputPin<T> {
-  pub fn read_value(&self) -> bool {
-    unsafe { self.inner.read_value() }
-  }
-
-  pub fn set_bias(&mut self, bias: Bias) {
-    unsafe {
-      self.inner.set_bias(bias);
-    }
-  }
-}
-
-impl<T: GpioInput + GpioOutput> InputPin<T> {
-  pub fn into_output(self) -> OutputPin<T> {
-    unsafe {
-      self.inner.configure_as_output();
-    }
-    OutputPin { inner: self.inner }
+    return OutputPin {
+      inner: self
+    };
   }
 }
 
-impl<T: GpioOutput> OutputPin<T> {
-  pub fn set_speed(&mut self, speed: Speed) {
-    unsafe {
-      self.inner.set_speed(speed);
-    }
+impl<const B: char, const P: u8, const M: u8> Input for InputPin<GpioPin<B, P, M>> {
+  fn set_bias(&self, bias: Bias, open_drain: bool) {
+    let block = B;
+    let pin = P;
+
+    match block {
+      'a' => {
+        let gpioa = &PERIPHERAL_PTR.GPIOA;
+        match bias {
+          Bias::None => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'b' => {
+        let gpiob = &PERIPHERAL_PTR.GPIOB;
+        match bias {
+          Bias::None => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'c' => {
+        let gpioc = &PERIPHERAL_PTR.GPIOC;
+        match bias {
+          Bias::None => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'd' => {
+        let gpiod = &PERIPHERAL_PTR.GPIOD;
+        match bias {
+          Bias::None => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'e' => {
+        let gpioe = &PERIPHERAL_PTR.GPIOE;
+        match bias {
+          Bias::None => gpioe.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpioe.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpioe.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'f' => {
+        let gpiof = &PERIPHERAL_PTR.GPIOF;
+        match bias {
+          Bias::None => gpiof.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpiof.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpiof.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'g' => {
+        let gpiog = &PERIPHERAL_PTR.GPIOG;
+        match bias {
+          Bias::None => gpiog.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpiog.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpiog.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'h' => {
+        let gpioh = &PERIPHERAL_PTR.GPIOH;
+        match bias {
+          Bias::None => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      _   => panic!("P{}{} is not an available GPIO Pin", block.to_uppercase(), pin)
+    };
   }
 
-  pub fn set_value(&mut self, value: bool) {
-    unsafe {
-      self.inner.set_value(value);
-    }
+  fn read_value(&self) -> bool {
+    let block = B;
+    let pin = P;
+
+    let bits = match block {
+      'a' => {
+        let gpioa = &PERIPHERAL_PTR.GPIOA;
+        gpioa.idr.read().bits()
+      },
+      'b' => {
+        let gpiob = &PERIPHERAL_PTR.GPIOB;
+        gpiob.idr.read().bits()
+      },
+      'c' => {
+        let gpioc = &PERIPHERAL_PTR.GPIOC;
+        gpioc.idr.read().bits()
+      },
+      'd' => {
+        let gpiod = &PERIPHERAL_PTR.GPIOD;
+        gpiod.idr.read().bits()
+      },
+      'e' => {
+        let gpioe = &PERIPHERAL_PTR.GPIOE;
+        gpioe.idr.read().bits()
+      },
+      'f' => {
+        let gpiof = &PERIPHERAL_PTR.GPIOF;
+        gpiof.idr.read().bits()
+      },
+      'g' => {
+        let gpiog = &PERIPHERAL_PTR.GPIOG;
+        gpiog.idr.read().bits()
+      },
+      'h' => {
+        let gpioh = &PERIPHERAL_PTR.GPIOH;
+        gpioh.idr.read().bits()
+      },
+      _   => panic!("P{}{} is not an available GPIO Pin", block.to_uppercase(), pin)
+    };
+
+    if bits & (1 << pin) == (1 << pin) {return true;}
+    else {return false;}
   }
 }
 
-impl<T: GpioInput + GpioOutput> OutputPin<T> {
-  pub fn into_input(self) -> InputPin<T> {
-    unsafe {
-      self.inner.configure_as_input();
-    }
-    InputPin { inner: self.inner }
+impl<const B: char, const P: u8, const M: u8> Output for OutputPin<GpioPin<B, P, M>> {
+  fn set_speed(&self, speed: Speed) {
+    let block = B;
+    let pin = P;
+
+    match block {
+      'a' => {
+        let gpioa = &PERIPHERAL_PTR.GPIOA;
+        match speed {
+          Speed::Low => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Speed::Medium => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Speed::Fast => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))}),
+          Speed::High => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin)))})
+        };
+      },
+      'b' => {
+        let gpiob = &PERIPHERAL_PTR.GPIOB;
+        match speed {
+          Speed::Low => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Speed::Medium => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Speed::Fast => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))}),
+          Speed::High => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin)))})
+        };
+      },
+      'c' => {
+        let gpioc = &PERIPHERAL_PTR.GPIOC;
+        match speed {
+          Speed::Low => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Speed::Medium => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Speed::Fast => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))}),
+          Speed::High => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin)))})
+        };
+      },
+      'd' => {
+        let gpiod = &PERIPHERAL_PTR.GPIOD;
+        match speed {
+          Speed::Low => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Speed::Medium => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Speed::Fast => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))}),
+          Speed::High => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin)))})
+        };
+      },
+      'e' => {
+        let gpioe = &PERIPHERAL_PTR.GPIOE;
+        match speed {
+          Speed::Low => gpioe.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Speed::Medium => gpioe.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Speed::Fast => gpioe.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))}),
+          Speed::High => gpioe.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin)))})
+        };
+      },
+      'f' => {
+        let gpiof = &PERIPHERAL_PTR.GPIOF;
+        match speed {
+          Speed::Low => gpiof.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Speed::Medium => gpiof.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Speed::Fast => gpiof.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))}),
+          Speed::High => gpiof.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin)))})
+        };
+      },
+      'g' => {
+        let gpiog = &PERIPHERAL_PTR.GPIOG;
+        match speed {
+          Speed::Low => gpiog.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Speed::Medium => gpiog.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Speed::Fast => gpiog.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))}),
+          Speed::High => gpiog.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin)))})
+        };
+      },
+      'h' => {
+        let gpioh = &PERIPHERAL_PTR.GPIOH;
+        match speed {
+          Speed::Low => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Speed::Medium => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Speed::Fast => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))}),
+          Speed::High => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin)))})
+        };
+      },
+      _   => panic!("P{}{} is not an available GPIO Pin", block.to_uppercase(), pin)
+    };
   }
-}
 
+  fn set_bias(&self, bias: Bias, open_drain: bool) {
+    let block = B;
+    let pin = P;
 
-// Functions ======================================================================================
-pub fn read_value<T: GpioInput>(pin: &InputPin<T>) -> bool {
-  pin.read_value()
-}
+    match block {
+      'a' => {
+        let gpioa = &PERIPHERAL_PTR.GPIOA;
+        match bias {
+          Bias::None => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'b' => {
+        let gpiob = &PERIPHERAL_PTR.GPIOB;
+        match bias {
+          Bias::None => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'c' => {
+        let gpioc = &PERIPHERAL_PTR.GPIOC;
+        match bias {
+          Bias::None => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'd' => {
+        let gpiod = &PERIPHERAL_PTR.GPIOD;
+        match bias {
+          Bias::None => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'e' => {
+        let gpioe = &PERIPHERAL_PTR.GPIOE;
+        match bias {
+          Bias::None => gpioe.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpioe.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpioe.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'f' => {
+        let gpiof = &PERIPHERAL_PTR.GPIOF;
+        match bias {
+          Bias::None => gpiof.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpiof.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpiof.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'g' => {
+        let gpiog = &PERIPHERAL_PTR.GPIOG;
+        match bias {
+          Bias::None => gpiog.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpiog.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpiog.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      'h' => {
+        let gpioh = &PERIPHERAL_PTR.GPIOH;
+        match bias {
+          Bias::None => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))}),
+          Bias::Pullup => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))}),
+          Bias::Pulldown => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
+        };
+      },
+      _   => panic!("P{}{} is not an available GPIO Pin", block.to_uppercase(), pin)
+    };
+  }
 
-pub fn set_bias<T: GpioInput>(pin: &mut InputPin<T>, bias: Bias) {
-  pin.set_bias(bias);
-}
+  fn open_drain(&self) {
+    let block = B;
+    let pin = P;
 
-pub fn into_output<T: GpioInput + GpioOutput>(pin: InputPin<T>) -> OutputPin<T> {
-  pin.into_output()
-}
+    match block {
+      'a' => {
+        let gpioa = &PERIPHERAL_PTR.GPIOA;
+        gpioa.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin))});
+      },
+      'b' => {
+        let gpiob = &PERIPHERAL_PTR.GPIOB;
+        gpiob.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin))});
+      },
+      'c' => {
+        let gpioc = &PERIPHERAL_PTR.GPIOC;
+        gpioc.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin))});
+      },
+      'd' => {
+        let gpiod = &PERIPHERAL_PTR.GPIOD;
+        gpiod.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin))});
+      },
+      'e' => {
+        let gpioe = &PERIPHERAL_PTR.GPIOE;
+        gpioe.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin))});
+      },
+      'f' => {
+        let gpiof = &PERIPHERAL_PTR.GPIOF;
+        gpiof.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin))});
+      },
+      'g' => {
+        let gpiog = &PERIPHERAL_PTR.GPIOG;
+        gpiog.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin))});
+      },
+      'h' => {
+        let gpioh = &PERIPHERAL_PTR.GPIOH;
+        gpioh.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin))});
+      },
+      _   => panic!("P{}{} is not an available GPIO Pin", block.to_uppercase(), pin)
+    };
+  }
 
-pub fn set_value<T: GpioOutput>(pin: &mut OutputPin<T>, value: bool) {
-  pin.set_value(value);
-}
+  fn set_value(&self, value: bool) {
+    let block = B;
+    let pin = P;
 
-pub fn set_speed<T: GpioOutput>(pin: &mut OutputPin<T>, speed: Speed) {
-  pin.set_speed(speed);
-}
-
-pub fn into_input<T: GpioInput + GpioOutput>(pin: OutputPin<T>) -> InputPin<T> {
-  pin.into_input()
+    match block {
+      'a' => {
+        let gpioa = &PERIPHERAL_PTR.GPIOA;
+        if value == true {gpioa.bsrr.write(|w| unsafe {w.bits(1 << pin)});}
+        else {gpioa.bsrr.write(|w| unsafe {w.bits(1 << (pin + 16))});}
+      },
+      'b' => {
+        let gpiob = &PERIPHERAL_PTR.GPIOB;
+        if value == true {gpiob.bsrr.write(|w| unsafe {w.bits(1 << pin)});}
+        else {gpiob.bsrr.write(|w| unsafe {w.bits(1 << (pin + 16))});}
+      },
+      'c' => {
+        let gpioc = &PERIPHERAL_PTR.GPIOC;
+        if value == true {gpioc.bsrr.write(|w| unsafe {w.bits(1 << pin)});}
+        else {gpioc.bsrr.write(|w| unsafe {w.bits(1 << (pin + 16))});}
+      },
+      'd' => {
+        let gpiod = &PERIPHERAL_PTR.GPIOD;
+        if value == true {gpiod.bsrr.write(|w| unsafe {w.bits(1 << pin)});}
+        else {gpiod.bsrr.write(|w| unsafe {w.bits(1 << (pin + 16))});}
+      },
+      'e' => {
+        let gpioe = &PERIPHERAL_PTR.GPIOE;
+        if value == true {gpioe.bsrr.write(|w| unsafe {w.bits(1 << pin)});}
+        else {gpioe.bsrr.write(|w| unsafe {w.bits(1 << (pin + 16))});}
+      },
+      'f' => {
+        let gpiof = &PERIPHERAL_PTR.GPIOF;
+        if value == true {gpiof.bsrr.write(|w| unsafe {w.bits(1 << pin)});}
+        else {gpiof.bsrr.write(|w| unsafe {w.bits(1 << (pin + 16))});}
+      },
+      'g' => {
+        let gpiog = &PERIPHERAL_PTR.GPIOG;
+        if value == true {gpiog.bsrr.write(|w| unsafe {w.bits(1 << pin)});}
+        else {gpiog.bsrr.write(|w| unsafe {w.bits(1 << (pin + 16))});}
+      },
+      'h' => {
+        let gpioh = &PERIPHERAL_PTR.GPIOH;
+        if value == true {gpioh.bsrr.write(|w| unsafe {w.bits(1 << pin)});}
+        else {gpioh.bsrr.write(|w| unsafe {w.bits(1 << (pin + 16))});}
+      },
+      _   => panic!("P{}{} is not an available GPIO Pin", block.to_uppercase(), pin)
+    };
+  }
 }

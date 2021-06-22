@@ -8,17 +8,17 @@ pub use panic_semihosting as _;
 // Für benutzer
 pub use libm::*;
 pub use heapless::{Vec, String, FnvIndexMap};
-pub use {include::*,  gpio_d::*, analog::*, time::*, uart::*};
+pub use {include::*,  gpio::*, analog::*, time::*, uart::*, common::*};
 
 
 // Submodule includes =============================================================================
 pub mod include;
-pub mod gpio_d;
+pub mod gpio;
 pub mod analog;
 pub mod time;
 pub mod uart;
-pub mod gpio;
 pub mod test;
+pub mod common;
 
 pub mod pwm {
   use super::include::PERIPHERAL_PTR;

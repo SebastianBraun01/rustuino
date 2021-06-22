@@ -5,33 +5,36 @@ pub const CORE_PERIPHERAL_PTR: cortex_m::Peripherals = cortex_m::Peripherals::ta
 
 // Data maps ======================================================================================
 pub mod data_maps {
-  use heapless::Vec;
-  use super::super::gpio_d::{Mode, Fn, Dir};
-
-  // Pin config struct ============================================================================
-  struct PinConfig {
-    pub pin: Vec<(u8, char), 25>,
-    pub mode: Vec<Mode, 25>
+  // Analog pin config map ========================================================================
+  struct ADC1Map {
+    pub pin: [(char, u8); 16],
+    pub channel: [u8; 16]
   }
 
-  pub static mut PINCONFIG: PinConfig = PinConfig{
-    pin: Vec::new(),
-    mode: Vec::new()
+  struct ADC3Map {
+    pub pin: [u8; 7],
+    pub channel: [u8; 7]
+  }
+
+  pub const ADC1_MAP: ADC1Map = ADC1Map{
+    pin: [('a', 0), ('a', 1), ('a', 2), ('a', 3), ('a', 4), ('a', 5), ('a', 6), ('a', 7), ('b', 0), ('b', 1), ('c', 0), ('c', 1), ('c', 2), ('c', 3), ('c', 4), ('c', 5)],
+    channel: [0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,  15]
   };
 
+  pub const ADC3_MAP: ADC3Map = ADC3Map{
+    pin:     [3, 4,  5,  6, 7, 8, 9],
+    channel: [9, 14, 15, 4, 5, 6, 7]
+  };  
 
-  // Analog pin config map ========================================================================
-  // struct ADCMap {
-  //   pub pin: [(u8, char); 16],
-  //   pub channel: [u8; 16],
-  //   pub active: [bool; 16]
-  // }
 
-  // pub static mut ADC_MAP: ADCMap = ADCMap{
-  //   pin:     [PA0,   PA1,   PA2,   PA3,   PA4,   PA5,   PA6,   PA7,   PB0,   PB1,   PC0,   PC1,   PC2,   PC3,   PC4,   PC5],
-  //   channel: [0,     1,     2,     3,     4,     5,     6,     7,     8,     9,     10,    11,    12,    13,    14,    15],
-  //   active:  [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]
-  // };
+
+
+
+
+
+
+
+
 
 
   // DAC pin config map ===========================================================================
