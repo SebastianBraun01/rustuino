@@ -13,12 +13,11 @@ pub use {include::*,  gpio::*, analog::*, time::*, uart::*, common::*};
 
 // Submodule includes =============================================================================
 pub mod include;
+pub mod common;
 pub mod gpio;
 pub mod analog;
 pub mod time;
 pub mod uart;
-pub mod test;
-pub mod common;
 
 pub mod pwm {
   use super::include::PERIPHERAL_PTR;

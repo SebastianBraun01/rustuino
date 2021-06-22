@@ -27,6 +27,8 @@ pub mod data_maps {
   };  
 
 
+  // Seral config storage =========================================================================
+  pub static mut UART_USB: bool = false;
 
 
 
@@ -37,8 +39,6 @@ pub mod data_maps {
 
 
 
-  // DAC pin config map ===========================================================================
-  pub static mut DAC_MAP: (bool, bool) = (false, false);
 
 
   // UART pin config map ==========================================================================
@@ -57,7 +57,7 @@ pub mod data_maps {
   //   active:  [false, false, false, false, false, false, false, false, false, false, false, false]
   // };
 
-  pub static mut UART_USB: bool = false;
+  
 
 
   // PWM pin config map ===========================================================================

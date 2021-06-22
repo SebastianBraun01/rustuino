@@ -30,12 +30,12 @@ use super::gpio::{Bias, Speed};
 
 // Structs ========================================================================================
 pub struct GpioPin<const B: char, const P: u8, const M: u8> {
-  block: char,
-  pin: u8,
+  pub block: char,
+  pub pin: u8,
 }
 
 // pub type PB0 = GpioPin<'a', 0, 1>;
-macro_rules! pin_definition {
+macro_rules! generate_pins {
   ($([$block:ident; $block_char:literal; $pin:literal; $func:literal]),+) => {
     use paste;
 
@@ -69,30 +69,39 @@ pub struct UartPin<T> {
 
 
 // Traits =========================================================================================
-pub trait Pin: Sized {
+pub trait ToInOut: Sized {
   // fn pin_mode(self, mode: Mode) -> Self;
   fn input(self) -> InputPin<Self>;
   fn output(self) -> OutputPin<Self>;
-  fn analog(self) -> AnalogPin<Self>;
+}
+
+pub trait ToAnalog: Sized {
+  fn analog(self, resolution: u8, eocint: bool) -> AnalogPin<Self>;
+}
+
+pub trait ToPwm: Sized {
   fn pwm(self) -> PwmPin<Self>;
+}
+
+pub trait ToUart: Sized {
   fn uart(self) -> UartPin<Self>;
 }
 
 pub trait Input: Sized {
-  fn set_bias(&self, bias: Bias);
-  fn read_value(&self) -> bool;
+  fn bias(&self, bias: Bias);
+  fn read(&self) -> bool;
 }
 
 pub trait Output: Sized {
-  fn set_speed(&self, speed: Speed);
-  fn set_bias(&self, bias: Bias);
+  fn speed(&self, speed: Speed);
+  fn bias(&self, bias: Bias);
   fn open_drain(&self);
-  fn set_value(&self, value: bool);
+  fn write(&self, value: bool);
 }
 
 pub trait Analog: Sized {
   fn analog_read(&self) -> u16;
-  fn analog_write(&self, value: u8);
+  fn analog_write(&self, value: u16);
 }
 
 pub trait PWM: Sized {
@@ -103,7 +112,7 @@ pub trait UART: Sized {
   fn send_char(&self, c: char);
   fn send_string(&self, s: &str);
   fn recieve_char(&self) -> char;
-  fn recieve_string(&self, stopper: char) -> String;
+  fn recieve_string(&self, stopper: char) -> String<30>;
 }
 
 

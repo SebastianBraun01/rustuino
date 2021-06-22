@@ -1,65 +1,18 @@
 use libm::*;
 use heapless::Vec;
-use super::include::pins::*;
-use super::gpio_d::{Mode, pin_mode};
-use super::include::data_maps::{PINCONFIG, UART_MAP, UART_USB};
+use super::common::*;
 use super::include::PERIPHERAL_PTR;
 
-pub fn uart_usb_init(baud: u32, rxint: bool, txint: bool) {
-  let rcc = &PERIPHERAL_PTR.RCC;
-  let usart2 = &PERIPHERAL_PTR.USART2;
-  
-  // (Mantisse, Fractal)
-  let usartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));
-  
-  unsafe {if UART_USB == true {panic!("UART USB channel is already PINCONFIGured!");}}
-  
-  rcc.apb1enr.modify(|_, w| w.usart2en().enabled());
-  
-  usart2.brr.write(|w| {
-    w.div_mantissa().bits(usartdiv.0 as u16);
-    w.div_fraction().bits(usartdiv.1 as u8)
-  });
-  
-  if rxint == true {usart2.cr1.modify(|_, w| w.rxneie().enabled());}
-  if txint == true {usart2.cr1.modify(|_, w| w.tcie().enabled());}
-  
-  usart2.cr1.modify(|_, w| {
-    w.re().enabled();
-    w.te().enabled()
-  });
-  
-  unsafe {UART_USB = true;}
-  
-  pin_mode(PA2, Mode::AlterateFunction(7));
-  pin_mode(PA3, Mode::AlterateFunction(7));
-}
 
-pub fn send_char_usb(c: char) {
-  let usart2 = &PERIPHERAL_PTR.USART2;
-  
-  if c.is_ascii() == true {
-    unsafe {if UART_USB == false {panic!("UART USB channel ist not PINCONFIGured!");}}
-    while usart2.sr.read().txe().bit_is_set() == true {}
-    usart2.dr.write(|w| w.dr().bits(c as u16));
-    while usart2.sr.read().txe().bit_is_set() == true {}
+// Converter implementations ======================================================================
+impl<const B: char, const P: u8> ToUart for GpioPin<B, P, 8> {
+  fn uart(self) -> UartPin<Self> {
+    
   }
-  else {panic!("{} is not an ASCII character!", c);}
 }
 
-pub fn recieve_char_usb() -> char {
-  let usart2 = &PERIPHERAL_PTR.USART2;
-  let buffer: u8;
-  
-  unsafe {if UART_USB == false {panic!("UART USB channel ist not PINCONFIGured!");}}
-  
-  while usart2.sr.read().rxne().bit_is_clear() == true {}
-  buffer = usart2.dr.read().dr().bits() as u8;
-  
-  return buffer as char;
-}
 
-// TODO: finish not usb uart functions + better uart map
+// Helper functions ===============================================================================
 pub fn uart_init(baud: u32, rxint: bool, txint: bool) {
   let rcc = &PERIPHERAL_PTR.RCC;
   let usart1 = &PERIPHERAL_PTR.USART1;
@@ -225,67 +178,148 @@ pub fn recieve_char() -> char {
 }
 
 
-// Macro declerations =============================================================================
-#[macro_export]
-macro_rules! sprint {
-  ($param:expr) => {
-    use core::fmt;
+// UART Serial connection =========================================================================
+pub mod Serial {
+  use libm::*;
+  use cortex_m_semihosting::hprintln;
+  use super::super::include::PERIPHERAL_PTR;
+  use super::super::include::data_maps::UART_USB;
 
-    let mut txt_buff: String<50> = String::new();
-    if fmt::write(&mut txt_buff, format_args!($param)).is_err() {txt_buff = String::from("~\r\n")};
+  pub fn init(baud: u32, rxint: bool, txint: bool) {
+    let rcc = &PERIPHERAL_PTR.RCC;
+    let usart2 = &PERIPHERAL_PTR.USART2;
+    let gpioa = &PERIPHERAL_PTR.GPIOA;
+    
+    // (Mantisse, Fractal)
+    let usartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));
+
+    unsafe {
+      if UART_USB == true {
+        hprintln!("Serial connection already configured!");
+        usart2.cr1.modify(|_, w| w.ue().disabled());
+      }
+    }
+    
+    rcc.apb1enr.modify(|_, w| w.usart2en().enabled());
+    
+    usart2.brr.write(|w| {
+      w.div_mantissa().bits(usartdiv.0 as u16);
+      w.div_fraction().bits(usartdiv.1 as u8)
+    });
+    
+    if rxint == true {usart2.cr1.modify(|_, w| w.rxneie().enabled());}
+    if txint == true {usart2.cr1.modify(|_, w| w.tcie().enabled());}
+    
+    usart2.cr1.modify(|_, w| {
+      w.re().enabled();
+      w.te().enabled();
+      w.ue().enabled()
+    });
+    
+    unsafe {UART_USB = true;}
+    
+    rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+    gpioa.moder.modify(|_, w| w.moder2().alternate());
+    gpioa.moder.modify(|_, w| w.moder3().alternate());
+    gpioa.afrl.modify(|_, w| w.afrl2().af7());
+    gpioa.afrl.modify(|_, w| w.afrl3().af7());
+  }
+
+  pub fn send_char_usb(c: char) {
+    let usart2 = &PERIPHERAL_PTR.USART2;
+    
+    unsafe {if UART_USB == false {panic!("UART USB channel ist not PINCONFIGured!");}}
+
+    if c.is_ascii() == true {
+      while usart2.sr.read().txe().bit_is_set() == true {}
+      usart2.dr.write(|w| w.dr().bits(c as u16));
+      while usart2.sr.read().txe().bit_is_set() == true {}
+    }
+    else {
+      c = '?';
+      hprintln!("Cant send non-ascii characters!");
+
+      while usart2.sr.read().txe().bit_is_set() == true {}
+      usart2.dr.write(|w| w.dr().bits(c as u16));
+      while usart2.sr.read().txe().bit_is_set() == true {}
+    }
+  }
   
-    for c in txt_buff.chars() {
-      if c.is_ascii() == true {send_char_usb(c);}
-      else {send_char_usb('?');}
-    }
-  };
-}
+  pub fn recieve_char_usb() -> char {
+    let usart2 = &PERIPHERAL_PTR.USART2;
+    let buffer: u8;
+    
+    unsafe {if UART_USB == false {panic!("UART USB channel ist not PINCONFIGured!");}}
+    
+    while usart2.sr.read().rxne().bit_is_clear() == true {}
+    buffer = usart2.dr.read().dr().bits() as u8;
+    
+    return buffer as char;
+  }
 
-#[macro_export]
-macro_rules! sprintln {
-  ($param:expr) => {
-    use core::fmt;
 
-    let mut txt_buff: String<50> = String::new();
-    if fmt::write(&mut txt_buff, format_args!(" ")).is_err() {txt_buff = String::from("~\r\n")};
-  
-    for c in txt_buff.chars() {
-      if c.is_ascii() == true {send_char_usb(c);}
-      else {send_char_usb('?');}
-    }
+  // Macro declerations ===========================================================================
+  #[macro_export]
+  macro_rules! sprint {
+    ($param:expr) => {
+      use core::fmt;
 
-    send_char_usb('\r');
-    send_char_usb('\n');
-  };
-}
+      let mut txt_buff: String<50> = String::new();
+      if fmt::write(&mut txt_buff, format_args!($param)).is_err() {txt_buff = String::from("~\r\n")};
+    
+      for c in txt_buff.chars() {
+        if c.is_ascii() == true {send_char_usb(c);}
+        else {send_char_usb('?');}
+      }
+    };
+  }
 
-#[macro_export]
-macro_rules! sread {
-  () => {{
-    let c_buff: char = recieve_char_usb();  
-    c_buff
-  }};
+  #[macro_export]
+  macro_rules! sprintln {
+    ($param:expr) => {
+      use core::fmt;
 
-  ($c:expr) => {{
-    let found: bool;
+      let mut txt_buff: String<50> = String::new();
+      if fmt::write(&mut txt_buff, format_args!(" ")).is_err() {txt_buff = String::from("~\r\n")};
+    
+      for c in txt_buff.chars() {
+        if c.is_ascii() == true {send_char_usb(c);}
+        else {send_char_usb('?');}
+      }
 
-    if recieve_char_usb() == $c {found = true;}
-    else {found = false;}
+      send_char_usb('\r');
+      send_char_usb('\n');
+    };
+  }
 
-    found
-  }};
-}
+  #[macro_export]
+  macro_rules! sread {
+    () => {{
+      let c_buff: char = recieve_char_usb();  
+      c_buff
+    }};
 
-#[macro_export]
-macro_rules! sreads {
-  ($stop:expr) => {{
-    let mut str: String<50> = String::new();
-    let mut buff: char;
-    loop {
-      buff = recieve_char_usb();
-      if buff == $stop as char {break;}
-      str.push(buff).expect("String buffer full!");
-    }
-    str
-  }};
+    ($c:expr) => {{
+      let found: bool;
+
+      if recieve_char_usb() == $c {found = true;}
+      else {found = false;}
+
+      found
+    }};
+  }
+
+  #[macro_export]
+  macro_rules! sreads {
+    ($stop:expr) => {{
+      let mut str: String<50> = String::new();
+      let mut buff: char;
+      loop {
+        buff = recieve_char_usb();
+        if buff == $stop as char {break;}
+        str.push(buff).expect("String buffer full!");
+      }
+      str
+    }};
+  }
 }
