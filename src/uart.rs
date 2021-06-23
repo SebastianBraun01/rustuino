@@ -1,24 +1,21 @@
-use core::usize;
-
 use libm::*;
 use heapless::String;
 use cortex_m_semihosting::hprintln;
 use super::common::*;
-use super::include::PERIPHERAL_PTR;
 use super::include::data_maps::{UART_MAP, UART_CONF};
 
 
 // Converter implementations ======================================================================
 impl<const B: char, const P: u8> ToUart for GpioPin<B, P, 8> {
   fn uart(self, baud: u32, rxint: bool, txint: bool) -> UartPin<Self> {
-    self.block = B;
-    self.pin = P;
+    let block = B;
+    let pin = P;
 
     let channel: usize;
     let direction: bool;
 
-    if UART_MAP.rx_pin.contains(&(self.block, self.pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (self.block, self.pin)).unwrap()] as usize;
+    if UART_MAP.rx_pin.contains(&(block, pin)) == true {
+      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
         else {
@@ -30,8 +27,8 @@ impl<const B: char, const P: u8> ToUart for GpioPin<B, P, 8> {
       }
       direction = false;
     }
-    else if UART_MAP.tx_pin.contains(&(self.block, self.pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (self.block, self.pin)).unwrap()] as usize;
+    else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
+      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
         else {
@@ -43,7 +40,7 @@ impl<const B: char, const P: u8> ToUart for GpioPin<B, P, 8> {
       }
       direction = true;
     }
-    else {panic!("{}{} can not be used for UART communication!", self.block.to_uppercase(), self.pin);}
+    else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
 
     uart_init(channel, direction, baud, rxint, txint);
 
@@ -67,6 +64,10 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
     else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
     }
+    else {
+      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);
+      return;
+    }
     
     rx_interrupt(channel, true);
   }
@@ -81,6 +82,10 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
     }
     else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
+    }
+    else {
+      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);
+      return;
     }
     
     rx_interrupt(channel, false);
@@ -97,6 +102,10 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
     else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
     }
+    else {
+      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);
+      return;
+    }
     
     tx_interrupt(channel, true);
   }
@@ -111,6 +120,10 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
     }
     else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
+    }
+    else {
+      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);
+      return;
     }
     
     tx_interrupt(channel, false);
@@ -232,8 +245,8 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
     let block = B;
     let pin = P;
     let channel: usize;
-    let buffer: char;
-    let string_buffer: String<30> = String::new();
+    let mut buffer: char;
+    let mut string_buffer: String<30> = String::new();
 
     if stopper.is_ascii() == false {
       hprintln!("Stop character is not an ASCII character!");
@@ -271,11 +284,12 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
 
 // Helper functions ===============================================================================
 fn uart_init(channel: usize, direction: bool, baud: u32, rxint: bool, txint: bool) {
-  let rcc = &PERIPHERAL_PTR.RCC;
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let rcc = &peripheral_ptr.RCC;
   
   match channel {
     1 => {
-      let usart1 = &PERIPHERAL_PTR.USART1;
+      let usart1 = &peripheral_ptr.USART1;
       rcc.apb2enr.modify(|_, w| w.usart1en().enabled());
           
       set_baud(channel, baud);
@@ -286,7 +300,7 @@ fn uart_init(channel: usize, direction: bool, baud: u32, rxint: bool, txint: boo
       usart1.cr1.modify(|_, w| w.ue().enabled());
     },
     3 => {
-      let usart3 = &PERIPHERAL_PTR.USART3;
+      let usart3 = &peripheral_ptr.USART3;
       rcc.apb1enr.modify(|_, w| w.usart3en().enabled());
           
       set_baud(channel, baud);
@@ -297,7 +311,7 @@ fn uart_init(channel: usize, direction: bool, baud: u32, rxint: bool, txint: boo
       usart3.cr1.modify(|_, w| w.ue().enabled());
     },
     4 => {
-      let uart4 = &PERIPHERAL_PTR.UART4;
+      let uart4 = &peripheral_ptr.UART4;
       rcc.apb1enr.modify(|_, w| w.uart4en().enabled());
           
       set_baud(channel, baud);
@@ -308,7 +322,7 @@ fn uart_init(channel: usize, direction: bool, baud: u32, rxint: bool, txint: boo
       uart4.cr1.modify(|_, w| w.ue().enabled());
     },
     5 => {
-      let uart5 = &PERIPHERAL_PTR.UART5;
+      let uart5 = &peripheral_ptr.UART5;
       rcc.apb1enr.modify(|_, w| w.uart5en().enabled());
           
       set_baud(channel, baud);
@@ -319,7 +333,7 @@ fn uart_init(channel: usize, direction: bool, baud: u32, rxint: bool, txint: boo
       uart5.cr1.modify(|_, w| w.ue().enabled());
     },
     6 => {
-      let usart6 = &PERIPHERAL_PTR.USART6;
+      let usart6 = &peripheral_ptr.USART6;
       rcc.apb2enr.modify(|_, w| w.usart6en().enabled());
           
       set_baud(channel, baud);
@@ -337,34 +351,36 @@ fn uart_init(channel: usize, direction: bool, baud: u32, rxint: bool, txint: boo
 }
 
 fn rx_interrupt(channel: usize, enable: bool) {
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  
   match channel {
     1 => {
-      let usart1 = &PERIPHERAL_PTR.USART1;
+      let usart1 = &peripheral_ptr.USART1;
       if enable == true {usart1.cr1.modify(|_, w| w.rxneie().enabled());}
       else {usart1.cr1.modify(|_, w| w.rxneie().disabled());}
     },
     2 => {
-      let usart2 = &PERIPHERAL_PTR.USART2;
+      let usart2 = &peripheral_ptr.USART2;
       if enable == true {usart2.cr1.modify(|_, w| w.rxneie().enabled());}
       else {usart2.cr1.modify(|_, w| w.rxneie().disabled());}
     },
     3 => {
-      let usart3 = &PERIPHERAL_PTR.USART3;
+      let usart3 = &peripheral_ptr.USART3;
       if enable == true {usart3.cr1.modify(|_, w| w.rxneie().enabled());}
       else {usart3.cr1.modify(|_, w| w.rxneie().disabled());}
     },
     4 => {
-      let uart4 = &PERIPHERAL_PTR.UART4;
+      let uart4 = &peripheral_ptr.UART4;
       if enable == true {uart4.cr1.modify(|_, w| w.rxneie().enabled());}
       else {uart4.cr1.modify(|_, w| w.rxneie().disabled());}
     },
     5 => {
-      let uart5 = &PERIPHERAL_PTR.UART5;
+      let uart5 = &peripheral_ptr.UART5;
       if enable == true {uart5.cr1.modify(|_, w| w.rxneie().enabled());}
       else {uart5.cr1.modify(|_, w| w.rxneie().disabled());}
     },
     6 => {
-      let usart6 = &PERIPHERAL_PTR.USART6;
+      let usart6 = &peripheral_ptr.USART6;
       if enable == true {usart6.cr1.modify(|_, w| w.rxneie().enabled());}
       else {usart6.cr1.modify(|_, w| w.rxneie().disabled());}
     },
@@ -373,34 +389,36 @@ fn rx_interrupt(channel: usize, enable: bool) {
 }
 
 fn tx_interrupt(channel: usize, enable: bool) {
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+
   match channel {
     1 => {
-      let usart1 = &PERIPHERAL_PTR.USART1;
+      let usart1 = &peripheral_ptr.USART1;
       if enable == true {usart1.cr1.modify(|_, w| w.tcie().enabled());}
       else {usart1.cr1.modify(|_, w| w.tcie().disabled());}
     },
     2 => {
-      let usart2 = &PERIPHERAL_PTR.USART2;
+      let usart2 = &peripheral_ptr.USART2;
       if enable == true {usart2.cr1.modify(|_, w| w.tcie().enabled());}
       else {usart2.cr1.modify(|_, w| w.tcie().disabled());}
     },
     3 => {
-      let usart3 = &PERIPHERAL_PTR.USART3;
+      let usart3 = &peripheral_ptr.USART3;
       if enable == true {usart3.cr1.modify(|_, w| w.tcie().enabled());}
       else {usart3.cr1.modify(|_, w| w.tcie().disabled());}
     },
     4 => {
-      let uart4 = &PERIPHERAL_PTR.UART4;
+      let uart4 = &peripheral_ptr.UART4;
       if enable == true {uart4.cr1.modify(|_, w| w.tcie().enabled());}
       else {uart4.cr1.modify(|_, w| w.tcie().disabled());}
     },
     5 => {
-      let uart5 = &PERIPHERAL_PTR.UART5;
+      let uart5 = &peripheral_ptr.UART5;
       if enable == true {uart5.cr1.modify(|_, w| w.tcie().enabled());}
       else {uart5.cr1.modify(|_, w| w.tcie().disabled());}
     },
     6 => {
-      let usart6 = &PERIPHERAL_PTR.USART6;
+      let usart6 = &peripheral_ptr.USART6;
       if enable == true {usart6.cr1.modify(|_, w| w.tcie().enabled());}
       else {usart6.cr1.modify(|_, w| w.tcie().disabled());}
     },
@@ -409,47 +427,49 @@ fn tx_interrupt(channel: usize, enable: bool) {
 }
 
 fn set_baud(channel: usize, baud: u32) {
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+
   // (Mantisse, Fractal)
   let usartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));
 
   match channel {
     1 => {
-      let usart1 = &PERIPHERAL_PTR.USART1;
+      let usart1 = &peripheral_ptr.USART1;
       usart1.brr.modify(|_, w| {
         w.div_mantissa().bits(usartdiv.0 as u16);
         w.div_fraction().bits(usartdiv.1 as u8)
       });
     },
     2 => {
-      let usart2 = &PERIPHERAL_PTR.USART2;
+      let usart2 = &peripheral_ptr.USART2;
       usart2.brr.modify(|_, w| {
         w.div_mantissa().bits(usartdiv.0 as u16);
         w.div_fraction().bits(usartdiv.1 as u8)
       });
     },
     3 => {
-      let usart3 = &PERIPHERAL_PTR.USART3;
+      let usart3 = &peripheral_ptr.USART3;
       usart3.brr.modify(|_, w| {
         w.div_mantissa().bits(usartdiv.0 as u16);
         w.div_fraction().bits(usartdiv.1 as u8)
       });
     },
     4 => {
-      let uart4 = &PERIPHERAL_PTR.UART4;
+      let uart4 = &peripheral_ptr.UART4;
       uart4.brr.modify(|_, w| {
         w.div_mantissa().bits(usartdiv.0 as u16);
         w.div_fraction().bits(usartdiv.1 as u8)
       });
     },
     5 => {
-      let uart5 = &PERIPHERAL_PTR.UART5;
+      let uart5 = &peripheral_ptr.UART5;
       uart5.brr.modify(|_, w| {
         w.div_mantissa().bits(usartdiv.0 as u16);
         w.div_fraction().bits(usartdiv.1 as u8)
       });
     },
     6 => {
-      let usart6 = &PERIPHERAL_PTR.USART6;
+      let usart6 = &peripheral_ptr.USART6;
       usart6.brr.modify(|_, w| {
         w.div_mantissa().bits(usartdiv.0 as u16);
         w.div_fraction().bits(usartdiv.1 as u8)
@@ -460,98 +480,94 @@ fn set_baud(channel: usize, baud: u32) {
 }
 
 fn transmit_char(channel: usize, c: char) {
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  
   match channel {
     1 => {
-      let usart1 = &PERIPHERAL_PTR.USART1;
+      let usart1 = &peripheral_ptr.USART1;
       if c.is_ascii() == true {
         while usart1.sr.read().txe().bit_is_set() == true {}
         usart1.dr.write(|w| w.dr().bits(c as u16));
         while usart1.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        c = '?';
         hprintln!("{} is not an ASCII character!", c);
     
         while usart1.sr.read().txe().bit_is_set() == true {}
-        usart1.dr.write(|w| w.dr().bits(c as u16));
+        usart1.dr.write(|w| w.dr().bits('?' as u16));
         while usart1.sr.read().txe().bit_is_set() == true {}
       }
     },
     2 => {
-      let usart2 = &PERIPHERAL_PTR.USART2;
+      let usart2 = &peripheral_ptr.USART2;
       if c.is_ascii() == true {
         while usart2.sr.read().txe().bit_is_set() == true {}
         usart2.dr.write(|w| w.dr().bits(c as u16));
         while usart2.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        c = '?';
         hprintln!("{} is not an ASCII character!", c);
     
         while usart2.sr.read().txe().bit_is_set() == true {}
-        usart2.dr.write(|w| w.dr().bits(c as u16));
+        usart2.dr.write(|w| w.dr().bits('?' as u16));
         while usart2.sr.read().txe().bit_is_set() == true {}
       }
     },
     3 => {
-      let usart3 = &PERIPHERAL_PTR.USART3;
+      let usart3 = &peripheral_ptr.USART3;
       if c.is_ascii() == true {
         while usart3.sr.read().txe().bit_is_set() == true {}
         usart3.dr.write(|w| w.dr().bits(c as u16));
         while usart3.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        c = '?';
         hprintln!("{} is not an ASCII character!", c);
     
         while usart3.sr.read().txe().bit_is_set() == true {}
-        usart3.dr.write(|w| w.dr().bits(c as u16));
+        usart3.dr.write(|w| w.dr().bits('?' as u16));
         while usart3.sr.read().txe().bit_is_set() == true {}
       }
     },
-    4 => {let uart4 = &PERIPHERAL_PTR.UART4;
+    4 => {let uart4 = &peripheral_ptr.UART4;
       if c.is_ascii() == true {
         while uart4.sr.read().txe().bit_is_set() == true {}
         uart4.dr.write(|w| w.dr().bits(c as u16));
         while uart4.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        c = '?';
         hprintln!("{} is not an ASCII character!", c);
     
         while uart4.sr.read().txe().bit_is_set() == true {}
-        uart4.dr.write(|w| w.dr().bits(c as u16));
+        uart4.dr.write(|w| w.dr().bits('?' as u16));
         while uart4.sr.read().txe().bit_is_set() == true {}
       }},
     5 => {
-      let uart5 = &PERIPHERAL_PTR.UART5;
+      let uart5 = &peripheral_ptr.UART5;
       if c.is_ascii() == true {
         while uart5.sr.read().txe().bit_is_set() == true {}
         uart5.dr.write(|w| w.dr().bits(c as u16));
         while uart5.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        c = '?';
         hprintln!("{} is not an ASCII character!", c);
     
         while uart5.sr.read().txe().bit_is_set() == true {}
-        uart5.dr.write(|w| w.dr().bits(c as u16));
+        uart5.dr.write(|w| w.dr().bits('?' as u16));
         while uart5.sr.read().txe().bit_is_set() == true {}
       }
     },
     6 => {
-      let usart6 = &PERIPHERAL_PTR.USART6;
+      let usart6 = &peripheral_ptr.USART6;
       if c.is_ascii() == true {
         while usart6.sr.read().txe().bit_is_set() == true {}
         usart6.dr.write(|w| w.dr().bits(c as u16));
         while usart6.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        c = '?';
         hprintln!("{} is not an ASCII character!", c);
     
         while usart6.sr.read().txe().bit_is_set() == true {}
-        usart6.dr.write(|w| w.dr().bits(c as u16));
+        usart6.dr.write(|w| w.dr().bits('?' as u16));
         while usart6.sr.read().txe().bit_is_set() == true {}
       }
     },
@@ -560,34 +576,36 @@ fn transmit_char(channel: usize, c: char) {
 }
 
 fn recieve_char(channel: usize) -> char {
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+
   let buffer = match channel {
     1 => {
-      let usart1 = &PERIPHERAL_PTR.USART1;
+      let usart1 = &peripheral_ptr.USART1;
       while usart1.sr.read().rxne().bit_is_clear() == true {}
       usart1.dr.read().dr().bits() as u8
     },
     2 => {
-      let usart2 = &PERIPHERAL_PTR.USART2;
+      let usart2 = &peripheral_ptr.USART2;
       while usart2.sr.read().rxne().bit_is_clear() == true {}
       usart2.dr.read().dr().bits() as u8
     },
     3 => {
-      let usart3 = &PERIPHERAL_PTR.USART3;
+      let usart3 = &peripheral_ptr.USART3;
       while usart3.sr.read().rxne().bit_is_clear() == true {}
       usart3.dr.read().dr().bits() as u8
     },
     4 => {
-      let uart4 = &PERIPHERAL_PTR.UART4;
+      let uart4 = &peripheral_ptr.UART4;
       while uart4.sr.read().rxne().bit_is_clear() == true {}
       uart4.dr.read().dr().bits() as u8
     },
     5 => {
-      let uart5 = &PERIPHERAL_PTR.UART5;
+      let uart5 = &peripheral_ptr.UART5;
       while uart5.sr.read().rxne().bit_is_clear() == true {}
       uart5.dr.read().dr().bits() as u8
     },
     6 => {
-      let usart6 = &PERIPHERAL_PTR.USART6;
+      let usart6 = &peripheral_ptr.USART6;
       while usart6.sr.read().rxne().bit_is_clear() == true {}
       usart6.dr.read().dr().bits() as u8
     },
@@ -602,13 +620,13 @@ fn recieve_char(channel: usize) -> char {
 pub mod Serial {
   use libm::*;
   use cortex_m_semihosting::hprintln;
-  use super::super::include::PERIPHERAL_PTR;
   use super::super::include::data_maps::UART_CONF;
 
   pub fn init(baud: u32, rxint: bool, txint: bool) {
-    let rcc = &PERIPHERAL_PTR.RCC;
-    let usart2 = &PERIPHERAL_PTR.USART2;
-    let gpioa = &PERIPHERAL_PTR.GPIOA;
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let rcc = &peripheral_ptr.RCC;
+    let usart2 = &peripheral_ptr.USART2;
+    let gpioa = &peripheral_ptr.GPIOA;
     
     // (Mantisse, Fractal)
     let usartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));
@@ -646,7 +664,8 @@ pub mod Serial {
   }
 
   pub fn send_char_usb(c: char) {
-    let usart2 = &PERIPHERAL_PTR.USART2;
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let usart2 = &peripheral_ptr.USART2;
     
     unsafe {if UART_CONF[1] == false {panic!("UART USB channel ist not PINCONFIGured!");}}
 
@@ -656,17 +675,17 @@ pub mod Serial {
       while usart2.sr.read().txe().bit_is_set() == true {}
     }
     else {
-      c = '?';
       hprintln!("{} is not an ASCII character!", c);
 
       while usart2.sr.read().txe().bit_is_set() == true {}
-      usart2.dr.write(|w| w.dr().bits(c as u16));
+      usart2.dr.write(|w| w.dr().bits('?' as u16));
       while usart2.sr.read().txe().bit_is_set() == true {}
     }
   }
   
   pub fn recieve_char_usb() -> char {
-    let usart2 = &PERIPHERAL_PTR.USART2;
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let usart2 = &peripheral_ptr.USART2;
     let buffer: u8;
     
     unsafe {if UART_CONF[1] == false {panic!("UART USB channel ist not PINCONFIGured!");}}

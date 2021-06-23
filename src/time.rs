@@ -1,10 +1,10 @@
-use super::include::PERIPHERAL_PTR;
 use cortex_m::peripheral::NVIC;
 use stm32f4::stm32f446::{Interrupt, interrupt};
 use super::include::variables::TIME_COUNTER;
 
 pub fn delay(ms: u32) {
-  let systick = &PERIPHERAL_PTR.STK;
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let systick = &peripheral_ptr.STK;
 
   // 2MHz mit 2000 PSC -> 1kHz
   let systick_psc = 2000000 / 1000;
@@ -22,8 +22,9 @@ pub fn delay(ms: u32) {
 }
 
 pub fn start_time() {
-  let rcc = &PERIPHERAL_PTR.RCC;
-  let tim9 = &PERIPHERAL_PTR.TIM9;
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let rcc = &peripheral_ptr.RCC;
+  let tim9 = &peripheral_ptr.TIM9;
 
   rcc.apb2enr.modify(|_, w| w.tim9en().enabled());
   tim9.dier.modify(|_, w| w.uie().enabled());
@@ -36,7 +37,8 @@ pub fn start_time() {
 }
 
 pub fn millis() -> usize {
-  let tim9 = &PERIPHERAL_PTR.TIM9;
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let tim9 = &peripheral_ptr.TIM9;
   let buffer: usize;
 
   tim9.cr1.modify(|_, w| w.cen().disabled());

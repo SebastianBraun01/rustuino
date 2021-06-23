@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(const_option)]
 
 // Library includes ===============================================================================
 pub use cortex_m_rt::{entry, exception};
@@ -20,14 +21,13 @@ pub mod time;
 pub mod uart;
 
 pub mod pwm {
-  use super::include::PERIPHERAL_PTR;
-
   pub fn pwm_init(num: u8, channel: u8) {
-    let rcc = &PERIPHERAL_PTR.RCC;
-    let tim2 = &PERIPHERAL_PTR.TIM2;
-    let tim3 = &PERIPHERAL_PTR.TIM3;
-    let tim4 = &PERIPHERAL_PTR.TIM4;
-    let tim5 = &PERIPHERAL_PTR.TIM5;
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let rcc = &peripheral_ptr.RCC;
+    let tim2 = &peripheral_ptr.TIM2;
+    let tim3 = &peripheral_ptr.TIM3;
+    let tim4 = &peripheral_ptr.TIM4;
+    let tim5 = &peripheral_ptr.TIM5;
 
       match num {
         2 => {
@@ -187,10 +187,11 @@ pub mod pwm {
   }
   
   pub fn pin_write_pwm(num: u8, channel: u8, write: u8) {
-    let tim2 = &PERIPHERAL_PTR.TIM2;
-    let tim3 = &PERIPHERAL_PTR.TIM3;
-    let tim4 = &PERIPHERAL_PTR.TIM4;
-    let tim5 = &PERIPHERAL_PTR.TIM5;
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let tim2 = &peripheral_ptr.TIM2;
+    let tim3 = &peripheral_ptr.TIM3;
+    let tim4 = &peripheral_ptr.TIM4;
+    let tim5 = &peripheral_ptr.TIM5;
 
       match num {
         2 => {

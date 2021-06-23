@@ -29,10 +29,7 @@ use super::gpio::{Bias, Speed};
 
 
 // Structs ========================================================================================
-pub struct GpioPin<const B: char, const P: u8, const M: u8> {
-  pub block: char,
-  pub pin: u8,
-}
+pub struct GpioPin<const B: char, const P: u8, const M: u8> {}
 
 // M: 2⁵ -> SPI     +
 //    2⁴ -> I2C     +
@@ -56,23 +53,23 @@ macro_rules! generate_pins {
 }
 
 pub struct InputPin<T> {
-  inner: T
+  pub inner: T
 }
 
 pub struct OutputPin<T> {
-  inner: T
+  pub inner: T
 }
 
 pub struct AnalogPin<T> {
-  inner: T
+  pub inner: T
 }
 
 pub struct PwmPin<T> {
-  inner: T
+  pub inner: T
 }
 
 pub struct UartPin<T> {
-  inner: T
+  pub inner: T
 }
 
 

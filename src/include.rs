@@ -1,24 +1,19 @@
-// Register pointers ==============================================================================
-pub const PERIPHERAL_PTR: stm32f4::stm32f446::Peripherals = stm32f4::stm32f446::Peripherals::take().unwrap();
-pub const CORE_PERIPHERAL_PTR: cortex_m::Peripherals = cortex_m::Peripherals::take().unwrap();
-
-
 // Data maps ======================================================================================
 pub mod data_maps {
   // Analog pin config map ========================================================================
-  struct ADC1Map {
+  pub struct ADC1Map {
     pub pin: [(char, u8); 16],
     pub channel: [u8; 16]
   }
 
-  struct ADC3Map {
+  pub struct ADC3Map {
     pub pin: [u8; 7],
     pub channel: [u8; 7]
   }
 
   pub const ADC1_MAP: ADC1Map = ADC1Map{
-    pin: [('a', 0), ('a', 1), ('a', 2), ('a', 3), ('a', 4), ('a', 5), ('a', 6), ('a', 7), ('b', 0), ('b', 1), ('c', 0), ('c', 1), ('c', 2), ('c', 3), ('c', 4), ('c', 5)],
-    channel: [0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,  15]
+    pin: [('a', 0),('a', 1),('a', 2),('a', 3),('a', 4),('a', 5),('a', 6),('a', 7),('b', 0),('b', 1),('c', 0),('c', 1),('c', 2),('c', 3),('c', 4),('c', 5)],
+    channel: [0,       1,       2,       3,       4,       5,       6,       7,       8,       9,       10,      11,     12,    13,      14,      15]
   };
 
   pub const ADC3_MAP: ADC3Map = ADC3Map{
@@ -28,7 +23,7 @@ pub mod data_maps {
 
 
   // UART pin config map ==========================================================================
-  struct UARTMap {
+  pub struct UARTMap {
     pub tx_pin: [(char, u8); 11],
     pub rx_pin: [(char, u8); 11],
     pub channel: [u8; 11]
