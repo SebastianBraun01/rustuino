@@ -153,7 +153,7 @@ fn dac_write(channel: u8, value: u16) {
   let val: u16;
   
   if value > 4095 {
-    hprintln!("Value outside of bounds!");
+    hprintln!("Value outside of bounds!").expect("Could not send semihosting message!");
     val = 4095;
   }
   else {val = value;}

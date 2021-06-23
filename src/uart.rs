@@ -19,7 +19,7 @@ impl<const B: char, const P: u8> ToUart for GpioPin<B, P, 8> {
       unsafe {
         if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
         else {
-          hprintln!("UART channel {} already in use!", channel);
+          hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
           return UartPin {
             inner: self
           };
@@ -32,7 +32,7 @@ impl<const B: char, const P: u8> ToUart for GpioPin<B, P, 8> {
       unsafe {
         if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
         else {
-          hprintln!("UART channel {} already in use!", channel);
+          hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
           return UartPin {
             inner: self
           };
@@ -65,7 +65,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
     }
     else {
-      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);
+      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin).expect("Could not send semihosting message!");
       return;
     }
     
@@ -84,7 +84,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
     }
     else {
-      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);
+      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin).expect("Could not send semihosting message!");
       return;
     }
     
@@ -103,7 +103,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
     }
     else {
-      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);
+      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin).expect("Could not send semihosting message!");
       return;
     }
     
@@ -122,7 +122,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
     }
     else {
-      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);
+      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin).expect("Could not send semihosting message!");
       return;
     }
     
@@ -138,7 +138,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel);
+          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
           return;
         }
       }
@@ -147,7 +147,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel);
+          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
           return;
         }
       }
@@ -166,7 +166,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel);
+          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
           return;
         }
       }
@@ -175,7 +175,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel);
+          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
           return;
         }
       }
@@ -194,7 +194,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel);
+          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
           return;
         }
       }
@@ -203,7 +203,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel);
+          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
           return;
         }
       }
@@ -222,7 +222,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel);
+          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
           return '?';
         }
       }
@@ -231,7 +231,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel);
+          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
           return '?';
         }
       }
@@ -249,7 +249,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
     let mut string_buffer: String<30> = String::new();
 
     if stopper.is_ascii() == false {
-      hprintln!("Stop character is not an ASCII character!");
+      hprintln!("Stop character is not an ASCII character!").expect("Could not send semihosting message!");
       return string_buffer;
     }
 
@@ -257,7 +257,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel);
+          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
           return string_buffer;
         }
       }
@@ -266,7 +266,7 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
       channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       unsafe {
         if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel);
+          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
           return string_buffer;
         }
       }
@@ -491,7 +491,7 @@ fn transmit_char(channel: usize, c: char) {
         while usart1.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        hprintln!("{} is not an ASCII character!", c);
+        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
     
         while usart1.sr.read().txe().bit_is_set() == true {}
         usart1.dr.write(|w| w.dr().bits('?' as u16));
@@ -506,7 +506,7 @@ fn transmit_char(channel: usize, c: char) {
         while usart2.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        hprintln!("{} is not an ASCII character!", c);
+        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
     
         while usart2.sr.read().txe().bit_is_set() == true {}
         usart2.dr.write(|w| w.dr().bits('?' as u16));
@@ -521,7 +521,7 @@ fn transmit_char(channel: usize, c: char) {
         while usart3.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        hprintln!("{} is not an ASCII character!", c);
+        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
     
         while usart3.sr.read().txe().bit_is_set() == true {}
         usart3.dr.write(|w| w.dr().bits('?' as u16));
@@ -535,7 +535,7 @@ fn transmit_char(channel: usize, c: char) {
         while uart4.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        hprintln!("{} is not an ASCII character!", c);
+        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
     
         while uart4.sr.read().txe().bit_is_set() == true {}
         uart4.dr.write(|w| w.dr().bits('?' as u16));
@@ -549,7 +549,7 @@ fn transmit_char(channel: usize, c: char) {
         while uart5.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        hprintln!("{} is not an ASCII character!", c);
+        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
     
         while uart5.sr.read().txe().bit_is_set() == true {}
         uart5.dr.write(|w| w.dr().bits('?' as u16));
@@ -564,7 +564,7 @@ fn transmit_char(channel: usize, c: char) {
         while usart6.sr.read().txe().bit_is_set() == true {}
       }
       else {
-        hprintln!("{} is not an ASCII character!", c);
+        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
     
         while usart6.sr.read().txe().bit_is_set() == true {}
         usart6.dr.write(|w| w.dr().bits('?' as u16));
@@ -617,7 +617,7 @@ fn recieve_char(channel: usize) -> char {
 
 
 // UART Serial connection =========================================================================
-pub mod Serial {
+pub mod serial {
   use libm::*;
   use cortex_m_semihosting::hprintln;
   use super::super::include::data_maps::UART_CONF;
@@ -633,7 +633,7 @@ pub mod Serial {
 
     unsafe {
       if UART_CONF[1] == true {
-        hprintln!("Serial connection already configured!");
+        hprintln!("Serial connection already configured!").expect("Could not send semihosting message!");
         usart2.cr1.modify(|_, w| w.ue().disabled());
       }
     }
@@ -675,7 +675,7 @@ pub mod Serial {
       while usart2.sr.read().txe().bit_is_set() == true {}
     }
     else {
-      hprintln!("{} is not an ASCII character!", c);
+      hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
 
       while usart2.sr.read().txe().bit_is_set() == true {}
       usart2.dr.write(|w| w.dr().bits('?' as u16));
