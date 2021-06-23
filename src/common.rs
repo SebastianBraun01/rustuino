@@ -34,6 +34,14 @@ pub struct GpioPin<const B: char, const P: u8, const M: u8> {
   pub pin: u8,
 }
 
+// M: 2⁵ -> SPI     +
+//    2⁴ -> I2C     +
+//    2³ -> UART    +
+//    2² -> PWM     +
+
+//    2¹ -> Analog  +
+//    2⁰ -> GPIO    +
+
 // pub type PB0 = GpioPin<'a', 0, 1>;
 macro_rules! generate_pins {
   ($([$block:ident; $block_char:literal; $pin:literal; $func:literal]),+) => {
@@ -84,7 +92,7 @@ pub trait ToPwm: Sized {
 }
 
 pub trait ToUart: Sized {
-  fn uart(self) -> UartPin<Self>;
+  fn uart(self, baud: u32, rxint: bool, txint: bool) -> UartPin<Self>;
 }
 
 pub trait Input: Sized {
@@ -111,8 +119,8 @@ pub trait PWM: Sized {
 pub trait UART: Sized {
   fn send_char(&self, c: char);
   fn send_string(&self, s: &str);
-  fn recieve_char(&self) -> char;
-  fn recieve_string(&self, stopper: char) -> String<30>;
+  fn get_char(&self) -> char;
+  fn get_string(&self, stopper: char) -> String<30>;
 }
 
 

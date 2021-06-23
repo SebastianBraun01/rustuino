@@ -21,13 +21,18 @@ macro_rules! generate_ToAnalog {
           }
           else if self.block == 'f' {adc_init(3, resolution, eocint);}
           else {adc_init(1, resolution, eocint);}
+
+          return AnalogPin {
+            inner: self
+          };
         }
       }
     )+
   };
 }
 
-generate_ToAnalog!(3, 7);
+// 2⁰ == 1 && 2¹ == 1 | restliche stellen egal
+generate_ToAnalog!(3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63);
 
 
 // Functions implementations ======================================================================
@@ -48,7 +53,7 @@ impl<const B: char, const P: u8> Analog for AnalogPin<GpioPin<B, P, 3>> {
 
 
 // Helper functions ===============================================================================
-pub fn adc_init(adc: u8, resolution: u8, eocint: bool) {
+fn adc_init(adc: u8, resolution: u8, eocint: bool) {
   let rcc = &PERIPHERAL_PTR.RCC;
   let adcc = &PERIPHERAL_PTR.ADC_COMMON;
   
@@ -93,13 +98,13 @@ pub fn adc_init(adc: u8, resolution: u8, eocint: bool) {
   };
 }
 
-pub fn dac_init(dac: u8) {
+fn dac_init(channel: u8) {
   let rcc = &PERIPHERAL_PTR.RCC;
   let dac = &PERIPHERAL_PTR.DAC;
   
   rcc.apb1enr.modify(|_, w| w.dacen().enabled());
   
-  if dac == 1 {
+  if channel == 1 {
     dac.cr.modify(|_, w| {
       w.boff1().enabled();
       w.ten1().enabled();
@@ -107,7 +112,7 @@ pub fn dac_init(dac: u8) {
       w.en1().enabled()
     });
   }
-  else if dac == 2 {
+  else if channel == 2 {
     dac.cr.modify(|_, w| {
       w.boff2().enabled();
       w.ten2().enabled();
@@ -117,7 +122,7 @@ pub fn dac_init(dac: u8) {
   }
 }
 
-pub fn adc_read(block: char, pin: u8) -> u16 {
+fn adc_read(block: char, pin: u8) -> u16 {
   let buffer = if block == 'f' {
     let adc3 = &PERIPHERAL_PTR.ADC3;
     let channel = ADC3_MAP.channel[ADC3_MAP.pin.iter().position(|&i| i == pin).unwrap()];
@@ -139,7 +144,7 @@ pub fn adc_read(block: char, pin: u8) -> u16 {
   return buffer;
 }
 
-pub fn dac_write(dac: u8, value: u16) {
+fn dac_write(channel: u8, value: u16) {
   let dac = &PERIPHERAL_PTR.DAC;
   
   if value > 4095 {
@@ -147,7 +152,7 @@ pub fn dac_write(dac: u8, value: u16) {
     value = 4095;
   }
   
-  if dac == 1 {
+  if channel == 1 {
     dac.dhr12r1.write(|w| w.dacc1dhr().bits(value));
     dac.swtrigr.write(|w| w.swtrig1().enabled());
   }

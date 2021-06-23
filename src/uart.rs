@@ -1,175 +1,193 @@
 use libm::*;
-use heapless::Vec;
+use heapless::String;
+use cortex_m_semihosting::hprintln;
 use super::common::*;
 use super::include::PERIPHERAL_PTR;
 
 
 // Converter implementations ======================================================================
 impl<const B: char, const P: u8> ToUart for GpioPin<B, P, 8> {
-  fn uart(self) -> UartPin<Self> {
-    
+  fn uart(self, baud: u32, rxint: bool, txint: bool) -> UartPin<Self> {
+    self.block = B;
+    self.pin = P;
+
+    unimplemented!("channel detection!");
+
+    uart_init(channel, direction, baud, rxint, txint);
+
+    return UartPin {
+      inner: self
+    };
+  }
+}
+
+
+// Function implementations =======================================================================
+impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
+  fn send_char(&self, c: char) {
+    let block = B;
+    let pin = P;
+
+    unimplemented!("channel selector and check!");
+
+    transmit_char(channel, c);
+  }
+
+  fn send_string(&self, s: &str) {
+    let block = B;
+    let pin = P;
+
+    unimplemented!("channel selector and check!");
+
+    for c in s.chars() {
+      transmit_char(channel, c);
+    }
+  }
+
+  fn get_char(&self) -> char {
+    let block = B;
+    let pin = P;
+
+    unimplemented!("channel selector and check!");
+
+    return recieve_char();
+  }
+
+  fn get_string(&self, stopper: char) -> heapless::String<30> {
+    let block = B;
+    let pin = P;
+
+    unimplemented!("channel selector and check!");
+
+    let buffer: char
+    let string_buffer: String<30> = String::new();
+
+    loop {
+      buffer = recieve_char(channel);
+      if buffer == stopper {return string_buffer;}
+      string_buffer.push(buffer).expect("String buffer overflow!");  
+    }
   }
 }
 
 
 // Helper functions ===============================================================================
-pub fn uart_init(baud: u32, rxint: bool, txint: bool) {
+fn uart_init(channel: u8, direction: bool, baud: u32, rxint: bool, txint: bool) {
   let rcc = &PERIPHERAL_PTR.RCC;
-  let usart1 = &PERIPHERAL_PTR.USART1;
-  let usart3 = &PERIPHERAL_PTR.USART3;
+  
+  
   let uart4 = &PERIPHERAL_PTR.UART4;
   let usart6 = &PERIPHERAL_PTR.USART6;
   
   // (Mantisse, Fractal)
   let usartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));
-  let mut channels: Vec<(u8, bool), 5> = Vec::new();
-  
-  unsafe {
-    for i in 0..PINCONFIG.pin.len() {
-      if PINCONFIG.alternate[i] == 7 || PINCONFIG.alternate[i] == 8 {
-        if UART_MAP.rx_pin.contains(&PINCONFIG.pin[i]) {
-          channels.push((UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&r| r == PINCONFIG.pin[i]).unwrap()], false))
-          .expect("Could not PINCONFIGure UART channel!");
-          UART_MAP.active[UART_MAP.rx_pin.iter().position(|&r| r == PINCONFIG.pin[i]).unwrap()] = true;
-        }else if UART_MAP.tx_pin.contains(&PINCONFIG.pin[i]) {
-          channels.push((UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&r| r == PINCONFIG.pin[i]).unwrap()], true))
-          .expect("Could not PINCONFIGure UART channel!");
-          UART_MAP.active[UART_MAP.rx_pin.iter().position(|&r| r == PINCONFIG.pin[i]).unwrap()] = true;
-        }
-        else {panic!("P{}{} is not available for UART connection!", PINCONFIG.pin[i].1.to_uppercase(), PINCONFIG.pin[i].0);}
-      }
-    }
-  }
-  
-  for i in 0..channels.len() {
-    if channels[i].1 == false {
-      match channels[i].0 {
-        1 => {
-          rcc.apb2enr.modify(|_, w| w.usart1en().enabled());
+
+  match channel {
+    1 => {
+      let usart1 = &PERIPHERAL_PTR.USART1;
+      rcc.apb2enr.modify(|_, w| w.usart1en().enabled());
           
-          usart1.brr.modify(|_, w| {
-            w.div_mantissa().bits(usartdiv.0 as u16);
-            w.div_fraction().bits(usartdiv.1 as u8)
-          });
+      usart1.brr.modify(|_, w| {
+        w.div_mantissa().bits(usartdiv.0 as u16);
+        w.div_fraction().bits(usartdiv.1 as u8)
+      });
           
-          if rxint == true {usart1.cr1.modify(|_, w| w.rxneie().enabled());}
-          if txint == true {usart1.cr1.modify(|_, w| w.tcie().enabled());}
+      if rxint == true {usart1.cr1.modify(|_, w| w.rxneie().enabled());}
+      if txint == true {usart1.cr1.modify(|_, w| w.tcie().enabled());}
           
-          usart1.cr1.modify(|_, w| w.re().enabled());
-        },
-        3 => {
-          rcc.apb1enr.modify(|_, w| w.usart3en().enabled());
+      if direction == true {usart1.cr1.modify(|_, w| w.te().enabled());}
+      else {usart1.cr1.modify(|_, w| w.re().enabled());}
+      
+      usart1.cr1.modify(|_, w| w.ue().enabled());
+    },
+    3 => {
+      let usart3 = &PERIPHERAL_PTR.USART3;
+      rcc.apb1enr.modify(|_, w| w.usart3en().enabled());
           
-          usart3.brr.modify(|_, w| {
-            w.div_mantissa().bits(usartdiv.0 as u16);
-            w.div_fraction().bits(usartdiv.1 as u8)
-          });
+      usart3.brr.modify(|_, w| {
+        w.div_mantissa().bits(usartdiv.0 as u16);
+        w.div_fraction().bits(usartdiv.1 as u8)
+      });
           
-          if rxint == true {usart3.cr1.modify(|_, w| w.rxneie().enabled());}
-          if txint == true {usart3.cr1.modify(|_, w| w.tcie().enabled());}
+      if rxint == true {usart3.cr1.modify(|_, w| w.rxneie().enabled());}
+      if txint == true {usart3.cr1.modify(|_, w| w.tcie().enabled());}
           
-          usart3.cr1.modify(|_, w| w.re().enabled());
-        },
-        4 => {
-          rcc.apb1enr.modify(|_, w| w.uart4en().enabled());
+      if direction == true {usart3.cr1.modify(|_, w| w.te().enabled());}
+      else {usart3.cr1.modify(|_, w| w.re().enabled());}
+      
+      usart3.cr1.modify(|_, w| w.ue().enabled());
+    },
+    4 => {
+      let uart4 = &PERIPHERAL_PTR.UART4;
+      rcc.apb1enr.modify(|_, w| w.uart4en().enabled());
           
-          uart4.brr.modify(|_, w| {
-            w.div_mantissa().bits(usartdiv.0 as u16);
-            w.div_fraction().bits(usartdiv.1 as u8)
-          });
+      uart4.brr.modify(|_, w| {
+        w.div_mantissa().bits(usartdiv.0 as u16);
+        w.div_fraction().bits(usartdiv.1 as u8)
+      });
           
-          if rxint == true {uart4.cr1.modify(|_, w| w.rxneie().enabled());}
-          if txint == true {uart4.cr1.modify(|_, w| w.tcie().enabled());}
+      if rxint == true {uart4.cr1.modify(|_, w| w.rxneie().enabled());}
+      if txint == true {uart4.cr1.modify(|_, w| w.tcie().enabled());}
           
-          uart4.cr1.modify(|_, w| w.re().enabled());
-        },
-        6 => {
-          rcc.apb2enr.modify(|_, w| w.usart6en().enabled());
+      if direction == true {uart4.cr1.modify(|_, w| w.te().enabled());}
+      else {uart4.cr1.modify(|_, w| w.re().enabled());}
+      
+      uart4.cr1.modify(|_, w| w.ue().enabled());
+    },
+    5 => {
+      let uart5 = &PERIPHERAL_PTR.UART5;
+      rcc.apb1enr.modify(|_, w| w.uart5en().enabled());
           
-          usart6.brr.modify(|_, w| {
-            w.div_mantissa().bits(usartdiv.0 as u16);
-            w.div_fraction().bits(usartdiv.1 as u8)
-          });
+      uart5.brr.modify(|_, w| {
+        w.div_mantissa().bits(usartdiv.0 as u16);
+        w.div_fraction().bits(usartdiv.1 as u8)
+      });
           
-          if rxint == true {usart6.cr1.modify(|_, w| w.rxneie().enabled());}
-          if txint == true {usart6.cr1.modify(|_, w| w.tcie().enabled());}
+      if rxint == true {uart5.cr1.modify(|_, w| w.rxneie().enabled());}
+      if txint == true {uart5.cr1.modify(|_, w| w.tcie().enabled());}
           
-          usart6.cr1.modify(|_, w| w.re().enabled());
-        },
-        _ => panic!("{} is not a valid UART peripheral!", channels[i].0)
-      };
-    }
-    else {
-      match channels[i].0 {
-        1 => {
-          rcc.apb2enr.modify(|_, w| w.usart1en().enabled());
+      if direction == true {uart5.cr1.modify(|_, w| w.te().enabled());}
+      else {uart5.cr1.modify(|_, w| w.re().enabled());}
+      
+      uart5.cr1.modify(|_, w| w.ue().enabled());
+    },
+    6 => {
+      let usart6 = &PERIPHERAL_PTR.USART6;
+      rcc.apb2enr.modify(|_, w| w.usart6en().enabled());
           
-          usart1.brr.modify(|_, w| {
-            w.div_mantissa().bits(usartdiv.0 as u16);
-            w.div_fraction().bits(usartdiv.1 as u8)
-          });
+      usart6.brr.modify(|_, w| {
+        w.div_mantissa().bits(usartdiv.0 as u16);
+        w.div_fraction().bits(usartdiv.1 as u8)
+      });
           
-          if rxint == true {usart1.cr1.modify(|_, w| w.rxneie().enabled());}
-          if txint == true {usart1.cr1.modify(|_, w| w.tcie().enabled());}
+      if rxint == true {usart6.cr1.modify(|_, w| w.rxneie().enabled());}
+      if txint == true {usart6.cr1.modify(|_, w| w.tcie().enabled());}
           
-          usart1.cr1.modify(|_, w| w.te().enabled());
-        },
-        3 => {
-          rcc.apb1enr.modify(|_, w| w.usart3en().enabled());
-          
-          usart3.brr.modify(|_, w| {
-            w.div_mantissa().bits(usartdiv.0 as u16);
-            w.div_fraction().bits(usartdiv.1 as u8)
-          });
-          
-          if rxint == true {usart3.cr1.modify(|_, w| w.rxneie().enabled());}
-          if txint == true {usart3.cr1.modify(|_, w| w.tcie().enabled());}
-          
-          usart3.cr1.modify(|_, w| w.te().enabled());
-        },
-        4 => {
-          rcc.apb1enr.modify(|_, w| w.uart4en().enabled());
-          
-          uart4.brr.modify(|_, w| {
-            w.div_mantissa().bits(usartdiv.0 as u16);
-            w.div_fraction().bits(usartdiv.1 as u8)
-          });
-          
-          if rxint == true {uart4.cr1.modify(|_, w| w.rxneie().enabled());}
-          if txint == true {uart4.cr1.modify(|_, w| w.tcie().enabled());}
-          
-          uart4.cr1.modify(|_, w| w.te().enabled());
-        },
-        6 => {
-          rcc.apb2enr.modify(|_, w| w.usart6en().enabled());
-          
-          usart6.brr.modify(|_, w| {
-            w.div_mantissa().bits(usartdiv.0 as u16);
-            w.div_fraction().bits(usartdiv.1 as u8)
-          });
-          
-          if rxint == true {usart6.cr1.modify(|_, w| w.rxneie().enabled());}
-          if txint == true {usart6.cr1.modify(|_, w| w.tcie().enabled());}
-          
-          usart6.cr1.modify(|_, w| w.te().enabled());
-        },
-        _ => panic!("{} is not a valid UART peripheral!", channels[i].0)
-      };
-    }
-  }
+      if direction == true {usart6.cr1.modify(|_, w| w.te().enabled());}
+      else {usart6.cr1.modify(|_, w| w.re().enabled());}
+      
+      usart6.cr1.modify(|_, w| w.ue().enabled());
+    },
+    _ => panic!("{} is not a valid UART peripheral!", channel)
+  };
 }
 
-pub fn send_char(c: char) {
+fn transmit_char(channel: u8, c: char) {
   let usart2 = &PERIPHERAL_PTR.USART2;
-  
+
   if c.is_ascii() == true {
-    unsafe {if UART_USB == false {panic!("UART USB channel ist not PINCONFIGured!");}}
-    
     while usart2.sr.read().txe().bit_is_set() == true {}
     usart2.dr.write(|w| w.dr().bits(c as u16));
     while usart2.sr.read().txe().bit_is_set() == true {}
   }
-  else {panic!("{} is not an ASCII character!", c);}
+  else {
+    c = '?';
+    hprintln!("{} is not an ASCII character!", c);
+
+    while usart2.sr.read().txe().bit_is_set() == true {}
+    usart2.dr.write(|w| w.dr().bits(c as u16));
+    while usart2.sr.read().txe().bit_is_set() == true {}
+  }
 }
 
 pub fn recieve_char() -> char {
@@ -237,7 +255,7 @@ pub mod Serial {
     }
     else {
       c = '?';
-      hprintln!("Cant send non-ascii characters!");
+      hprintln!("{} is not an ASCII character!", c);
 
       while usart2.sr.read().txe().bit_is_set() == true {}
       usart2.dr.write(|w| w.dr().bits(c as u16));
