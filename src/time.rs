@@ -1,6 +1,22 @@
+use super::common::*;
 use cortex_m::peripheral::NVIC;
 use stm32f4::stm32f446::{Interrupt, interrupt};
 use super::include::variables::TIME_COUNTER;
+
+
+// Converter implementations ======================================================================
+impl<const B: char, const P: u8> ToPwm for GpioPin<B, P, 4> {
+  fn pwm(self) -> PwmPin<Self> {
+    let block = B;
+    let pin = P;
+
+    unimplemented!();
+
+    return PwmPin{
+      inner: self
+    }
+  }
+}
 
 pub fn delay(ms: u32) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();

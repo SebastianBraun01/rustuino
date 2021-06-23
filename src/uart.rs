@@ -1,54 +1,63 @@
+use super::common::*;
+use super::include::{UART_MAP, UART_CONF};
+use cortex_m_semihosting::hprintln;
 use libm::*;
 use heapless::String;
-use cortex_m_semihosting::hprintln;
-use super::common::*;
-use super::include::data_maps::{UART_MAP, UART_CONF};
 
 
 // Converter implementations ======================================================================
-impl<const B: char, const P: u8> ToUart for GpioPin<B, P, 8> {
-  fn uart(self, baud: u32, rxint: bool, txint: bool) -> UartPin<Self> {
-    let block = B;
-    let pin = P;
-
-    let channel: usize;
-    let direction: bool;
-
-    if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
-        else {
-          hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
+macro_rules! generate_ToUart {
+  ($($number:literal),+) => {
+    $(
+      impl<const B: char, const P: u8> ToUart for GpioPin<B, P, $number> {
+        fn uart(self, baud: u32, rxint: bool, txint: bool) -> UartPin<Self> {
+          let block = B;
+          let pin = P;
+      
+          let channel: usize;
+          let direction: bool;
+      
+          if UART_MAP.rx_pin.contains(&(block, pin)) == true {
+            channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
+            unsafe {
+              if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
+              else {
+                hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
+                return UartPin {
+                  inner: self
+                };
+              }
+            }
+            direction = false;
+          }
+          else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
+            channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
+            unsafe {
+              if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
+              else {
+                hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
+                return UartPin {
+                  inner: self
+                };
+              }
+            }
+            direction = true;
+          }
+          else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
+      
+          uart_init(channel, direction, baud, rxint, txint);
+      
           return UartPin {
             inner: self
           };
         }
       }
-      direction = false;
-    }
-    else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
-        else {
-          hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
-          return UartPin {
-            inner: self
-          };
-        }
-      }
-      direction = true;
-    }
-    else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
-
-    uart_init(channel, direction, baud, rxint, txint);
-
-    return UartPin {
-      inner: self
-    };
-  }
+    )+
+  };
 }
+
+// 2⁰ == 1 && 2³ == 1 | alle anderen pins egal
+generate_ToUart!(11, 13, 15, 25, 27, 29, 31, 41, 43, 45, 47, 57, 59, 61, 63);
 
 
 // Function implementations =======================================================================
@@ -620,7 +629,7 @@ fn recieve_char(channel: usize) -> char {
 pub mod serial {
   use libm::*;
   use cortex_m_semihosting::hprintln;
-  use super::super::include::data_maps::UART_CONF;
+  use super::super::include::UART_CONF;
 
   pub fn init(baud: u32, rxint: bool, txint: bool) {
     let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();

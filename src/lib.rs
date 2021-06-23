@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(const_option)]
 
 // Library includes ===============================================================================
 pub use cortex_m_rt::{entry, exception};

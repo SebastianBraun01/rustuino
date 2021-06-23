@@ -2,32 +2,6 @@ use heapless::String;
 use super::gpio::{Bias, Speed};
 
 
-// struct Number<const N: u8> {}
-
-// trait Test {fn test(self) -> bool;}
-
-// impl<const N: u8> Number<N> {
-//   fn get() -> Number<N> {
-//     return Number {};
-//   }
-// }
-
-// impl Test for Number<2> {
-//   fn test(self) -> bool {return false;}
-// }
-
-// type Number1 = Number<1>;
-// type Number2 = Number<2>;
-
-// pub fn call() {
-//   let one = Number1::get();
-//   let two = Number2::get();
-
-//   // let get_one = one.test();
-//   let get_two = two.test();
-// }
-
-
 // Structs ========================================================================================
 pub struct GpioPin<const B: char, const P: u8, const M: u8> {}
 
@@ -35,22 +9,26 @@ pub struct GpioPin<const B: char, const P: u8, const M: u8> {}
 //    2⁴ -> I2C     +
 //    2³ -> UART    +
 //    2² -> PWM     +
-
 //    2¹ -> Analog  +
 //    2⁰ -> GPIO    +
 
 // pub type PB0 = GpioPin<'a', 0, 1>;
 macro_rules! generate_pins {
-  ($([$block:ident; $block_char:literal; $pin:literal; $func:literal]),+) => {
-    use paste;
+  ($([$block:literal, $pin:literal, $func:literal]),+) => {
+    use paste::paste;
 
     paste!{
       $(
-        pub type [<P $block:upper $pin>] = GpioPin<$block_char, $pin, $func>;
+      pub type [<P $block:upper $pin>] = GpioPin<$block, $pin, $func>;
       )+
     }
   };
 }
+
+generate_pins![
+  ['a', 1, 1],
+  ['a', 2, 3]
+];
 
 pub struct InputPin<T> {
   pub inner: T
