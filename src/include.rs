@@ -27,35 +27,28 @@ pub mod data_maps {
   };  
 
 
-  // Seral config storage =========================================================================
-  pub static mut UART_USB: bool = false;
-
-
-  
-
-
-
-
-
-
-
-
-
   // UART pin config map ==========================================================================
-  // struct UARTMap {
-  //   pub tx_pin: [(u8, char); 12],
-  //   pub rx_pin: [(u8, char); 12],
-  //   pub channel: [u8; 12],
-  //   pub active: [bool; 12]
-  // }
+  struct UARTMap {
+    pub tx_pin: [(char, u8); 11],
+    pub rx_pin: [(char, u8); 11],
+    pub channel: [u8; 11]
+  }
 
-  // // TODO: better uart map
-  // pub static mut UART_MAP: UARTMap = UARTMap{
-  //   tx_pin:  [PA9,   PB6,   PB10,  PC10,  PD5,   PD8,   PA0,   PC6,   PC10,  PC12,  PE8,   PG14],
-  //   rx_pin:  [PA10,  PB7,   PB11,  PC11,  PD6,   PD9,   PA1,   PC7,   PC11,  PD2,   PE7,   PG9],
-  //   channel: [1,     1,     3,     3,     2,     3,     4,     6,     4,     5,     5,     6],
-  //   active:  [false, false, false, false, false, false, false, false, false, false, false, false]
-  // };
+  // TODO: better uart map
+  pub const UART_MAP: UARTMap = UARTMap{
+    tx_pin:  [('a', 9), ('b', 6),('b', 10),('c', 10),('d', 8),('a', 0),('c', 6),('c', 10),('c', 12),('e', 8),('g', 14)],
+    rx_pin:  [('a', 10),('b', 7),('b', 11),('c', 11),('d', 9),('a', 1),('c', 7),('c', 11),('d', 2), ('e', 7),('g', 9)],
+    channel: [    1,        1,       3,        3,        3,       4,       6,       4,        5,        5,       6]
+  };
+
+  pub static mut UART_CONF: [bool; 6] = [false, false, false, false, false, false];
+
+
+
+
+
+
+
 
   
 

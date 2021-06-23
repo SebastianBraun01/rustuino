@@ -117,6 +117,11 @@ pub trait PWM: Sized {
 }
 
 pub trait UART: Sized {
+  fn rxint_enable(&self);
+  fn rxint_disable(&self);
+  fn txint_enable(&self);
+  fn txint_disable(&self);
+  fn change_baud(&self, baud: u32);
   fn send_char(&self, c: char);
   fn send_string(&self, s: &str);
   fn get_char(&self) -> char;
