@@ -715,8 +715,8 @@ pub mod serial {
       if fmt::write(&mut txt_buff, format_args!($param)).is_err() {txt_buff = String::from("~\r\n")};
     
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {send_char_usb(c);}
-        else {send_char_usb('?');}
+        if c.is_ascii() == true {serial::send_char_usb(c);}
+        else {serial::send_char_usb('?');}
       }
     };
   }
@@ -730,26 +730,26 @@ pub mod serial {
       if fmt::write(&mut txt_buff, format_args!(" ")).is_err() {txt_buff = String::from("~\r\n")};
     
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {send_char_usb(c);}
-        else {send_char_usb('?');}
+        if c.is_ascii() == true {serial::send_char_usb(c);}
+        else {serial::send_char_usb('?');}
       }
 
-      send_char_usb('\r');
-      send_char_usb('\n');
+      serial::send_char_usb('\r');
+      serial::send_char_usb('\n');
     };
   }
 
   #[macro_export]
   macro_rules! sread {
     () => {{
-      let c_buff: char = recieve_char_usb();  
+      let c_buff: char = serial::recieve_char_usb();  
       c_buff
     }};
 
     ($c:expr) => {{
       let found: bool;
 
-      if recieve_char_usb() == $c {found = true;}
+      if serial::recieve_char_usb() == $c {found = true;}
       else {found = false;}
 
       found
@@ -762,7 +762,7 @@ pub mod serial {
       let mut str: String<50> = String::new();
       let mut buff: char;
       loop {
-        buff = recieve_char_usb();
+        buff = serial::recieve_char_usb();
         if buff == $stop as char {break;}
         str.push(buff).expect("String buffer full!");
       }
