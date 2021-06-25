@@ -6,32 +6,94 @@ use cortex_m_semihosting::hprintln;
 
 
 // Converter implementations ======================================================================
-impl ToPwm for PA4 {
-  fn pwm() -> PwmPin{
-    let block = 'a';
-    let pin = 4;
-    let timer: usize;
-    let channel: usize;
+macro_rules! generate_ToPwm {
+  ($([$letter:literal, $number:literal]),+) => {
+    use paste::paste;
 
-    if TIMER_MAP.pin.contains(&(block, pin)) {
-      timer = TIMER_MAP.timer[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      channel = TIMER_MAP.ccch[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-
-      unsafe {
-        if TIMER_CONF[(timer * 4) - channel] == false {TIMER_CONF[(timer * 4) - channel] = true;}
-        else {panic!("Timer {} channel {} already in use!", timer, channel);}
-      }
+    paste!{
+      $(
+        impl ToPwm for [<P $letter:upper $number>] {
+          fn pwm() -> PwmPin{
+            let block = $letter;
+            let pin = $number;
+            let timer: usize;
+            let channel: usize;
+        
+            if TIMER_MAP.pin.contains(&(block, pin)) {
+              timer = TIMER_MAP.timer[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
+              channel = TIMER_MAP.ccch[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
+        
+              unsafe {
+                if TIMER_CONF[(timer * 4) - channel] == false {TIMER_CONF[(timer * 4) - channel] = true;}
+                else {panic!("Timer {} channel {} already in use!", timer, channel);}
+              }
+            }
+            else {panic!("P{}{} is not available for pwm output!", block.to_uppercase(), pin);}
+        
+            pwm_init(timer, channel);
+        
+            return PwmPin{
+              block,
+              pin
+            }
+          }
+        }
+      )+
     }
-    else {panic!("P{}{} is not available for pwm output!", block.to_uppercase(), pin);}
-
-    pwm_init(timer, channel);
-
-    return PwmPin{
-      block: block,
-      pin: pin
-    }
-  }
+  };
 }
+
+generate_ToPwm![
+  ['a', 0],
+  ['a', 1],
+  ['a', 2],
+  ['a', 3],
+  ['a', 5],
+  ['a', 6],
+  ['a', 7],
+  ['a', 8],
+  ['a', 9],
+  ['a', 10],
+  ['a', 11],
+  ['a', 15],
+
+  ['b', 0],
+  ['b', 1],
+  ['b', 2],
+  ['b', 3],
+  ['b', 4],
+  ['b', 5],
+  ['b', 6],
+  ['b', 7],
+  ['b', 8],
+  ['b', 9],
+  ['b', 10],
+  ['b', 11],
+  ['b', 14],
+  ['b', 15],
+
+  ['c', 6],
+  ['c', 7],
+  ['c', 8],
+  ['c', 9],
+
+  ['d', 12],
+  ['d', 13],
+  ['d', 14],
+  ['d', 15],
+
+  ['e', 5],
+  ['e', 6],
+  ['e', 9],
+  ['e', 11],
+  ['e', 13],
+  ['e', 14],
+
+  ['f', 6],
+  ['f', 7],
+  ['f', 8],
+  ['f', 9]
+];
 
 
 // Function implementations =======================================================================
