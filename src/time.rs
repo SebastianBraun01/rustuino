@@ -6,10 +6,10 @@ use cortex_m_semihosting::hprintln;
 
 
 // Converter implementations ======================================================================
-impl<const B: char, const P: u8> ToPwm for GpioPin<B, P, 4> {
-  fn pwm(self) -> PwmPin<Self> {
-    let block = B;
-    let pin = P;
+impl ToPwm for PA4 {
+  fn pwm() -> PwmPin{
+    let block = 'a';
+    let pin = 4;
     let timer: usize;
     let channel: usize;
 
@@ -27,17 +27,18 @@ impl<const B: char, const P: u8> ToPwm for GpioPin<B, P, 4> {
     pwm_init(timer, channel);
 
     return PwmPin{
-      inner: self
+      block: block,
+      pin: pin
     }
   }
 }
 
 
 // Function implementations =======================================================================
-impl<const B: char, const P: u8> PWM for PwmPin<GpioPin<B, P, 3>> {
+impl PWM for PwmPin {
   fn pwm_write(&self, value: u8) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
     let timer: usize;
     let channel: usize;
 

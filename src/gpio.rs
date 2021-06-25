@@ -11,81 +11,213 @@ pub enum Bias {
 
 // Converter implementations ======================================================================
 macro_rules! generate_ToInOut {
-  ($($number: literal),+) => {
-    $(
-      impl<const B: char, const P: u8> ToInOut for GpioPin<B, P, $number> {
-        fn input(self) -> InputPin<Self> {
-          let block = B;
-          let pin = P;
-      
-          set_input(block, pin);
-      
-          return InputPin {
-            inner: self
-          };
+  ($([$letter:literal, $number: literal]),+) => {
+    use paste::paste;
+
+    paste!{
+      $(
+        impl ToInOut for [<P $letter:upper $number>] {
+          fn input() -> InputPin {
+            let block = $letter;
+            let pin = $number;
+
+            set_input(block, pin);
+        
+            return InputPin {
+              block: block,
+              pin: pin
+            };
+          }
+        
+          fn output() -> OutputPin {
+            let block = $letter;
+            let pin = $number;
+
+            set_output(block, pin);
+        
+            return OutputPin {
+              block: block,
+              pin: pin
+            };
+          }
         }
-      
-        fn output(self) -> OutputPin<Self> {
-          let block = B;
-          let pin = P;
-      
-          set_output(block, pin);
-      
-          return OutputPin {
-            inner: self
-          };
-        }
-      }
-    )+
+      )+
+    }
   };
 }
 
 // M % 2 | von 0 bis 63 (alle bits an)
-generate_ToInOut!(1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63);
+// generate_ToInOut!(1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63);
+
+// Für alle pins implementieren
+
+generate_ToInOut![
+  ['a', 0],
+  ['a', 1],
+  ['a', 2],
+  ['a', 3],
+  ['a', 4],
+  ['a', 5],
+  ['a', 6],
+  ['a', 7],
+  ['a', 8],
+  ['a', 9],
+  ['a', 10],
+  ['a', 11],
+  ['a', 12],
+  ['a', 13],
+  ['a', 14],
+  ['a', 15],
+
+  ['b', 0],
+  ['b', 1],
+  ['b', 2],
+  ['b', 3],
+  ['b', 4],
+  ['b', 5],
+  ['b', 6],
+  ['b', 7],
+  ['b', 8],
+  ['b', 9],
+  ['b', 10],
+  ['b', 11],
+  ['b', 12],
+  ['b', 13],
+  ['b', 14],
+  ['b', 15],
+
+  ['c', 0],
+  ['c', 1],
+  ['c', 2],
+  ['c', 3],
+  ['c', 4],
+  ['c', 5],
+  ['c', 6],
+  ['c', 7],
+  ['c', 8],
+  ['c', 9],
+  ['c', 10],
+  ['c', 11],
+  ['c', 12],
+  ['c', 13],
+  ['c', 14],
+  ['c', 15],
+
+  ['d', 0],
+  ['d', 1],
+  ['d', 2],
+  ['d', 3],
+  ['d', 4],
+  ['d', 5],
+  ['d', 6],
+  ['d', 7],
+  ['d', 8],
+  ['d', 9],
+  ['d', 10],
+  ['d', 11],
+  ['d', 12],
+  ['d', 13],
+  ['d', 14],
+  ['d', 15],
+
+  ['e', 0],
+  ['e', 1],
+  ['e', 2],
+  ['e', 3],
+  ['e', 4],
+  ['e', 5],
+  ['e', 6],
+  ['e', 7],
+  ['e', 8],
+  ['e', 9],
+  ['e', 10],
+  ['e', 11],
+  ['e', 12],
+  ['e', 13],
+  ['e', 14],
+  ['e', 15],
+
+  ['f', 0],
+  ['f', 1],
+  ['f', 2],
+  ['f', 3],
+  ['f', 4],
+  ['f', 5],
+  ['f', 6],
+  ['f', 7],
+  ['f', 8],
+  ['f', 9],
+  ['f', 10],
+  ['f', 11],
+  ['f', 12],
+  ['f', 13],
+  ['f', 14],
+  ['f', 15],
+
+  ['g', 0],
+  ['g', 1],
+  ['g', 2],
+  ['g', 3],
+  ['g', 4],
+  ['g', 5],
+  ['g', 6],
+  ['g', 7],
+  ['g', 8],
+  ['g', 9],
+  ['g', 10],
+  ['g', 11],
+  ['g', 12],
+  ['g', 13],
+  ['g', 14],
+  ['g', 15],
+
+  ['h', 0],
+  ['h', 1]
+];
 
 
 // Function implementations =======================================================================
-impl<const B: char, const P: u8, const M: u8> Input for InputPin<GpioPin<B, P, M>> {
+impl Input for InputPin {
   fn bias(&self, bias: Bias) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
 
     set_bias(block, pin, bias);
   }
 
   fn read(&self) -> bool {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
 
     return digital_read(block, pin);
   }
 }
 
-impl<const B: char, const P: u8, const M: u8> Output for OutputPin<GpioPin<B, P, M>> {
+impl Output for OutputPin{
   fn speed(&self, speed: Speed) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
 
     set_speed(block, pin, speed);
   }
 
   fn bias(&self, bias: Bias) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
 
     set_bias(block, pin, bias);
   }
 
   fn open_drain(&self) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
 
     set_open_drain(block, pin);
   }
 
   fn write(&self, value: bool) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
 
     digital_write(block, pin, value);
   }

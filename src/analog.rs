@@ -5,62 +5,197 @@ use cortex_m_semihosting::hprintln;
 
 // Converter implementations ======================================================================
 macro_rules! generate_ToAnalog {
-  ($($number:literal),+) => {
-    $(
-      impl<const B: char, const P: u8> ToAnalog for GpioPin<B, P, $number> {
-        fn analog(self, resolution: u8, eocint: bool) -> AnalogPin<Self> {
-          let block = B;
-          let pin = P;
-          
-          if block == 'a' && pin == 4 {
-            dac_init(1);
-          }
-          else if block == 'a' && pin == 5 {
-            dac_init(2);
-          }
-          else if block == 'f' {
-            unsafe {
-              if ADC_CONF[1] == false {
-                adc_init(3, resolution, eocint);
-                ADC_CONF[1] = true;
-              }
-            }
-          }
-          else {
-            unsafe {
-              if ADC_CONF[0] == false {
-                adc_init(1, resolution, eocint);
-                ADC_CONF[0] = true;
-              }
-            }
-          }
+  ($([$letter:literal, $number:literal]),+) => {
+    use paste::paste;
 
-          return AnalogPin {
-            inner: self
-          };
+    paste!{
+      $(
+        impl ToAnalog for [<P $letter:upper $number>] {
+          fn analog(resolution: u8, eocint: bool) -> AnalogPin {
+            let block = $letter;
+            let pin = $number;
+            
+            if block == 'a' && pin == 4 {
+              dac_init(1);
+            }
+            else if block == 'a' && pin == 5 {
+              dac_init(2);
+            }
+            else if block == 'f' {
+              unsafe {
+                if ADC_CONF[1] == false {
+                  adc_init(3, resolution, eocint);
+                  ADC_CONF[1] = true;
+                }
+              }
+            }
+            else {
+              unsafe {
+                if ADC_CONF[0] == false {
+                  adc_init(1, resolution, eocint);
+                  ADC_CONF[0] = true;
+                }
+              }
+            }
+  
+            return AnalogPin {
+              block: block,
+              pin: pin
+            };
+          }
         }
-      }
-    )+
+      )+
+    }
   };
 }
 
 // 2⁰ == 1 && 2¹ == 1 | restliche stellen egal
-generate_ToAnalog!(3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63);
+// generate_ToAnalog!(3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63);
+
+generate_ToAnalog![
+  ['a', 0],
+  ['a', 1],
+  ['a', 2],
+  ['a', 3],
+  ['a', 4],
+  ['a', 5],
+  ['a', 6],
+  ['a', 7],
+  ['a', 8],
+  ['a', 9],
+  ['a', 10],
+  ['a', 11],
+  ['a', 12],
+  ['a', 13],
+  ['a', 14],
+  ['a', 15],
+
+  ['b', 0],
+  ['b', 1],
+  ['b', 2],
+  ['b', 3],
+  ['b', 4],
+  ['b', 5],
+  ['b', 6],
+  ['b', 7],
+  ['b', 8],
+  ['b', 9],
+  ['b', 10],
+  ['b', 11],
+  ['b', 12],
+  ['b', 13],
+  ['b', 14],
+  ['b', 15],
+
+  ['c', 0],
+  ['c', 1],
+  ['c', 2],
+  ['c', 3],
+  ['c', 4],
+  ['c', 5],
+  ['c', 6],
+  ['c', 7],
+  ['c', 8],
+  ['c', 9],
+  ['c', 10],
+  ['c', 11],
+  ['c', 12],
+  ['c', 13],
+  ['c', 14],
+  ['c', 15],
+
+  ['d', 0],
+  ['d', 1],
+  ['d', 2],
+  ['d', 3],
+  ['d', 4],
+  ['d', 5],
+  ['d', 6],
+  ['d', 7],
+  ['d', 8],
+  ['d', 9],
+  ['d', 10],
+  ['d', 11],
+  ['d', 12],
+  ['d', 13],
+  ['d', 14],
+  ['d', 15],
+
+  ['e', 0],
+  ['e', 1],
+  ['e', 2],
+  ['e', 3],
+  ['e', 4],
+  ['e', 5],
+  ['e', 6],
+  ['e', 7],
+  ['e', 8],
+  ['e', 9],
+  ['e', 10],
+  ['e', 11],
+  ['e', 12],
+  ['e', 13],
+  ['e', 14],
+  ['e', 15],
+
+  ['f', 0],
+  ['f', 1],
+  ['f', 2],
+  ['f', 3],
+  ['f', 4],
+  ['f', 5],
+  ['f', 6],
+  ['f', 7],
+  ['f', 8],
+  ['f', 9],
+  ['f', 10],
+  ['f', 11],
+  ['f', 12],
+  ['f', 13],
+  ['f', 14],
+  ['f', 15],
+
+  ['g', 0],
+  ['g', 1],
+  ['g', 2],
+  ['g', 3],
+  ['g', 4],
+  ['g', 5],
+  ['g', 6],
+  ['g', 7],
+  ['g', 8],
+  ['g', 9],
+  ['g', 10],
+  ['g', 11],
+  ['g', 12],
+  ['g', 13],
+  ['g', 14],
+  ['g', 15],
+
+  ['h', 0],
+  ['h', 1]
+];
 
 
 // Functions implementations ======================================================================
-impl<const B: char, const P: u8> Analog for AnalogPin<GpioPin<B, P, 3>> {
+impl Analog for AnalogPin {
   fn analog_read(&self) -> u16 {
-    if B == 'a' && P == 4 {panic!("P{}{} is reserved for DAC channel", B.to_uppercase(), P);}
-    if B == 'a' && P == 5 {panic!("P{}{} is reserved for DAC channel", B.to_uppercase(), P);}
+    let block = self.block;
+    let pin = self.pin;
+
+    if block == 'a' && pin == 4 {panic!("P{}{} is reserved for DAC channel", block.to_uppercase(), pin);}
+    if block == 'a' && pin == 5 {panic!("P{}{} is reserved for DAC channel", block.to_uppercase(), pin);}
     
-    return adc_read(B, P);
+    return adc_read(block, pin);
   }
 
   fn analog_write(&self, value: u16) {
-    if B == 'a' && P == 4 {dac_write(1, value);}
-    else if B == 'a' && P == 5 {dac_write(2, value);}
-    else {panic!("P{}{} is not a DAC channel", B.to_uppercase(), P);}
+    let block = self.block;
+    let pin = self.pin;
+
+    if block == 'a' && pin == 4 {dac_write(1, value);}
+    else if block == 'a' && pin == 5 {dac_write(2, value);}
+    else {panic!("P{}{} is not a DAC channel", block.to_uppercase(), pin);}
   }
 }
 

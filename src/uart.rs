@@ -6,64 +6,195 @@ use heapless::String;
 
 // Converter implementations ======================================================================
 macro_rules! generate_ToUart {
-  ($($number:literal),+) => {
-    $(
-      impl<const B: char, const P: u8> ToUart for GpioPin<B, P, $number> {
-        fn uart(self, baud: u32, rxint: bool, txint: bool) -> UartPin<Self> {
-          let block = B;
-          let pin = P;
-      
-          let channel: usize;
-          let direction: bool;
-      
-          if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-            channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-            unsafe {
-              if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
-              else {
-                hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
-                return UartPin {
-                  inner: self
-                };
+  ($([$letter:literal, $number:literal]),+) => {
+    use paste::paste;
+
+    paste!{
+      $(
+        impl ToUart for [<P $letter:upper $number>] {
+          fn uart(baud: u32, rxint: bool, txint: bool) -> UartPin {
+            let block = $letter;
+            let pin = $number;
+        
+            let channel: usize;
+            let direction: bool;
+        
+            if UART_MAP.rx_pin.contains(&(block, pin)) == true {
+              channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
+              unsafe {
+                if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
+                else {
+                  hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
+                  return UartPin {
+                    block: block,
+                    pin: pin
+                  };
+                }
               }
+              direction = false;
             }
-            direction = false;
-          }
-          else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-            channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-            unsafe {
-              if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
-              else {
-                hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
-                return UartPin {
-                  inner: self
-                };
+            else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
+              channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
+              unsafe {
+                if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
+                else {
+                  hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
+                  return UartPin {
+                    block: block,
+                    pin: pin
+                  };
+                }
               }
+              direction = true;
             }
-            direction = true;
+            else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
+        
+            uart_init(channel, direction, baud, rxint, txint);
+        
+            return UartPin {
+              block: block,
+              pin: pin
+            };
           }
-          else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
-      
-          uart_init(channel, direction, baud, rxint, txint);
-      
-          return UartPin {
-            inner: self
-          };
         }
-      }
-    )+
+      )+
+    }
   };
 }
 
 // 2⁰ == 1 && 2³ == 1 | alle anderen pins egal
-generate_ToUart!(11, 13, 15, 25, 27, 29, 31, 41, 43, 45, 47, 57, 59, 61, 63);
+// generate_ToUart!(11, 13, 15, 25, 27, 29, 31, 41, 43, 45, 47, 57, 59, 61, 63);
+
+generate_ToUart![
+  ['a', 0],
+  ['a', 1],
+  ['a', 2],
+  ['a', 3],
+  ['a', 4],
+  ['a', 5],
+  ['a', 6],
+  ['a', 7],
+  ['a', 8],
+  ['a', 9],
+  ['a', 10],
+  ['a', 11],
+  ['a', 12],
+  ['a', 13],
+  ['a', 14],
+  ['a', 15],
+
+  ['b', 0],
+  ['b', 1],
+  ['b', 2],
+  ['b', 3],
+  ['b', 4],
+  ['b', 5],
+  ['b', 6],
+  ['b', 7],
+  ['b', 8],
+  ['b', 9],
+  ['b', 10],
+  ['b', 11],
+  ['b', 12],
+  ['b', 13],
+  ['b', 14],
+  ['b', 15],
+
+  ['c', 0],
+  ['c', 1],
+  ['c', 2],
+  ['c', 3],
+  ['c', 4],
+  ['c', 5],
+  ['c', 6],
+  ['c', 7],
+  ['c', 8],
+  ['c', 9],
+  ['c', 10],
+  ['c', 11],
+  ['c', 12],
+  ['c', 13],
+  ['c', 14],
+  ['c', 15],
+
+  ['d', 0],
+  ['d', 1],
+  ['d', 2],
+  ['d', 3],
+  ['d', 4],
+  ['d', 5],
+  ['d', 6],
+  ['d', 7],
+  ['d', 8],
+  ['d', 9],
+  ['d', 10],
+  ['d', 11],
+  ['d', 12],
+  ['d', 13],
+  ['d', 14],
+  ['d', 15],
+
+  ['e', 0],
+  ['e', 1],
+  ['e', 2],
+  ['e', 3],
+  ['e', 4],
+  ['e', 5],
+  ['e', 6],
+  ['e', 7],
+  ['e', 8],
+  ['e', 9],
+  ['e', 10],
+  ['e', 11],
+  ['e', 12],
+  ['e', 13],
+  ['e', 14],
+  ['e', 15],
+
+  ['f', 0],
+  ['f', 1],
+  ['f', 2],
+  ['f', 3],
+  ['f', 4],
+  ['f', 5],
+  ['f', 6],
+  ['f', 7],
+  ['f', 8],
+  ['f', 9],
+  ['f', 10],
+  ['f', 11],
+  ['f', 12],
+  ['f', 13],
+  ['f', 14],
+  ['f', 15],
+
+  ['g', 0],
+  ['g', 1],
+  ['g', 2],
+  ['g', 3],
+  ['g', 4],
+  ['g', 5],
+  ['g', 6],
+  ['g', 7],
+  ['g', 8],
+  ['g', 9],
+  ['g', 10],
+  ['g', 11],
+  ['g', 12],
+  ['g', 13],
+  ['g', 14],
+  ['g', 15],
+
+  ['h', 0],
+  ['h', 1]
+];
 
 
 // Function implementations =======================================================================
-impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
+impl UART for UartPin {
   fn rxint_enable(&self) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
     let channel: usize;
 
     if UART_MAP.rx_pin.contains(&(block, pin)) == true {
@@ -81,8 +212,8 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
   }
 
   fn rxint_disable(&self) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
     let channel: usize;
 
     if UART_MAP.rx_pin.contains(&(block, pin)) == true {
@@ -100,8 +231,8 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
   }
 
   fn txint_enable(&self) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
     let channel: usize;
 
     if UART_MAP.rx_pin.contains(&(block, pin)) == true {
@@ -119,8 +250,8 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
   }
 
   fn txint_disable(&self) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
     let channel: usize;
 
     if UART_MAP.rx_pin.contains(&(block, pin)) == true {
@@ -138,8 +269,8 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
   }
 
   fn change_baud(&self, baud: u32) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
     let channel: usize;
 
     if UART_MAP.rx_pin.contains(&(block, pin)) == true {
@@ -166,8 +297,8 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
   }
 
   fn send_char(&self, c: char) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
     let channel: usize;
 
     if UART_MAP.rx_pin.contains(&(block, pin)) == true {
@@ -194,8 +325,8 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
   }
 
   fn send_string(&self, s: &str) {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
     let channel: usize;
 
     if UART_MAP.rx_pin.contains(&(block, pin)) == true {
@@ -222,8 +353,8 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
   }
 
   fn get_char(&self) -> char {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
     let channel: usize;
 
     if UART_MAP.rx_pin.contains(&(block, pin)) == true {
@@ -250,8 +381,8 @@ impl<const B: char, const P: u8> UART for UartPin<GpioPin<B, P, 8>> {
   }
 
   fn get_string(&self, stopper: char) -> heapless::String<30> {
-    let block = B;
-    let pin = P;
+    let block = self.block;
+    let pin = self.pin;
     let channel: usize;
     let mut buffer: char;
     let mut string_buffer: String<30> = String::new();
