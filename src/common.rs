@@ -1,4 +1,3 @@
-use heapless::String;
 use super::gpio::{Bias, Speed};
 
 
@@ -100,7 +99,7 @@ pub trait UART: Sized {
   fn send_char(&self, c: char);
   fn send_string(&self, s: &str);
   fn get_char(&self) -> char;
-  fn get_string(&self, stopper: char) -> String<30>;
+  fn get_string(&self, stopper: char) -> heapless::String<30>;
 }
 
 

@@ -1,5 +1,5 @@
 use super::common::*;
-use super::include::{ADC1_MAP, ADC3_MAP};
+use super::include::{ADC1_MAP, ADC3_MAP, ADC_CONF};
 use cortex_m_semihosting::hprintln;
 
 
@@ -18,8 +18,22 @@ macro_rules! generate_ToAnalog {
           else if block == 'a' && pin == 5 {
             dac_init(2);
           }
-          else if block == 'f' {adc_init(3, resolution, eocint);}
-          else {adc_init(1, resolution, eocint);}
+          else if block == 'f' {
+            unsafe {
+              if ADC_CONF[1] == false {
+                adc_init(3, resolution, eocint);
+                ADC_CONF[1] = true;
+              }
+            }
+          }
+          else {
+            unsafe {
+              if ADC_CONF[0] == false {
+                adc_init(1, resolution, eocint);
+                ADC_CONF[0] = true;
+              }
+            }
+          }
 
           return AnalogPin {
             inner: self

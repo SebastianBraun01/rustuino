@@ -1,7 +1,8 @@
+#![allow(non_snake_case)]
+
 use super::common::*;
-use cortex_m::peripheral::NVIC;
-use stm32f4::stm32f446::{Interrupt, interrupt};
-use super::include::variables::TIME_COUNTER;
+use super::include:: {TIMER_MAP, TIMER_CONF};
+use cortex_m_semihosting::hprintln;
 
 
 // Converter implementations ======================================================================
@@ -9,8 +10,21 @@ impl<const B: char, const P: u8> ToPwm for GpioPin<B, P, 4> {
   fn pwm(self) -> PwmPin<Self> {
     let block = B;
     let pin = P;
+    let timer: usize;
+    let channel: usize;
 
-    unimplemented!();
+    if TIMER_MAP.pin.contains(&(block, pin)) {
+      timer = TIMER_MAP.timer[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
+      channel = TIMER_MAP.ccch[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
+
+      unsafe {
+        if TIMER_CONF[(timer * 4) - channel] == false {TIMER_CONF[(timer * 4) - channel] = true;}
+        else {panic!("Timer {} channel {} already in use!", timer, channel);}
+      }
+    }
+    else {panic!("P{}{} is not available for pwm output!", block.to_uppercase(), pin);}
+
+    pwm_init(timer, channel);
 
     return PwmPin{
       inner: self
@@ -18,60 +32,426 @@ impl<const B: char, const P: u8> ToPwm for GpioPin<B, P, 4> {
   }
 }
 
-pub fn delay(ms: u32) {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
-  let systick = &peripheral_ptr.STK;
 
-  // 2MHz mit 2000 PSC -> 1kHz
-  let systick_psc = 2000000 / 1000;
+// Function implementations =======================================================================
+impl<const B: char, const P: u8> PWM for PwmPin<GpioPin<B, P, 3>> {
+  fn pwm_write(&self, value: u8) {
+    let block = B;
+    let pin = P;
+    let timer: usize;
+    let channel: usize;
 
-  if ms * systick_psc > (2^24) - 1 {panic!("Delay value too large for Timer!");}
+    if TIMER_MAP.pin.contains(&(block, pin)) {
+      timer = TIMER_MAP.timer[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
+      channel = TIMER_MAP.ccch[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
 
-  systick.ctrl.modify(|_, w| w.enable().clear_bit());
-  systick.load.write(|w| unsafe {w.reload().bits(systick_psc * ms)});
-  systick.val.write(|w| unsafe {w.current().bits(0)});
-  systick.ctrl.modify(|_, w| w.enable().set_bit());
+      unsafe {
+        if TIMER_CONF[(timer * 4) - channel] == false {
+          hprintln!("Timer {} channel {} not configured!", timer, channel).expect("Could not send semihosting message!");
+          return;
+        }
+      }
+    }
+    else {panic!("P{}{} is not available for pwm output!", block.to_uppercase(), pin);}
 
-  while !systick.ctrl.read().countflag().bit_is_set() {}
-  systick.ctrl.modify(|_, w| w.countflag().clear_bit());
-  systick.ctrl.modify(|_, w| w.enable().clear_bit());
+    pwm_set_duty(timer, channel, value);
+  }
 }
 
-pub fn start_time() {
+
+// Helper functions ===============================================================================
+fn pwm_init(timer: usize, channel: usize) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
   let rcc = &peripheral_ptr.RCC;
-  let tim9 = &peripheral_ptr.TIM9;
 
-  rcc.apb2enr.modify(|_, w| w.tim9en().enabled());
-  tim9.dier.modify(|_, w| w.uie().enabled());
+  match timer {
+    1 => {
+      let tim1 = &peripheral_ptr.TIM1;
 
-  unsafe {NVIC::unmask(Interrupt::TIM8_UP_TIM13);}
- 
-  tim9.arr.modify(|_, w| unsafe {w.arr().bits(8000)});
-  tim9.egr.write(|w| w.ug().update());
-  tim9.cr1.modify(|_, w| w.cen().enabled());
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim1.cr1.modify(|_, w| w.arpe().enabled());
+      tim1.psc.write(|w| w.psc().bits(1000));
+      tim1.arr.write_with_zero(|w| w.arr().bits(255));
+      tim1.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim1.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim1.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        3 => tim1.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        4 => tim1.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    2 => {
+      let tim2 = &peripheral_ptr.TIM2;
+
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim2.cr1.modify(|_, w| w.arpe().enabled());
+      tim2.psc.write(|w| w.psc().bits(1000));
+      tim2.arr.write_with_zero(|w| w.arr().bits(255));
+      tim2.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim2.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim2.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        3 => tim2.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        4 => tim2.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    3 => {
+      let tim3 = &peripheral_ptr.TIM3;
+
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim3.cr1.modify(|_, w| w.arpe().enabled());
+      tim3.psc.write(|w| w.psc().bits(1000));
+      tim3.arr.write_with_zero(|w| w.arr().bits(255));
+      tim3.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim3.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim3.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        3 => tim3.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        4 => tim3.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    4 => {
+      let tim4 = &peripheral_ptr.TIM4;
+
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim4.cr1.modify(|_, w| w.arpe().enabled());
+      tim4.psc.write(|w| w.psc().bits(1000));
+      tim4.arr.write_with_zero(|w| w.arr().bits(255));
+      tim4.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim4.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim4.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        3 => tim4.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        4 => tim4.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    5 => {
+      let tim5 = &peripheral_ptr.TIM5;
+
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim5.cr1.modify(|_, w| w.arpe().enabled());
+      tim5.psc.write(|w| w.psc().bits(1000));
+      tim5.arr.write_with_zero(|w| w.arr().bits(255));
+      tim5.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim5.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim5.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        3 => tim5.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        4 => tim5.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    8 => {
+      let tim8 = &peripheral_ptr.TIM8;
+
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim8.cr1.modify(|_, w| w.arpe().enabled());
+      tim8.psc.write(|w| w.psc().bits(1000));
+      tim8.arr.write_with_zero(|w| w.arr().bits(255));
+      tim8.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim8.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim8.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        3 => tim8.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        4 => tim8.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    9 => {
+      let tim9 = &peripheral_ptr.TIM9;
+
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim9.cr1.modify(|_, w| w.arpe().enabled());
+      tim9.psc.write(|w| w.psc().bits(1000));
+      tim9.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
+      tim9.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim9.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim9.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    10 => {
+      let tim10 = &peripheral_ptr.TIM10;
+
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim10.cr1.modify(|_, w| w.arpe().enabled());
+      tim10.psc.write(|w| w.psc().bits(1000));
+      tim10.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
+      tim10.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim10.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim10.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    11 => {
+      let tim11 = &peripheral_ptr.TIM11;
+
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim11.cr1.modify(|_, w| w.arpe().enabled());
+      tim11.psc.write(|w| w.psc().bits(1000));
+      tim11.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
+      tim11.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim11.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim11.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    12 => {
+      let tim12 = &peripheral_ptr.TIM12;
+
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim12.cr1.modify(|_, w| w.arpe().enabled());
+      tim12.psc.write(|w| w.psc().bits(1000));
+      tim12.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
+      tim12.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim12.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim12.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    13 => {
+      let tim13 = &peripheral_ptr.TIM13;
+
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim13.cr1.modify(|_, w| w.arpe().enabled());
+      tim13.psc.write(|w| w.psc().bits(1000));
+      tim13.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
+      tim13.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim13.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim13.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    14 => {
+      let tim14 = &peripheral_ptr.TIM14;
+
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim14.cr1.modify(|_, w| w.arpe().enabled());
+      tim14.psc.write(|w| w.psc().bits(1000));
+      tim14.arr.write(|w| unsafe {w.arr().bits(255)});
+      tim14.egr.write(|w| w.ug().set_bit());
+
+      match channel {
+        1 => tim14.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
+        2 => tim14.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    _  => panic!("Timer {} is not a valid timer!", timer)
+  };
 }
 
-pub fn millis() -> usize {
+fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
-  let tim9 = &peripheral_ptr.TIM9;
-  let buffer: usize;
 
-  tim9.cr1.modify(|_, w| w.cen().disabled());
-  while tim9.sr.read().uif().bit_is_clear() == false {}
-  unsafe {buffer = TIME_COUNTER;}
-  tim9.cr1.modify(|_, w| w.cen().enabled());
-
-  return buffer;
+  match timer {
+    1 => {
+      let tim1 = &peripheral_ptr.TIM1;
+      match channel {
+        1 => tim1.ccr1.write_with_zero(|w| w.ccr().bits(value as u16)),
+        2 => tim1.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
+        3 => tim1.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
+        4 => tim1.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    2 => {
+      let tim2 = &peripheral_ptr.TIM2;
+      match channel {
+        1 => tim2.ccr1.write_with_zero(|w| w.ccr().bits(value as u32)),
+        2 => tim2.ccr2.write_with_zero(|w| w.ccr().bits(value as u32)),
+        3 => tim2.ccr3.write_with_zero(|w| w.ccr().bits(value as u32)),
+        4 => tim2.ccr4.write_with_zero(|w| w.ccr().bits(value as u32)),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    3 => {
+      let tim3 = &peripheral_ptr.TIM3;
+      match channel {
+        1 => tim3.ccr1.write_with_zero(|w| w.ccr().bits(value as u16)),
+        2 => tim3.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
+        3 => tim3.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
+        4 => tim3.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    4 => {
+      let tim4 = &peripheral_ptr.TIM4;
+      match channel {
+        1 => tim4.ccr1.write_with_zero(|w| w.ccr().bits(value as u16)),
+        2 => tim4.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
+        3 => tim4.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
+        4 => tim4.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    5 => {
+      let tim5 = &peripheral_ptr.TIM5;
+      match channel {
+        1 => tim5.ccr1.write_with_zero(|w| w.ccr().bits(value as u32)),
+        2 => tim5.ccr2.write_with_zero(|w| w.ccr().bits(value as u32)),
+        3 => tim5.ccr3.write_with_zero(|w| w.ccr().bits(value as u32)),
+        4 => tim5.ccr4.write_with_zero(|w| w.ccr().bits(value as u32)),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    8 => {
+      let tim8 = &peripheral_ptr.TIM8;
+      match channel {
+        1 => tim8.ccr1.write_with_zero(|w| w.ccr().bits(value as u16)),
+        2 => tim8.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
+        3 => tim8.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
+        4 => tim8.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    9 => {
+      let tim9 = &peripheral_ptr.TIM9;
+      match channel {
+        1 => tim9.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
+        2 => tim9.ccr2.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    10 => {
+      let tim10 = &peripheral_ptr.TIM10;
+      match channel {
+        1 => tim10.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    11 => {
+      let tim11 = &peripheral_ptr.TIM11;
+      match channel {
+        1 => tim11.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    12 => {
+      let tim12 = &peripheral_ptr.TIM12;
+      match channel {
+        1 => tim12.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
+        2 => tim12.ccr2.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    13 => {
+      let tim13 = &peripheral_ptr.TIM13;
+      match channel {
+        1 => tim13.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    14 => {
+      let tim14 = &peripheral_ptr.TIM14;
+      match channel {
+        1 => tim14.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
+        _ => panic!("Channel {} is not a valid CC channel!", channel)
+      };
+    },
+    _ => panic!("Timer {} is not a valid timer!", timer)
+  };
 }
 
-// TODO: timer_init function!!!!!
-pub fn timer_init(timer: u8, time: usize) {
 
-}
+// Standalone time functions ======================================================================
+pub mod timer {
+  use cortex_m::peripheral::NVIC;
+  use cortex_m_rt::exception;
+  use stm32f4::stm32f446::{Interrupt, interrupt};
+  use super::super::include::{DELAY_COUNTER, TIME_COUNTER, TIMER_CONF};
+  use cortex_m_semihosting::hprintln;
+  
+  pub fn delay(ms: u32) {
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let systick = &peripheral_ptr.STK;
+    
+    if systick.ctrl.read().enable().bit_is_clear() {
+      // 2MHz mit 2000 PSC -> 1kHz
+      systick.load.write(|w| unsafe {w.reload().bits(2000000 / 1000)});
+      systick.val.reset();
+      systick.ctrl.modify(|_, w| {
+        w.tickint().set_bit();
+        w.enable().set_bit()
+      });
+    }
+    
+    unsafe {
+      DELAY_COUNTER.1 = 0;
+      DELAY_COUNTER.0 = true;
+      while DELAY_COUNTER.1 < ms {}
+      DELAY_COUNTER.0 = false;
+    }
+  }
+  
+  pub fn start_time() {
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let rcc = &peripheral_ptr.RCC;
+    let tim6 = &peripheral_ptr.TIM6;
 
-#[allow(non_snake_case)]
-#[interrupt]
-fn TIM8_UP_TIM13() {
-  unsafe {TIME_COUNTER += 1;}
+    unsafe {
+      if TIMER_CONF[20] == false {TIMER_CONF[20] = true;}
+      else {
+        hprintln!("Millis Timer already configured!").expect("Could not send semihosting message!");
+        return;
+      }
+    }
+
+    rcc.apb1enr.modify(|_, w| w.tim6en().enabled());
+    tim6.cr1.modify(|_, w| w.arpe().enabled());
+
+    tim6.dier.modify(|_, w| w.uie().enabled());
+    unsafe {NVIC::unmask(Interrupt::TIM1_UP_TIM10);}
+
+    tim6.psc.write(|w| w.psc().bits(8));
+    tim6.arr.write(|w| w.arr().bits(1000));
+    tim6.egr.write(|w| w.ug().update());
+    tim6.cr1.modify(|_, w| w.cen().enabled());
+  }
+  
+  pub fn millis() -> usize {
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let tim6 = &peripheral_ptr.TIM6;
+    let buffer: usize;
+  
+    tim6.cr1.modify(|_, w| w.cen().disabled());
+    unsafe {buffer = TIME_COUNTER;}
+    tim6.cr1.modify(|_, w| w.cen().enabled());
+  
+    return buffer;
+  }
+
+
+  // Interrupts and Exceptions ====================================================================
+  #[exception]
+  fn SysTick() {
+    unsafe {
+      if DELAY_COUNTER.0 == true {DELAY_COUNTER.1 += 1;}
+    }
+  }
+
+  #[interrupt]
+  fn TIM1_UP_TIM10() {
+    unsafe {TIME_COUNTER += 1;}
+  }
 }

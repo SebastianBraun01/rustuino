@@ -1,7 +1,6 @@
 use super::common::*;
 use super::include::{UART_MAP, UART_CONF};
 use cortex_m_semihosting::hprintln;
-use libm::*;
 use heapless::String;
 
 
@@ -439,7 +438,7 @@ fn set_baud(channel: usize, baud: u32) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
 
   // (Mantisse, Fractal)
-  let usartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));
+  let usartdiv: (f64, f64) = libm::modf(16000000.0 / (16.0 * baud as f64));
 
   match channel {
     1 => {
