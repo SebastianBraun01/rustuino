@@ -15,16 +15,12 @@ macro_rules! generate_ToAnalog {
             let block = $letter;
             let pin = $number;
             
-            if block == 'a' && pin == 4 {
-              dac_init(1);
-            }
-            else if block == 'a' && pin == 5 {
-              dac_init(2);
-            }
+            if block == 'a' && pin == 4 {dac_init(1);}
+            else if block == 'a' && pin == 5 {dac_init(2);}
             else if block == 'f' {
               unsafe {
                 if ADC_CONF[1] == false {
-                  adc_init(3, resolution, eocint);
+                  adc_init(3, block, pin, resolution, eocint);
                   ADC_CONF[1] = true;
                 }
               }
@@ -32,7 +28,7 @@ macro_rules! generate_ToAnalog {
             else {
               unsafe {
                 if ADC_CONF[0] == false {
-                  adc_init(1, resolution, eocint);
+                  adc_init(1, block, pin, resolution, eocint);
                   ADC_CONF[0] = true;
                 }
               }
@@ -84,10 +80,34 @@ impl Analog for AnalogPin {
 
 
 // Helper functions ===============================================================================
-fn adc_init(adc: u8, resolution: u8, eocint: bool) {
+fn adc_init(adc: u8, block: char, pin: u8, resolution: u8, eocint: bool) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
   let rcc = &peripheral_ptr.RCC;
   let adcc = &peripheral_ptr.ADC_COMMON;
+
+  match block {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (3 << (2 * pin)))});
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (3 << (2 * pin)))});
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (3 << (2 * pin)))});
+    },
+    'f' => {
+      let gpiof = &peripheral_ptr.GPIOF;
+      rcc.ahb1enr.modify(|_, w| w.gpiofen().enabled());
+      gpiof.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (3 << (2 * pin)))});
+    },
+    _   => panic!("P{}{} not available for ADC conversion!", block.to_uppercase(), pin)
+  };
   
   match adc {
     1 => {
@@ -134,10 +154,14 @@ fn dac_init(channel: u8) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
   let rcc = &peripheral_ptr.RCC;
   let dac = &peripheral_ptr.DAC;
+  let gpioa = &peripheral_ptr.GPIOA;
   
   rcc.apb1enr.modify(|_, w| w.dacen().enabled());
   
   if channel == 1 {
+    rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+    gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * 4)) | (3 << (2 * 4)))});
+
     dac.cr.modify(|_, w| {
       w.boff1().enabled();
       w.ten1().enabled();
@@ -146,6 +170,9 @@ fn dac_init(channel: u8) {
     });
   }
   else if channel == 2 {
+    rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+    gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * 5)) | (3 << (2 * 5)))});
+
     dac.cr.modify(|_, w| {
       w.boff2().enabled();
       w.ten2().enabled();

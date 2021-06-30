@@ -49,7 +49,7 @@ macro_rules! generate_ToUart {
             }
             else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
         
-            uart_init(channel, direction, baud, rxint, txint);
+            uart_init(channel, block, pin, direction, baud, rxint, txint);
         
             return UartPin {
               block: block,
@@ -307,9 +307,91 @@ impl UART for UartPin {
 
 
 // Helper functions ===============================================================================
-fn uart_init(channel: usize, direction: bool, baud: u32, rxint: bool, txint: bool) {
+fn uart_init(channel: usize, block: char, pin: u8, direction: bool, baud: u32, rxint: bool, txint: bool) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
   let rcc = &peripheral_ptr.RCC;
+
+  match block {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if channel < 4 {
+        if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
+        else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
+      }
+      else {
+        if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
+        else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
+      }
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if channel < 4 {
+        if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
+        else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
+      }
+      else {
+        if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
+        else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
+      }
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if channel < 4 {
+        if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
+        else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
+      }
+      else {
+        if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
+        else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
+      }
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if channel < 4 {
+        if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
+        else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
+      }
+      else {
+        if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
+        else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
+      }
+    },
+    'e' => {
+      let gpioe = &peripheral_ptr.GPIOE;
+      rcc.ahb1enr.modify(|_, w| w.gpioeen().enabled());
+      gpioe.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if channel < 4 {
+        if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
+        else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
+      }
+      else {
+        if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
+        else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
+      }
+    },
+    'g' => {
+      let gpiog = &peripheral_ptr.GPIOG;
+      rcc.ahb1enr.modify(|_, w| w.gpiogen().enabled());
+      gpiog.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if channel < 4 {
+        if pin > 7 {gpiog.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
+        else {gpiog.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
+      }
+      else {
+        if pin > 7 {gpiog.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
+        else {gpiog.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
+      }
+    },
+    _   => panic!("P{}{} is not available for UART transmissions!", block.to_uppercase(), pin)
+  };
   
   match channel {
     1 => {

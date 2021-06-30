@@ -30,7 +30,7 @@ macro_rules! generate_ToPwm {
             }
             else {panic!("P{}{} is not available for pwm output!", block.to_uppercase(), pin);}
         
-            pwm_init(timer, channel);
+            pwm_init(timer, channel, block, pin);
         
             return PwmPin{
               block,
@@ -123,9 +123,175 @@ impl PWM for PwmPin {
 
 
 // Helper functions ===============================================================================
-fn pwm_init(timer: usize, channel: usize) {
+fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
   let rcc = &peripheral_ptr.RCC;
+
+  match block {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if timer == 1 || timer == 2 {
+        if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
+        else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
+      }
+      else if timer == 3 || timer == 4 || timer == 5 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
+          else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
+        }
+      }
+      else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
+          else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
+        }
+      }
+      else {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
+          else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
+        }
+      }
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if timer == 1 || timer == 2 {
+        if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
+        else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
+      }
+      else if timer == 3 || timer == 4 || timer == 5 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
+          else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
+        }
+      }
+      else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
+          else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
+        }
+      }
+      else {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
+          else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
+        }
+      }
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if timer == 1 || timer == 2 {
+        if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
+        else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
+      }
+      else if timer == 3 || timer == 4 || timer == 5 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
+          else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
+        }
+      }
+      else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
+          else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
+        }
+      }
+      else {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
+          else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
+        }
+      }
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if timer == 1 || timer == 2 {
+        if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
+        else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
+      }
+      else if timer == 3 || timer == 4 || timer == 5 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
+          else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
+        }
+      }
+      else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
+          else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
+        }
+      }
+      else {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
+          else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
+        }
+      }
+    },
+    'e' => {
+      let gpioe = &peripheral_ptr.GPIOE;
+      rcc.ahb1enr.modify(|_, w| w.gpioeen().enabled());
+      gpioe.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if timer == 1 || timer == 2 {
+        if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
+        else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
+      }
+      else if timer == 3 || timer == 4 || timer == 5 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
+          else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
+        }
+      }
+      else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
+          else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
+        }
+      }
+      else {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
+          else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
+        }
+      }
+    },
+    'f' => {
+      let gpiof = &peripheral_ptr.GPIOF;
+      rcc.ahb1enr.modify(|_, w| w.gpiofen().enabled());
+      gpiof.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
+      if timer == 1 || timer == 2 {
+        if pin > 7 {gpiof.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
+        else {gpiof.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
+      }
+      else if timer == 3 || timer == 4 || timer == 5 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpiof.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
+          else {gpiof.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
+        }
+      }
+      else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpiof.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
+          else {gpiof.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
+        }
+      }
+      else {
+        if timer == 1 || timer == 2 {
+          if pin > 7 {gpiof.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
+          else {gpiof.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
+        }
+      }
+    },
+    _   => panic!("P{}{} is not available for PWM output!", block.to_uppercase(), pin)
+  };
 
   match timer {
     1 => {
