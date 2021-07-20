@@ -726,8 +726,6 @@ fn recieve_char(channel: usize) -> char {
 pub mod serial {
   use libm::*;
   use cortex_m_semihosting::hprintln;
-  #[allow(unused_imports)]
-  use core::fmt;
   use super::super::include::UART_CONF;
 
   pub fn init(baud: u32, rxint: bool, txint: bool) {
@@ -810,7 +808,7 @@ pub mod serial {
   macro_rules! sprint {
     ($param:expr) => {
       let mut txt_buff: String<50> = String::new();
-      if fmt::write(&mut txt_buff, format_args!($param)).is_err() {txt_buff = String::from("~\r\n")};
+      if core::fmt::write(&mut txt_buff, format_args!($param)).is_err() {txt_buff = String::from("~\r\n")};
     
       for c in txt_buff.chars() {
         if c.is_ascii() == true {rustuino::serial::send_char_usb(c);}
@@ -823,7 +821,7 @@ pub mod serial {
   macro_rules! sprintln {
     ($param:expr) => {
       let mut txt_buff: String<50> = String::new();
-      if fmt::write(&mut txt_buff, format_args!(" ")).is_err() {txt_buff = String::from("~\r\n")};
+      if core::fmt::write(&mut txt_buff, format_args!(" ")).is_err() {txt_buff = String::from("~\r\n")};
     
       for c in txt_buff.chars() {
         if c.is_ascii() == true {rustuino::serial::send_char_usb(c);}
