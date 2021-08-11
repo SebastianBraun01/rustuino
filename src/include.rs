@@ -41,10 +41,10 @@ pub static mut UART_CONF: [bool; 6] = [false, false, false, false, false, false]
 
 // PWM timer map ==================================================================================
 pub struct TIMERMap {
-    pub pin: [(char, u8); 74],
-    pub timer: [u8; 74],
-    pub ccch: [u8; 74],
-  }
+  pub pin: [(char, u8); 74],
+  pub timer: [u8; 74],
+  pub ccch: [u8; 74]
+}
   
 pub const TIMER_MAP: TIMERMap = TIMERMap{
   pin: [('a', 0), ('a', 1), ('a', 2), ('a', 3), ('a', 5), ('a', 8), ('a', 9), ('a', 10), ('a', 11), ('a', 15), ('b', 0), ('b', 1), ('b', 2), ('b', 3), ('b', 8), ('b', 9), ('b', 10), ('b', 11), ('b', 13), ('b', 14), ('b', 15), ('e', 8), ('e', 9), ('e', 10), ('e', 11), ('e', 12), ('e', 13), ('e', 14), ('a', 0), ('a', 1), ('a', 2), ('a', 3), ('a', 6), ('a', 7), ('b', 0), ('b', 1), ('b', 4), ('b', 5), ('b', 6), ('b', 7), ('b', 8), ('b', 9), ('c', 6), ('c', 7), ('c', 8), ('c', 9), ('d', 12), ('d', 13), ('d', 14), ('d', 15), ('a', 2), ('a', 3), ('a', 5), ('a', 7), ('b', 0), ('b', 1), ('b', 8), ('b', 9), ('b', 14), ('b', 15), ('c', 6), ('c', 7), ('c', 8), ('c', 9), ('e', 5), ('e', 6), ('f', 6), ('f', 7), ('a', 6), ('a', 7), ('b', 14), ('b', 15), ('f', 8), ('f', 9)],
@@ -75,3 +75,19 @@ pub static mut TIMER_CONF: [bool; 56] = [
 // Timer Variables ================================================================================
 pub static mut DELAY_COUNTER: (bool, u32) = (false, 0);
 pub static mut TIME_COUNTER: usize = 0;
+
+
+// I2C Channel map ================================================================================
+pub struct I2CMap {
+  pub scl_pins: [(char, u8); 9],
+  pub sda_pins: [(char, u8); 9],
+  pub channel: [u8; 9]
+}
+
+pub const I2C_MAP: I2CMap = I2CMap{
+  scl_pins: [('b', 6), ('b', 6), ('b', 8), ('b', 8), ('b', 10), ('b', 10), ('f', 1), ('f', 1),  ('a', 8)],
+  sda_pins: [('b', 7), ('b', 9), ('b', 7), ('b', 9), ('b', 11), ('f', 0),  ('f', 0), ('b', 11), ('b', 4)],
+  channel: [    1,        1,        1,        1,        2,         2,         2,        2,         3]
+};
+
+pub static mut I2C_CONF: [bool; 3] = [false, false, false];

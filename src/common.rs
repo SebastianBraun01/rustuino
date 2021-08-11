@@ -1,4 +1,5 @@
 use super::gpio::{Bias, Speed};
+use heapless::Vec;
 
 
 // Structs ========================================================================================
@@ -164,15 +165,16 @@ pub struct UartPin {
   pub pin: u8
 }
 
-pub struct I2cPin {
-  pub block: char,
-  pub pin: u8
+pub struct I2cCore {
+  pub scl: (char, u8),
+  pub sda: (char, u8),
+  pub core: u8,
+  pub pullup: bool
 }
 
 
 // Traits =========================================================================================
 pub trait ToInOut: Sized {
-  // fn pin_mode(self, mode: Mode) -> Self;
   fn input() -> InputPin;
   fn output() -> OutputPin;
 }
@@ -187,10 +189,6 @@ pub trait ToPwm: Sized {
 
 pub trait ToUart: Sized {
   fn uart(baud: u32, rxint: bool, txint: bool) -> UartPin;
-}
-
-pub trait ToI2c: Sized {
-  fn i2c() -> I2cPin;
 }
 
 pub trait Input: Sized {
@@ -227,8 +225,8 @@ pub trait UART: Sized {
 }
 
 pub trait I2C: Sized {
-  fn send_byte(&self, byte: u8);
-  fn recieve_byte(&self) -> u8;
+  fn send_bytes<const N: usize>(&self, addr: u8, data: &Vec<u8, N>);
+  fn recieve_bytes<const N: usize>(&self, addr: u8, vec: &mut Vec<u8, N>, nbytes: u8);
 }
 
 
