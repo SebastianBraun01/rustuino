@@ -1,6 +1,7 @@
 use super::common::*;
 use super::include::{ADC1_MAP, ADC3_MAP, ADC_CONF};
 use cortex_m_semihosting::hprintln;
+use heapless::String;
 
 
 // Converter implementations ======================================================================
@@ -11,7 +12,7 @@ macro_rules! generate_ToAnalog {
     paste!{
       $(
         impl ToAnalog for [<P $letter:upper $number>] {
-          fn analog(resolution: u8, eocint: bool) -> AnalogPin {
+          fn analog(resolution: u8, eocint: bool) -> Result<AnalogPin, String<20>> {
             let block = $letter;
             let pin = $number;
             
@@ -33,20 +34,19 @@ macro_rules! generate_ToAnalog {
                 }
               }
             }
+
+            todo!("parameter checking!");
   
-            return AnalogPin {
+            return Ok(AnalogPin {
               block,
               pin
-            };
+            });
           }
         }
       )+
     }
   };
 }
-
-// 2⁰ == 1 && 2¹ == 1 | restliche stellen egal
-// generate_ToAnalog!(3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63);
 
 generate_ToAnalog![
   ['a', 0], ['a', 1], ['a', 2], ['a', 3], ['a', 4], ['a', 5], ['a', 6], ['a', 7],
@@ -59,22 +59,48 @@ generate_ToAnalog![
 // Functions implementations ======================================================================
 impl Analog for AnalogPin {
   fn analog_read(&self) -> u16 {
-    let block = self.block;
-    let pin = self.pin;
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
 
-    if block == 'a' && pin == 4 {panic!("P{}{} is reserved for DAC channel", block.to_uppercase(), pin);}
-    if block == 'a' && pin == 5 {panic!("P{}{} is reserved for DAC channel", block.to_uppercase(), pin);}
-    
-    return adc_read(block, pin);
+    let buffer = if self.block == 'f' {
+      let adc3 = &peripheral_ptr.ADC3;
+      let channel = ADC3_MAP.channel[ADC3_MAP.pin.iter().position(|&i| i == self.pin).unwrap()];
+      adc3.sqr3.modify(|_, w| unsafe {w.sq1().bits(channel)});
+  
+      adc3.cr2.write(|w| w.swstart().start());
+      while adc3.sr.read().eoc().is_not_complete() == true {}
+      adc3.dr.read().data().bits() as u16
+    }
+    else {
+      let adc1 = &peripheral_ptr.ADC1;
+      let channel = ADC1_MAP.channel[ADC1_MAP.pin.iter().position(|&i| i == (self.block, self.pin)).unwrap()];
+      adc1.sqr3.modify(|_, w| unsafe {w.sq1().bits(channel)});
+      adc1.cr2.write(|w| w.swstart().start());
+      while adc1.sr.read().eoc().is_not_complete() == true {}
+      adc1.dr.read().data().bits() as u16
+    };
+  
+    return buffer;
   }
 
   fn analog_write(&self, value: u16) {
-    let block = self.block;
-    let pin = self.pin;
-
-    if block == 'a' && pin == 4 {dac_write(1, value);}
-    else if block == 'a' && pin == 5 {dac_write(2, value);}
-    else {panic!("P{}{} is not a DAC channel", block.to_uppercase(), pin);}
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let dac = &peripheral_ptr.DAC;
+    let val: u16;
+    
+    if value > 4095 {
+      hprintln!("Value outside of bounds!").expect("Could not send semihosting message!");
+      val = 4095;
+    }
+    else {val = value;}
+    
+    if self.pin == 4  {
+      dac.dhr12r1.write(|w| w.dacc1dhr().bits(val));
+      dac.swtrigr.write(|w| w.swtrig1().enabled());
+    }
+    else {
+      dac.dhr12r2.write(|w| w.dacc2dhr().bits(val));
+      dac.swtrigr.write(|w| w.swtrig2().enabled());
+    }
   }
 }
 
@@ -179,50 +205,5 @@ fn dac_init(channel: u8) {
       w.tsel2().software();
       w.en2().enabled()
     });
-  }
-}
-
-fn adc_read(block: char, pin: u8) -> u16 {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
-
-  let buffer = if block == 'f' {
-    let adc3 = &peripheral_ptr.ADC3;
-    let channel = ADC3_MAP.channel[ADC3_MAP.pin.iter().position(|&i| i == pin).unwrap()];
-    adc3.sqr3.modify(|_, w| unsafe {w.sq1().bits(channel)});
-
-    adc3.cr2.write(|w| w.swstart().start());
-    while adc3.sr.read().eoc().is_not_complete() == true {}
-    adc3.dr.read().data().bits() as u16
-  }
-  else {
-    let adc1 = &peripheral_ptr.ADC1;
-    let channel = ADC1_MAP.channel[ADC1_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()];
-    adc1.sqr3.modify(|_, w| unsafe {w.sq1().bits(channel)});
-    adc1.cr2.write(|w| w.swstart().start());
-    while adc1.sr.read().eoc().is_not_complete() == true {}
-    adc1.dr.read().data().bits() as u16
-  };
-
-  return buffer;
-}
-
-fn dac_write(channel: u8, value: u16) {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
-  let dac = &peripheral_ptr.DAC;
-  let val: u16;
-  
-  if value > 4095 {
-    hprintln!("Value outside of bounds!").expect("Could not send semihosting message!");
-    val = 4095;
-  }
-  else {val = value;}
-  
-  if channel == 1 {
-    dac.dhr12r1.write(|w| w.dacc1dhr().bits(val));
-    dac.swtrigr.write(|w| w.swtrig1().enabled());
-  }
-  else {
-    dac.dhr12r2.write(|w| w.dacc2dhr().bits(val));
-    dac.swtrigr.write(|w| w.swtrig2().enabled());
   }
 }

@@ -7,8 +7,8 @@ pub use panic_semihosting as _;
 
 // Für benutzer
 pub use libm::*;
-pub use heapless::{Vec, String, FnvIndexMap};
-pub use {include::*, common::*, gpio::*, analog::*, time::*, uart::*};
+pub use heapless::{Vec, String};
+pub use {common::*, gpio::*, analog::*, time::*, uart::*};
 
 
 // Submodule includes =============================================================================
@@ -18,3 +18,4 @@ pub mod gpio;
 pub mod analog;
 pub mod time;
 pub mod uart;
+pub mod i2c;

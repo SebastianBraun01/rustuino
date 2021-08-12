@@ -1,5 +1,5 @@
 use super::gpio::{Bias, Speed};
-use heapless::Vec;
+use heapless::{Vec, String};
 
 
 // Structs ========================================================================================
@@ -160,9 +160,12 @@ pub struct PwmPin {
   pub pin: u8
 }
 
-pub struct UartPin {
-  pub block: char,
-  pub pin: u8
+pub struct UartCore {
+  pub rx: (char, u8),
+  pub tx: (char, u8),
+  pub channel: u8,
+  pub rx_int: bool,
+  pub tx_int: bool
 }
 
 pub struct I2cCore {
@@ -180,15 +183,11 @@ pub trait ToInOut: Sized {
 }
 
 pub trait ToAnalog: Sized {
-  fn analog(resolution: u8, eocint: bool) -> AnalogPin;
+  fn analog(resolution: u8, eocint: bool) -> Result<AnalogPin, String<20>>;
 }
 
 pub trait ToPwm: Sized {
-  fn pwm() -> PwmPin;
-}
-
-pub trait ToUart: Sized {
-  fn uart(baud: u32, rxint: bool, txint: bool) -> UartPin;
+  fn pwm() -> Result<PwmPin, String<20>>;
 }
 
 pub trait Input: Sized {
@@ -221,36 +220,10 @@ pub trait UART: Sized {
   fn send_char(&self, c: char);
   fn send_string(&self, s: &str);
   fn get_char(&self) -> char;
-  fn get_string(&self, stopper: char) -> heapless::String<30>;
+  fn get_string(&self, stopper: char) -> Result<String<30>, String<20>>;
 }
 
 pub trait I2C: Sized {
   fn send_bytes<const N: usize>(&self, addr: u8, data: &Vec<u8, N>);
   fn recieve_bytes<const N: usize>(&self, addr: u8, vec: &mut Vec<u8, N>, nbytes: u8);
 }
-
-
-// Functions ======================================================================================
-// pub fn read_value<T: Input>(pin: &InputPin<T>) -> bool {
-//   pin.read_value()
-// }
-
-// pub fn set_bias<T: Input>(pin: &mut InputPin<T>, bias: Bias) {
-//   pin.set_bias(bias);
-// }
-
-// pub fn into_output<T: Input + Output>(pin: InputPin<T>) -> OutputPin<T> {
-//   pin.into_output()
-// }
-
-// pub fn set_value<T: Output>(pin: &mut OutputPin<T>, value: bool) {
-//   pin.set_value(value);
-// }
-
-// pub fn set_speed<T: Output>(pin: &mut OutputPin<T>, speed: Speed) {
-//   pin.set_speed(speed);
-// }
-
-// pub fn into_input<T: Input + Output>(pin: OutputPin<T>) -> InputPin<T> {
-//   pin.into_input()
-// }

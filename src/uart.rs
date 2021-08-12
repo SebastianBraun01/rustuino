@@ -4,310 +4,399 @@ use cortex_m_semihosting::hprintln;
 use heapless::String;
 
 
-// Converter implementations ======================================================================
-macro_rules! generate_ToUart {
-  ($([$letter:literal, $number:literal]),+) => {
-    use paste::paste;
+// Initialisation function ========================================================================
+pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool, txint: bool) -> Result<UartCore, String<20>> {
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let rcc = &peripheral_ptr.RCC;
 
-    paste!{
-      $(
-        impl ToUart for [<P $letter:upper $number>] {
-          fn uart(baud: u32, rxint: bool, txint: bool) -> UartPin {
-            let block = $letter;
-            let pin = $number;
+  let channel: u8;
         
-            let channel: usize;
-            let direction: bool;
-        
-            if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-              channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-              unsafe {
-                if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
-                else {
-                  hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
-                  return UartPin {
-                    block: block,
-                    pin: pin
-                  };
-                }
-              }
-              direction = false;
-            }
-            else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-              channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-              unsafe {
-                if UART_CONF[channel - 1] == false {UART_CONF[channel - 1] = true}
-                else {
-                  hprintln!("UART channel {} already in use!", channel).expect("Could not send semihosting message!");
-                  return UartPin {
-                    block: block,
-                    pin: pin
-                  };
-                }
-              }
-              direction = true;
-            }
-            else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
-        
-            uart_init(channel, block, pin, direction, baud, rxint, txint);
-        
-            return UartPin {
-              block: block,
-              pin: pin
-            };
-          }
-        }
-      )+
-    }
+  if UART_MAP.rx_pins.contains(&rx_pin) && UART_MAP.tx_pins.contains(&tx_pin) {
+    let index = UART_MAP.rx_pins.iter().zip(UART_MAP.tx_pins.iter()).position(|i| i == (&rx_pin, &tx_pin)).unwrap();
+    channel = UART_MAP.channel[index];
+    unsafe {UART_CONF[channel as usize - 1] = true;}
+  }
+  else {return Err(String::from("These pins are not available for UART communication!"));}
+
+  uart_setup_gpio(rx_pin.0, rx_pin.1, channel);
+  uart_setup_gpio(tx_pin.0, tx_pin.1, channel);
+  
+  match channel {
+    1 => {
+      let usart1 = &peripheral_ptr.USART1;
+      rcc.apb2enr.modify(|_, w| w.usart1en().enabled());
+      set_baud(channel, baud);
+      usart1.cr1.modify(|_, w| {
+        w.te().enabled();
+        w.re().enabled();
+        w.ue().enabled()
+      });
+    },
+    3 => {
+      let usart3 = &peripheral_ptr.USART3;
+      rcc.apb1enr.modify(|_, w| w.usart3en().enabled()); 
+      set_baud(channel, baud);
+      usart3.cr1.modify(|_, w| {
+        w.te().enabled();
+        w.re().enabled();
+        w.ue().enabled()
+      });
+    },
+    4 => {
+      let uart4 = &peripheral_ptr.UART4;
+      rcc.apb1enr.modify(|_, w| w.uart4en().enabled());
+      set_baud(channel, baud);
+      uart4.cr1.modify(|_, w| {
+        w.te().enabled();
+        w.re().enabled();
+        w.ue().enabled()
+      });
+    },
+    5 => {
+      let uart5 = &peripheral_ptr.UART5;
+      rcc.apb1enr.modify(|_, w| w.uart5en().enabled());
+      set_baud(channel, baud);
+      uart5.cr1.modify(|_, w| {
+        w.te().enabled();
+        w.re().enabled();
+        w.ue().enabled()
+      });
+    },
+    6 => {
+      let usart6 = &peripheral_ptr.USART6;
+      rcc.apb2enr.modify(|_, w| w.usart6en().enabled());
+      set_baud(channel, baud);
+      usart6.cr1.modify(|_, w| {
+        w.te().enabled();
+        w.re().enabled();
+        w.ue().enabled()
+      });
+    },
+    _ => panic!("{} is not a valid UART peripheral!", channel)
   };
+
+  if rxint == true {rx_interrupt(channel, true);}
+  if txint == true {tx_interrupt(channel, true);}
+
+  return Ok(UartCore {
+    rx: rx_pin,
+    tx: tx_pin,
+    channel,
+    rx_int: rxint,
+    tx_int: txint
+  });
 }
-
-// 2⁰ == 1 && 2³ == 1 | alle anderen pins egal
-// generate_ToUart!(11, 13, 15, 25, 27, 29, 31, 41, 43, 45, 47, 57, 59, 61, 63);
-
-generate_ToUart![
-  ['a', 0], ['a', 1], ['a', 2], ['a', 3], ['a', 9], ['a', 10],
-  ['b', 6], ['b', 7], ['b', 10], ['b', 11],
-  ['c', 5], ['c', 6], ['c', 7], ['c', 10], ['c', 11], ['c', 12],
-  ['d', 2], ['d', 5], ['d', 6], ['d', 8],['d', 9],
-  ['e', 7], ['e', 8],
-  ['g', 9], ['g', 14]
-];
 
 
 // Function implementations =======================================================================
-impl UART for UartPin {
+impl UART for UartCore {
   fn rxint_enable(&self) {
-    let block = self.block;
-    let pin = self.pin;
-    let channel: usize;
-
-    if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-    }
-    else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-    }
-    else {
-      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin).expect("Could not send semihosting message!");
-      return;
-    }
-    
-    rx_interrupt(channel, true);
+    rx_interrupt(self.channel, true);
   }
 
   fn rxint_disable(&self) {
-    let block = self.block;
-    let pin = self.pin;
-    let channel: usize;
-
-    if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-    }
-    else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-    }
-    else {
-      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin).expect("Could not send semihosting message!");
-      return;
-    }
-    
-    rx_interrupt(channel, false);
+    rx_interrupt(self.channel, false);
   }
 
   fn txint_enable(&self) {
-    let block = self.block;
-    let pin = self.pin;
-    let channel: usize;
-
-    if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-    }
-    else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-    }
-    else {
-      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin).expect("Could not send semihosting message!");
-      return;
-    }
-    
-    tx_interrupt(channel, true);
+    tx_interrupt(self.channel, true);
   }
 
   fn txint_disable(&self) {
-    let block = self.block;
-    let pin = self.pin;
-    let channel: usize;
-
-    if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-    }
-    else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-    }
-    else {
-      hprintln!("{}{} can not be used for UART communication!", block.to_uppercase(), pin).expect("Could not send semihosting message!");
-      return;
-    }
-    
-    tx_interrupt(channel, false);
+    tx_interrupt(self.channel, false);
   }
 
   fn change_baud(&self, baud: u32) {
-    let block = self.block;
-    let pin = self.pin;
-    let channel: usize;
-
-    if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
-          return;
-        }
-      }
-    }
-    else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
-          return;
-        }
-      }
-    }
-    else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
-
-    set_baud(channel, baud);
+    set_baud(self.channel, baud);
   }
 
   fn send_char(&self, c: char) {
-    let block = self.block;
-    let pin = self.pin;
-    let channel: usize;
-
-    if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
-          return;
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  
+    match self.channel {
+      1 => {
+        let usart1 = &peripheral_ptr.USART1;
+        if c.is_ascii() == true {
+          while usart1.sr.read().txe().bit_is_set() == true {}
+          usart1.dr.write(|w| w.dr().bits(c as u16));
+          while usart1.sr.read().txe().bit_is_set() == true {}
         }
-      }
-    }
-    else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
-          return;
+        else {
+          hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+      
+          while usart1.sr.read().txe().bit_is_set() == true {}
+          usart1.dr.write(|w| w.dr().bits('?' as u16));
+          while usart1.sr.read().txe().bit_is_set() == true {}
         }
-      }
-    }
-    else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
-
-    transmit_char(channel, c);
+      },
+      2 => {
+        let usart2 = &peripheral_ptr.USART2;
+        if c.is_ascii() == true {
+          while usart2.sr.read().txe().bit_is_set() == true {}
+          usart2.dr.write(|w| w.dr().bits(c as u16));
+          while usart2.sr.read().txe().bit_is_set() == true {}
+        }
+        else {
+          hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+      
+          while usart2.sr.read().txe().bit_is_set() == true {}
+          usart2.dr.write(|w| w.dr().bits('?' as u16));
+          while usart2.sr.read().txe().bit_is_set() == true {}
+        }
+      },
+      3 => {
+        let usart3 = &peripheral_ptr.USART3;
+        if c.is_ascii() == true {
+          while usart3.sr.read().txe().bit_is_set() == true {}
+          usart3.dr.write(|w| w.dr().bits(c as u16));
+          while usart3.sr.read().txe().bit_is_set() == true {}
+        }
+        else {
+          hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+      
+          while usart3.sr.read().txe().bit_is_set() == true {}
+          usart3.dr.write(|w| w.dr().bits('?' as u16));
+          while usart3.sr.read().txe().bit_is_set() == true {}
+        }
+      },
+      4 => {let uart4 = &peripheral_ptr.UART4;
+        if c.is_ascii() == true {
+          while uart4.sr.read().txe().bit_is_set() == true {}
+          uart4.dr.write(|w| w.dr().bits(c as u16));
+          while uart4.sr.read().txe().bit_is_set() == true {}
+        }
+        else {
+          hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+      
+          while uart4.sr.read().txe().bit_is_set() == true {}
+          uart4.dr.write(|w| w.dr().bits('?' as u16));
+          while uart4.sr.read().txe().bit_is_set() == true {}
+        }},
+      5 => {
+        let uart5 = &peripheral_ptr.UART5;
+        if c.is_ascii() == true {
+          while uart5.sr.read().txe().bit_is_set() == true {}
+          uart5.dr.write(|w| w.dr().bits(c as u16));
+          while uart5.sr.read().txe().bit_is_set() == true {}
+        }
+        else {
+          hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+      
+          while uart5.sr.read().txe().bit_is_set() == true {}
+          uart5.dr.write(|w| w.dr().bits('?' as u16));
+          while uart5.sr.read().txe().bit_is_set() == true {}
+        }
+      },
+      6 => {
+        let usart6 = &peripheral_ptr.USART6;
+        if c.is_ascii() == true {
+          while usart6.sr.read().txe().bit_is_set() == true {}
+          usart6.dr.write(|w| w.dr().bits(c as u16));
+          while usart6.sr.read().txe().bit_is_set() == true {}
+        }
+        else {
+          hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+      
+          while usart6.sr.read().txe().bit_is_set() == true {}
+          usart6.dr.write(|w| w.dr().bits('?' as u16));
+          while usart6.sr.read().txe().bit_is_set() == true {}
+        }
+      },
+      _ => panic!("{} is not a valid UART peripheral!", self.channel)
+    };
   }
 
   fn send_string(&self, s: &str) {
-    let block = self.block;
-    let pin = self.pin;
-    let channel: usize;
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
 
-    if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
-          return;
-        }
-      }
+    for c in s.chars() {
+      match self.channel {
+        1 => {
+          let usart1 = &peripheral_ptr.USART1;
+          if c.is_ascii() == true {
+            while usart1.sr.read().txe().bit_is_set() == true {}
+            usart1.dr.write(|w| w.dr().bits(c as u16));
+            while usart1.sr.read().txe().bit_is_set() == true {}
+          }
+          else {
+            hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+        
+            while usart1.sr.read().txe().bit_is_set() == true {}
+            usart1.dr.write(|w| w.dr().bits('?' as u16));
+            while usart1.sr.read().txe().bit_is_set() == true {}
+          }
+        },
+        2 => {
+          let usart2 = &peripheral_ptr.USART2;
+          if c.is_ascii() == true {
+            while usart2.sr.read().txe().bit_is_set() == true {}
+            usart2.dr.write(|w| w.dr().bits(c as u16));
+            while usart2.sr.read().txe().bit_is_set() == true {}
+          }
+          else {
+            hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+        
+            while usart2.sr.read().txe().bit_is_set() == true {}
+            usart2.dr.write(|w| w.dr().bits('?' as u16));
+            while usart2.sr.read().txe().bit_is_set() == true {}
+          }
+        },
+        3 => {
+          let usart3 = &peripheral_ptr.USART3;
+          if c.is_ascii() == true {
+            while usart3.sr.read().txe().bit_is_set() == true {}
+            usart3.dr.write(|w| w.dr().bits(c as u16));
+            while usart3.sr.read().txe().bit_is_set() == true {}
+          }
+          else {
+            hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+        
+            while usart3.sr.read().txe().bit_is_set() == true {}
+            usart3.dr.write(|w| w.dr().bits('?' as u16));
+            while usart3.sr.read().txe().bit_is_set() == true {}
+          }
+        },
+        4 => {let uart4 = &peripheral_ptr.UART4;
+          if c.is_ascii() == true {
+            while uart4.sr.read().txe().bit_is_set() == true {}
+            uart4.dr.write(|w| w.dr().bits(c as u16));
+            while uart4.sr.read().txe().bit_is_set() == true {}
+          }
+          else {
+            hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+        
+            while uart4.sr.read().txe().bit_is_set() == true {}
+            uart4.dr.write(|w| w.dr().bits('?' as u16));
+            while uart4.sr.read().txe().bit_is_set() == true {}
+          }},
+        5 => {
+          let uart5 = &peripheral_ptr.UART5;
+          if c.is_ascii() == true {
+            while uart5.sr.read().txe().bit_is_set() == true {}
+            uart5.dr.write(|w| w.dr().bits(c as u16));
+            while uart5.sr.read().txe().bit_is_set() == true {}
+          }
+          else {
+            hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+        
+            while uart5.sr.read().txe().bit_is_set() == true {}
+            uart5.dr.write(|w| w.dr().bits('?' as u16));
+            while uart5.sr.read().txe().bit_is_set() == true {}
+          }
+        },
+        6 => {
+          let usart6 = &peripheral_ptr.USART6;
+          if c.is_ascii() == true {
+            while usart6.sr.read().txe().bit_is_set() == true {}
+            usart6.dr.write(|w| w.dr().bits(c as u16));
+            while usart6.sr.read().txe().bit_is_set() == true {}
+          }
+          else {
+            hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
+        
+            while usart6.sr.read().txe().bit_is_set() == true {}
+            usart6.dr.write(|w| w.dr().bits('?' as u16));
+            while usart6.sr.read().txe().bit_is_set() == true {}
+          }
+        },
+        _ => panic!("{} is not a valid UART peripheral!", self.channel)
+      };
     }
-    else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
-          return;
-        }
-      }
-    }
-    else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
-
-    for c in s.chars() {transmit_char(channel, c);}
   }
 
   fn get_char(&self) -> char {
-    let block = self.block;
-    let pin = self.pin;
-    let channel: usize;
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
 
-    if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
-          return '?';
-        }
-      }
-    }
-    else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
-          return '?';
-        }
-      }
-    }
-    else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
-
-    return recieve_char(channel);
+    let buffer = match self.channel {
+      1 => {
+        let usart1 = &peripheral_ptr.USART1;
+        while usart1.sr.read().rxne().bit_is_clear() == true {}
+        usart1.dr.read().dr().bits() as u8
+      },
+      2 => {
+        let usart2 = &peripheral_ptr.USART2;
+        while usart2.sr.read().rxne().bit_is_clear() == true {}
+        usart2.dr.read().dr().bits() as u8
+      },
+      3 => {
+        let usart3 = &peripheral_ptr.USART3;
+        while usart3.sr.read().rxne().bit_is_clear() == true {}
+        usart3.dr.read().dr().bits() as u8
+      },
+      4 => {
+        let uart4 = &peripheral_ptr.UART4;
+        while uart4.sr.read().rxne().bit_is_clear() == true {}
+        uart4.dr.read().dr().bits() as u8
+      },
+      5 => {
+        let uart5 = &peripheral_ptr.UART5;
+        while uart5.sr.read().rxne().bit_is_clear() == true {}
+        uart5.dr.read().dr().bits() as u8
+      },
+      6 => {
+        let usart6 = &peripheral_ptr.USART6;
+        while usart6.sr.read().rxne().bit_is_clear() == true {}
+        usart6.dr.read().dr().bits() as u8
+      },
+      _ => panic!("{} is not a valid UART peripheral!", self.channel)
+    };
+  
+    return buffer as char;
   }
 
-  fn get_string(&self, stopper: char) -> heapless::String<30> {
-    let block = self.block;
-    let pin = self.pin;
-    let channel: usize;
-    let mut buffer: char;
+  fn get_string(&self, stopper: char) -> Result<String<30>, String<20>> {
+    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let mut buffer: u8;
     let mut string_buffer: String<30> = String::new();
 
-    if stopper.is_ascii() == false {
-      hprintln!("Stop character is not an ASCII character!").expect("Could not send semihosting message!");
-      return string_buffer;
-    }
+    todo!("variable vec size!");
 
-    if UART_MAP.rx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.rx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
-          return string_buffer;
-        }
-      }
-    }
-    else if UART_MAP.tx_pin.contains(&(block, pin)) == true {
-      channel = UART_MAP.channel[UART_MAP.tx_pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      unsafe {
-        if UART_CONF[channel - 1] == false {
-          hprintln!("UART Channel {} is not active!", channel).expect("Could not send semihosting message!");
-          return string_buffer;
-        }
-      }
-    }
-    else {panic!("{}{} can not be used for UART communication!", block.to_uppercase(), pin);}
+    if stopper.is_ascii() == false {return Err(String::from("Stop char is not an ASCII character!"));}
 
     loop {
-      buffer = recieve_char(channel);
-      if buffer == stopper {return string_buffer;}
-      string_buffer.push(buffer).expect("String buffer overflow!");  
+      buffer = match self.channel {
+        1 => {
+          let usart1 = &peripheral_ptr.USART1;
+          while usart1.sr.read().rxne().bit_is_clear() == true {}
+          usart1.dr.read().dr().bits() as u8
+        },
+        2 => {
+          let usart2 = &peripheral_ptr.USART2;
+          while usart2.sr.read().rxne().bit_is_clear() == true {}
+          usart2.dr.read().dr().bits() as u8
+        },
+        3 => {
+          let usart3 = &peripheral_ptr.USART3;
+          while usart3.sr.read().rxne().bit_is_clear() == true {}
+          usart3.dr.read().dr().bits() as u8
+        },
+        4 => {
+          let uart4 = &peripheral_ptr.UART4;
+          while uart4.sr.read().rxne().bit_is_clear() == true {}
+          uart4.dr.read().dr().bits() as u8
+        },
+        5 => {
+          let uart5 = &peripheral_ptr.UART5;
+          while uart5.sr.read().rxne().bit_is_clear() == true {}
+          uart5.dr.read().dr().bits() as u8
+        },
+        6 => {
+          let usart6 = &peripheral_ptr.USART6;
+          while usart6.sr.read().rxne().bit_is_clear() == true {}
+          usart6.dr.read().dr().bits() as u8
+        },
+        _ => panic!("{} is not a valid UART peripheral!", self.channel)
+      };
+
+      if buffer == stopper as u8 {return Ok(string_buffer);}
+      string_buffer.push(buffer as char).expect("String buffer overflow!");  
     }
   }
 }
 
 
 // Helper functions ===============================================================================
-fn uart_init(channel: usize, block: char, pin: u8, direction: bool, baud: u32, rxint: bool, txint: bool) {
+fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
   let rcc = &peripheral_ptr.RCC;
 
@@ -392,71 +481,9 @@ fn uart_init(channel: usize, block: char, pin: u8, direction: bool, baud: u32, r
     },
     _   => panic!("P{}{} is not available for UART transmissions!", block.to_uppercase(), pin)
   };
-  
-  match channel {
-    1 => {
-      let usart1 = &peripheral_ptr.USART1;
-      rcc.apb2enr.modify(|_, w| w.usart1en().enabled());
-          
-      set_baud(channel, baud);
-          
-      if direction == true {usart1.cr1.modify(|_, w| w.te().enabled());}
-      else {usart1.cr1.modify(|_, w| w.re().enabled());}
-      
-      usart1.cr1.modify(|_, w| w.ue().enabled());
-    },
-    3 => {
-      let usart3 = &peripheral_ptr.USART3;
-      rcc.apb1enr.modify(|_, w| w.usart3en().enabled());
-          
-      set_baud(channel, baud);
-          
-      if direction == true {usart3.cr1.modify(|_, w| w.te().enabled());}
-      else {usart3.cr1.modify(|_, w| w.re().enabled());}
-      
-      usart3.cr1.modify(|_, w| w.ue().enabled());
-    },
-    4 => {
-      let uart4 = &peripheral_ptr.UART4;
-      rcc.apb1enr.modify(|_, w| w.uart4en().enabled());
-          
-      set_baud(channel, baud);
-          
-      if direction == true {uart4.cr1.modify(|_, w| w.te().enabled());}
-      else {uart4.cr1.modify(|_, w| w.re().enabled());}
-      
-      uart4.cr1.modify(|_, w| w.ue().enabled());
-    },
-    5 => {
-      let uart5 = &peripheral_ptr.UART5;
-      rcc.apb1enr.modify(|_, w| w.uart5en().enabled());
-          
-      set_baud(channel, baud);
-          
-      if direction == true {uart5.cr1.modify(|_, w| w.te().enabled());}
-      else {uart5.cr1.modify(|_, w| w.re().enabled());}
-      
-      uart5.cr1.modify(|_, w| w.ue().enabled());
-    },
-    6 => {
-      let usart6 = &peripheral_ptr.USART6;
-      rcc.apb2enr.modify(|_, w| w.usart6en().enabled());
-          
-      set_baud(channel, baud);
-          
-      if direction == true {usart6.cr1.modify(|_, w| w.te().enabled());}
-      else {usart6.cr1.modify(|_, w| w.re().enabled());}
-      
-      usart6.cr1.modify(|_, w| w.ue().enabled());
-    },
-    _ => panic!("{} is not a valid UART peripheral!", channel)
-  };
-
-  if rxint == true {rx_interrupt(channel, true);}
-  if txint == true {tx_interrupt(channel, true);}
 }
 
-fn rx_interrupt(channel: usize, enable: bool) {
+fn rx_interrupt(channel: u8, enable: bool) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
   
   match channel {
@@ -494,7 +521,7 @@ fn rx_interrupt(channel: usize, enable: bool) {
   };
 }
 
-fn tx_interrupt(channel: usize, enable: bool) {
+fn tx_interrupt(channel: u8, enable: bool) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
 
   match channel {
@@ -532,7 +559,7 @@ fn tx_interrupt(channel: usize, enable: bool) {
   };
 }
 
-fn set_baud(channel: usize, baud: u32) {
+fn set_baud(channel: u8, baud: u32) {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
 
   // (Mantisse, Fractal)
@@ -583,142 +610,6 @@ fn set_baud(channel: usize, baud: u32) {
     },
     _ => panic!("{} is not a valid UART peripheral!", channel)
   }
-}
-
-fn transmit_char(channel: usize, c: char) {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
-  
-  match channel {
-    1 => {
-      let usart1 = &peripheral_ptr.USART1;
-      if c.is_ascii() == true {
-        while usart1.sr.read().txe().bit_is_set() == true {}
-        usart1.dr.write(|w| w.dr().bits(c as u16));
-        while usart1.sr.read().txe().bit_is_set() == true {}
-      }
-      else {
-        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
-    
-        while usart1.sr.read().txe().bit_is_set() == true {}
-        usart1.dr.write(|w| w.dr().bits('?' as u16));
-        while usart1.sr.read().txe().bit_is_set() == true {}
-      }
-    },
-    2 => {
-      let usart2 = &peripheral_ptr.USART2;
-      if c.is_ascii() == true {
-        while usart2.sr.read().txe().bit_is_set() == true {}
-        usart2.dr.write(|w| w.dr().bits(c as u16));
-        while usart2.sr.read().txe().bit_is_set() == true {}
-      }
-      else {
-        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
-    
-        while usart2.sr.read().txe().bit_is_set() == true {}
-        usart2.dr.write(|w| w.dr().bits('?' as u16));
-        while usart2.sr.read().txe().bit_is_set() == true {}
-      }
-    },
-    3 => {
-      let usart3 = &peripheral_ptr.USART3;
-      if c.is_ascii() == true {
-        while usart3.sr.read().txe().bit_is_set() == true {}
-        usart3.dr.write(|w| w.dr().bits(c as u16));
-        while usart3.sr.read().txe().bit_is_set() == true {}
-      }
-      else {
-        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
-    
-        while usart3.sr.read().txe().bit_is_set() == true {}
-        usart3.dr.write(|w| w.dr().bits('?' as u16));
-        while usart3.sr.read().txe().bit_is_set() == true {}
-      }
-    },
-    4 => {let uart4 = &peripheral_ptr.UART4;
-      if c.is_ascii() == true {
-        while uart4.sr.read().txe().bit_is_set() == true {}
-        uart4.dr.write(|w| w.dr().bits(c as u16));
-        while uart4.sr.read().txe().bit_is_set() == true {}
-      }
-      else {
-        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
-    
-        while uart4.sr.read().txe().bit_is_set() == true {}
-        uart4.dr.write(|w| w.dr().bits('?' as u16));
-        while uart4.sr.read().txe().bit_is_set() == true {}
-      }},
-    5 => {
-      let uart5 = &peripheral_ptr.UART5;
-      if c.is_ascii() == true {
-        while uart5.sr.read().txe().bit_is_set() == true {}
-        uart5.dr.write(|w| w.dr().bits(c as u16));
-        while uart5.sr.read().txe().bit_is_set() == true {}
-      }
-      else {
-        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
-    
-        while uart5.sr.read().txe().bit_is_set() == true {}
-        uart5.dr.write(|w| w.dr().bits('?' as u16));
-        while uart5.sr.read().txe().bit_is_set() == true {}
-      }
-    },
-    6 => {
-      let usart6 = &peripheral_ptr.USART6;
-      if c.is_ascii() == true {
-        while usart6.sr.read().txe().bit_is_set() == true {}
-        usart6.dr.write(|w| w.dr().bits(c as u16));
-        while usart6.sr.read().txe().bit_is_set() == true {}
-      }
-      else {
-        hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
-    
-        while usart6.sr.read().txe().bit_is_set() == true {}
-        usart6.dr.write(|w| w.dr().bits('?' as u16));
-        while usart6.sr.read().txe().bit_is_set() == true {}
-      }
-    },
-    _ => panic!("{} is not a valid UART peripheral!", channel)
-  };
-}
-
-fn recieve_char(channel: usize) -> char {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
-
-  let buffer = match channel {
-    1 => {
-      let usart1 = &peripheral_ptr.USART1;
-      while usart1.sr.read().rxne().bit_is_clear() == true {}
-      usart1.dr.read().dr().bits() as u8
-    },
-    2 => {
-      let usart2 = &peripheral_ptr.USART2;
-      while usart2.sr.read().rxne().bit_is_clear() == true {}
-      usart2.dr.read().dr().bits() as u8
-    },
-    3 => {
-      let usart3 = &peripheral_ptr.USART3;
-      while usart3.sr.read().rxne().bit_is_clear() == true {}
-      usart3.dr.read().dr().bits() as u8
-    },
-    4 => {
-      let uart4 = &peripheral_ptr.UART4;
-      while uart4.sr.read().rxne().bit_is_clear() == true {}
-      uart4.dr.read().dr().bits() as u8
-    },
-    5 => {
-      let uart5 = &peripheral_ptr.UART5;
-      while uart5.sr.read().rxne().bit_is_clear() == true {}
-      uart5.dr.read().dr().bits() as u8
-    },
-    6 => {
-      let usart6 = &peripheral_ptr.USART6;
-      while usart6.sr.read().rxne().bit_is_clear() == true {}
-      usart6.dr.read().dr().bits() as u8
-    },
-    _ => panic!("{} is not a valid UART peripheral!", channel)
-  };
-
-  return buffer as char;
 }
 
 
@@ -821,7 +712,7 @@ pub mod serial {
   macro_rules! sprintln {
     ($param:expr) => {
       let mut txt_buff: String<50> = String::new();
-      if core::fmt::write(&mut txt_buff, format_args!(" ")).is_err() {txt_buff = String::from("~\r\n")};
+      if core::fmt::write(&mut txt_buff, format_args!($param)).is_err() {txt_buff = String::from("~\r\n")};
     
       for c in txt_buff.chars() {
         if c.is_ascii() == true {rustuino::serial::send_char_usb(c);}

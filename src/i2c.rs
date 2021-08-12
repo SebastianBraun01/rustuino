@@ -14,7 +14,7 @@ pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Resul
     core = I2C_MAP.channel[index];
     unsafe {I2C_CONF[core as usize - 1] = true;}
   }
-  else {return Err(String::from("These pins are not available for i2c transmission!"));}
+  else {return Err(String::from("These pins are not available for I2C communication!"));}
 
   // Setup Variablen
   let bus_freq = 16;

@@ -24,15 +24,15 @@ pub static mut ADC_CONF: [bool; 2] = [false, false];
 
 // UART pin config map ==========================================================================
 pub struct UARTMap {
-  pub tx_pin: [(char, u8); 11],
-  pub rx_pin: [(char, u8); 11],
+  pub tx_pins: [(char, u8); 11],
+  pub rx_pins: [(char, u8); 11],
   pub channel: [u8; 11]
 }
 
 // Noch entscheiden ob USART2 in die Liste soll!
 pub const UART_MAP: UARTMap = UARTMap{
-  tx_pin:  [('a', 9), ('b', 6),('b', 10),('c', 10),('d', 8),('a', 0),('c', 6),('c', 10),('c', 12),('e', 8),('g', 14)],
-  rx_pin:  [('a', 10),('b', 7),('b', 11),('c', 11),('d', 9),('a', 1),('c', 7),('c', 11),('d', 2), ('e', 7),('g', 9)],
+  tx_pins:  [('a', 9), ('b', 6),('b', 10),('c', 10),('d', 8),('a', 0),('c', 6),('c', 10),('c', 12),('e', 8),('g', 14)],
+  rx_pins:  [('a', 10),('b', 7),('b', 11),('c', 11),('d', 9),('a', 1),('c', 7),('c', 11),('d', 2), ('e', 7),('g', 9)],
   channel: [    1,        1,       3,        3,        3,       4,       6,       4,        5,        5,       6]
 };
 
