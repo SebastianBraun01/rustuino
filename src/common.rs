@@ -10,6 +10,7 @@ macro_rules! generate_pins {
     paste!{
       $(
       pub struct [<P $block:upper $pin>];
+      pub const [<$block:upper $pin>]: (char, u8) = ($block, $pin);
       )+
     }
   };
@@ -156,7 +157,9 @@ pub struct OutputPin {
 
 pub struct AnalogPin {
   pub block: char,
-  pub pin: u8
+  pub pin: u8,
+  pub res: u8,
+  pub eocint: bool
 }
 
 pub struct PwmPin {

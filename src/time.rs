@@ -44,7 +44,7 @@ macro_rules! generate_ToPwm {
             
             pwm_init(timer, channel, block, pin);
             
-            return Ok(PwmPin{
+            return Ok(PwmPin {
               block,
               pin
             });

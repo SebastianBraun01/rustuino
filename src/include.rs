@@ -1,3 +1,5 @@
+use super::common::*;
+
 // Analog pin config map ========================================================================
 pub struct ADC1Map {
   pub pin: [(char, u8); 16],
@@ -10,8 +12,8 @@ pub struct ADC3Map {
 }
 
 pub const ADC1_MAP: ADC1Map = ADC1Map{
-  pin: [('a', 0),('a', 1),('a', 2),('a', 3),('a', 4),('a', 5),('a', 6),('a', 7),('b', 0),('b', 1),('c', 0),('c', 1),('c', 2),('c', 3),('c', 4),('c', 5)],
-  channel: [0,       1,       2,       3,       4,       5,       6,       7,       8,       9,       10,      11,     12,    13,      14,      15]
+  pin:     [A0, A1, A2, A3, A4, A5, A6, A7, B0, B1, C0, C1, C2, C3, C4, C5],
+  channel: [0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15]
 };
 
 pub const ADC3_MAP: ADC3Map = ADC3Map{
@@ -31,9 +33,9 @@ pub struct UARTMap {
 
 // Noch entscheiden ob USART2 in die Liste soll!
 pub const UART_MAP: UARTMap = UARTMap{
-  tx_pins:  [('a', 9), ('b', 6),('b', 10),('c', 10),('d', 8),('a', 0),('c', 6),('c', 10),('c', 12),('e', 8),('g', 14)],
-  rx_pins:  [('a', 10),('b', 7),('b', 11),('c', 11),('d', 9),('a', 1),('c', 7),('c', 11),('d', 2), ('e', 7),('g', 9)],
-  channel: [    1,        1,       3,        3,        3,       4,       6,       4,        5,        5,       6]
+  tx_pins: [A9,  B6, B10, C10, D8, A0, C6, C10, C12, E8, G14],
+  rx_pins: [A10, B7, B11, C11, D9, A1, C7, C11, D2,  E7, G9],
+  channel: [1,   1,  3,   3,   3,  4,  6,  4,   5,   5,  6]
 };
 
 pub static mut UART_CONF: [bool; 6] = [false, false, false, false, false, false];
@@ -85,9 +87,9 @@ pub struct I2CMap {
 }
 
 pub const I2C_MAP: I2CMap = I2CMap{
-  scl_pins: [('b', 6), ('b', 6), ('b', 8), ('b', 8), ('b', 10), ('b', 10), ('f', 1), ('f', 1),  ('a', 8)],
-  sda_pins: [('b', 7), ('b', 9), ('b', 7), ('b', 9), ('b', 11), ('f', 0),  ('f', 0), ('b', 11), ('b', 4)],
-  channel: [    1,        1,        1,        1,        2,         2,         2,        2,         3]
+  scl_pins: [B6, B6, B8, B8, B10, B10, F1, F1,  A8],
+  sda_pins: [B7, B9, B7, B9, B11, F0,  F0, B11, B4],
+  channel:  [1,  1,  1,  1,  2,   2,   2,  2,   3]
 };
 
 pub static mut I2C_CONF: [bool; 3] = [false, false, false];

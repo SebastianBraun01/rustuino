@@ -41,7 +41,9 @@ macro_rules! generate_ToAnalog {
   
             return Ok(AnalogPin {
               block,
-              pin
+              pin,
+              res: resolution,
+              eocint
             });
           }
         }
