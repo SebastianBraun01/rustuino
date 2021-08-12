@@ -31,14 +31,14 @@ macro_rules! generate_ToPwm {
                 if TIMER_CONF[(timer * 4) - channel] == false {TIMER_CONF[(timer * 4) - channel] = true;}
                 else {
                   let mut str_buffer: String<20> = String::new();
-                  core::fmt::write(&mut str_buffer, format_args!("Timer {} channel {} already in use!", timer, channel));
+                  core::fmt::write(&mut str_buffer, format_args!("Timer {} channel {} already in use!", timer, channel)).expect("Could not construct error message!");
                   return Err(str_buffer);
                 }
               }
             }
             else {
               let mut str_buffer: String<20> = String::new();
-              core::fmt::write(&mut str_buffer, format_args!("P{}{} is not available for pwm output!", block.to_uppercase(), pin));
+              core::fmt::write(&mut str_buffer, format_args!("P{}{} is not available for pwm output!", block.to_uppercase(), pin)).expect("Could not construct error message!");
               return Err(str_buffer);
             }
             

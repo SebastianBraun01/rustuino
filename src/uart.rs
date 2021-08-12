@@ -344,12 +344,10 @@ impl UART for UartCore {
     return buffer as char;
   }
 
-  fn get_string(&self, stopper: char) -> Result<String<30>, String<20>> {
+  fn get_string<const N: usize>(&self, stopper: char) -> Result<String<N>, String<20>> {
     let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
     let mut buffer: u8;
-    let mut string_buffer: String<30> = String::new();
-
-    todo!("variable vec size!");
+    let mut string_buffer: String<N> = String::new();
 
     if stopper.is_ascii() == false {return Err(String::from("Stop char is not an ASCII character!"));}
 

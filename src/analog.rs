@@ -15,6 +15,10 @@ macro_rules! generate_ToAnalog {
           fn analog(resolution: u8, eocint: bool) -> Result<AnalogPin, String<20>> {
             let block = $letter;
             let pin = $number;
+
+            if !resolution == 6 && !resolution == 8 && !resolution == 10 && !resolution == 12 {
+              return Err(String::from("This is not an available ADC resolution!"));
+            }
             
             if block == 'a' && pin == 4 {dac_init(1);}
             else if block == 'a' && pin == 5 {dac_init(2);}
@@ -34,8 +38,6 @@ macro_rules! generate_ToAnalog {
                 }
               }
             }
-
-            todo!("parameter checking!");
   
             return Ok(AnalogPin {
               block,

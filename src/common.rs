@@ -224,7 +224,7 @@ pub trait UART: Sized {
   fn send_char(&self, c: char);
   fn send_string(&self, s: &str);
   fn get_char(&self) -> char;
-  fn get_string(&self, stopper: char) -> Result<String<30>, String<20>>;
+  fn get_string<const N: usize>(&self, stopper: char) -> Result<String<N>, String<20>>;
 }
 
 pub trait I2C: Sized {
