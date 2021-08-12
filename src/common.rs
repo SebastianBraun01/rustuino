@@ -142,12 +142,16 @@ generate_pins![
 
 pub struct InputPin {
   pub block: char,
-  pub pin: u8
+  pub pin: u8,
+  pub bias: Bias
 }
 
 pub struct OutputPin {
   pub block: char,
-  pub pin: u8
+  pub pin: u8,
+  pub bias: Bias,
+  pub speed: Speed,
+  pub open_drain: bool
 }
 
 pub struct AnalogPin {
@@ -191,14 +195,14 @@ pub trait ToPwm: Sized {
 }
 
 pub trait Input: Sized {
-  fn bias(&self, bias: Bias);
+  fn bias(&mut self, bias: Bias);
   fn read(&self) -> bool;
 }
 
 pub trait Output: Sized {
-  fn speed(&self, speed: Speed);
-  fn bias(&self, bias: Bias);
-  fn open_drain(&self);
+  fn speed(&mut self, speed: Speed);
+  fn bias(&mut self, bias: Bias);
+  fn open_drain(&mut self);
   fn write(&self, value: bool);
 }
 
