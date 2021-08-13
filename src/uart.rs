@@ -119,89 +119,89 @@ impl UART for UartCore {
       1 => {
         let usart1 = &peripheral_ptr.USART1;
         if c.is_ascii() == true {
-          while usart1.sr.read().txe().bit_is_set() == true {}
+          while usart1.sr.read().txe().bit_is_clear() == true {}
           usart1.dr.write(|w| w.dr().bits(c as u16));
-          while usart1.sr.read().txe().bit_is_set() == true {}
+          while usart1.sr.read().txe().bit_is_clear() == true {}
         }
         else {
           hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
       
-          while usart1.sr.read().txe().bit_is_set() == true {}
+          while usart1.sr.read().txe().bit_is_clear() == true {}
           usart1.dr.write(|w| w.dr().bits('?' as u16));
-          while usart1.sr.read().txe().bit_is_set() == true {}
+          while usart1.sr.read().txe().bit_is_clear() == true {}
         }
       },
       2 => {
         let usart2 = &peripheral_ptr.USART2;
         if c.is_ascii() == true {
-          while usart2.sr.read().txe().bit_is_set() == true {}
+          while usart2.sr.read().txe().bit_is_clear() == true {}
           usart2.dr.write(|w| w.dr().bits(c as u16));
-          while usart2.sr.read().txe().bit_is_set() == true {}
+          while usart2.sr.read().txe().bit_is_clear() == true {}
         }
         else {
           hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
       
-          while usart2.sr.read().txe().bit_is_set() == true {}
+          while usart2.sr.read().txe().bit_is_clear() == true {}
           usart2.dr.write(|w| w.dr().bits('?' as u16));
-          while usart2.sr.read().txe().bit_is_set() == true {}
+          while usart2.sr.read().txe().bit_is_clear() == true {}
         }
       },
       3 => {
         let usart3 = &peripheral_ptr.USART3;
         if c.is_ascii() == true {
-          while usart3.sr.read().txe().bit_is_set() == true {}
+          while usart3.sr.read().txe().bit_is_clear() == true {}
           usart3.dr.write(|w| w.dr().bits(c as u16));
-          while usart3.sr.read().txe().bit_is_set() == true {}
+          while usart3.sr.read().txe().bit_is_clear() == true {}
         }
         else {
           hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
       
-          while usart3.sr.read().txe().bit_is_set() == true {}
+          while usart3.sr.read().txe().bit_is_clear() == true {}
           usart3.dr.write(|w| w.dr().bits('?' as u16));
-          while usart3.sr.read().txe().bit_is_set() == true {}
+          while usart3.sr.read().txe().bit_is_clear() == true {}
         }
       },
       4 => {let uart4 = &peripheral_ptr.UART4;
         if c.is_ascii() == true {
-          while uart4.sr.read().txe().bit_is_set() == true {}
+          while uart4.sr.read().txe().bit_is_clear() == true {}
           uart4.dr.write(|w| w.dr().bits(c as u16));
-          while uart4.sr.read().txe().bit_is_set() == true {}
+          while uart4.sr.read().txe().bit_is_clear() == true {}
         }
         else {
           hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
       
-          while uart4.sr.read().txe().bit_is_set() == true {}
+          while uart4.sr.read().txe().bit_is_clear() == true {}
           uart4.dr.write(|w| w.dr().bits('?' as u16));
-          while uart4.sr.read().txe().bit_is_set() == true {}
+          while uart4.sr.read().txe().bit_is_clear() == true {}
         }},
       5 => {
         let uart5 = &peripheral_ptr.UART5;
         if c.is_ascii() == true {
-          while uart5.sr.read().txe().bit_is_set() == true {}
+          while uart5.sr.read().txe().bit_is_clear() == true {}
           uart5.dr.write(|w| w.dr().bits(c as u16));
-          while uart5.sr.read().txe().bit_is_set() == true {}
+          while uart5.sr.read().txe().bit_is_clear() == true {}
         }
         else {
           hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
       
-          while uart5.sr.read().txe().bit_is_set() == true {}
+          while uart5.sr.read().txe().bit_is_clear() == true {}
           uart5.dr.write(|w| w.dr().bits('?' as u16));
-          while uart5.sr.read().txe().bit_is_set() == true {}
+          while uart5.sr.read().txe().bit_is_clear() == true {}
         }
       },
       6 => {
         let usart6 = &peripheral_ptr.USART6;
         if c.is_ascii() == true {
-          while usart6.sr.read().txe().bit_is_set() == true {}
+          while usart6.sr.read().txe().bit_is_clear() == true {}
           usart6.dr.write(|w| w.dr().bits(c as u16));
-          while usart6.sr.read().txe().bit_is_set() == true {}
+          while usart6.sr.read().txe().bit_is_clear() == true {}
         }
         else {
           hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
       
-          while usart6.sr.read().txe().bit_is_set() == true {}
+          while usart6.sr.read().txe().bit_is_clear() == true {}
           usart6.dr.write(|w| w.dr().bits('?' as u16));
-          while usart6.sr.read().txe().bit_is_set() == true {}
+          while usart6.sr.read().txe().bit_is_clear() == true {}
         }
       },
       _ => panic!("{} is not a valid UART peripheral!", self.channel)
@@ -217,89 +217,89 @@ impl UART for UartCore {
         1 => {
           let usart1 = &peripheral_ptr.USART1;
           if c.is_ascii() == true {
-            while usart1.sr.read().txe().bit_is_set() == true {}
+            while usart1.sr.read().txe().bit_is_clear() == true {}
             usart1.dr.write(|w| w.dr().bits(c as u16));
-            while usart1.sr.read().txe().bit_is_set() == true {}
+            while usart1.sr.read().txe().bit_is_clear() == true {}
           }
           else {
             hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
         
-            while usart1.sr.read().txe().bit_is_set() == true {}
+            while usart1.sr.read().txe().bit_is_clear() == true {}
             usart1.dr.write(|w| w.dr().bits('?' as u16));
-            while usart1.sr.read().txe().bit_is_set() == true {}
+            while usart1.sr.read().txe().bit_is_clear() == true {}
           }
         },
         2 => {
           let usart2 = &peripheral_ptr.USART2;
           if c.is_ascii() == true {
-            while usart2.sr.read().txe().bit_is_set() == true {}
+            while usart2.sr.read().txe().bit_is_clear() == true {}
             usart2.dr.write(|w| w.dr().bits(c as u16));
-            while usart2.sr.read().txe().bit_is_set() == true {}
+            while usart2.sr.read().txe().bit_is_clear() == true {}
           }
           else {
             hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
         
-            while usart2.sr.read().txe().bit_is_set() == true {}
+            while usart2.sr.read().txe().bit_is_clear() == true {}
             usart2.dr.write(|w| w.dr().bits('?' as u16));
-            while usart2.sr.read().txe().bit_is_set() == true {}
+            while usart2.sr.read().txe().bit_is_clear() == true {}
           }
         },
         3 => {
           let usart3 = &peripheral_ptr.USART3;
           if c.is_ascii() == true {
-            while usart3.sr.read().txe().bit_is_set() == true {}
+            while usart3.sr.read().txe().bit_is_clear() == true {}
             usart3.dr.write(|w| w.dr().bits(c as u16));
-            while usart3.sr.read().txe().bit_is_set() == true {}
+            while usart3.sr.read().txe().bit_is_clear() == true {}
           }
           else {
             hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
         
-            while usart3.sr.read().txe().bit_is_set() == true {}
+            while usart3.sr.read().txe().bit_is_clear() == true {}
             usart3.dr.write(|w| w.dr().bits('?' as u16));
-            while usart3.sr.read().txe().bit_is_set() == true {}
+            while usart3.sr.read().txe().bit_is_clear() == true {}
           }
         },
         4 => {let uart4 = &peripheral_ptr.UART4;
           if c.is_ascii() == true {
-            while uart4.sr.read().txe().bit_is_set() == true {}
+            while uart4.sr.read().txe().bit_is_clear() == true {}
             uart4.dr.write(|w| w.dr().bits(c as u16));
-            while uart4.sr.read().txe().bit_is_set() == true {}
+            while uart4.sr.read().txe().bit_is_clear() == true {}
           }
           else {
             hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
         
-            while uart4.sr.read().txe().bit_is_set() == true {}
+            while uart4.sr.read().txe().bit_is_clear() == true {}
             uart4.dr.write(|w| w.dr().bits('?' as u16));
-            while uart4.sr.read().txe().bit_is_set() == true {}
+            while uart4.sr.read().txe().bit_is_clear() == true {}
           }},
         5 => {
           let uart5 = &peripheral_ptr.UART5;
           if c.is_ascii() == true {
-            while uart5.sr.read().txe().bit_is_set() == true {}
+            while uart5.sr.read().txe().bit_is_clear() == true {}
             uart5.dr.write(|w| w.dr().bits(c as u16));
-            while uart5.sr.read().txe().bit_is_set() == true {}
+            while uart5.sr.read().txe().bit_is_clear() == true {}
           }
           else {
             hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
         
-            while uart5.sr.read().txe().bit_is_set() == true {}
+            while uart5.sr.read().txe().bit_is_clear() == true {}
             uart5.dr.write(|w| w.dr().bits('?' as u16));
-            while uart5.sr.read().txe().bit_is_set() == true {}
+            while uart5.sr.read().txe().bit_is_clear() == true {}
           }
         },
         6 => {
           let usart6 = &peripheral_ptr.USART6;
           if c.is_ascii() == true {
-            while usart6.sr.read().txe().bit_is_set() == true {}
+            while usart6.sr.read().txe().bit_is_clear() == true {}
             usart6.dr.write(|w| w.dr().bits(c as u16));
-            while usart6.sr.read().txe().bit_is_set() == true {}
+            while usart6.sr.read().txe().bit_is_clear() == true {}
           }
           else {
             hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
         
-            while usart6.sr.read().txe().bit_is_set() == true {}
+            while usart6.sr.read().txe().bit_is_clear() == true {}
             usart6.dr.write(|w| w.dr().bits('?' as u16));
-            while usart6.sr.read().txe().bit_is_set() == true {}
+            while usart6.sr.read().txe().bit_is_clear() == true {}
           }
         },
         _ => panic!("{} is not a valid UART peripheral!", self.channel)
@@ -673,19 +673,19 @@ pub mod serial {
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let usart2 = &peripheral_ptr.USART2;
     
-    // unsafe {if UART_CONF[1] == false {panic!("UART USB channel ist not PINCONFIGured!");}}
+    unsafe {if UART_CONF[1] == false {panic!("UART USB channel ist not PINCONFIGured!");}}
 
     if c.is_ascii() == true {
-      while usart2.sr.read().txe().bit_is_set() == true {}
+      while usart2.sr.read().txe().bit_is_clear() == true {}
       usart2.dr.write(|w| w.dr().bits(c as u16));
-      while usart2.sr.read().txe().bit_is_set() == true {}
+      while usart2.sr.read().txe().bit_is_clear() == true {}
     }
     else {
       hprintln!("{} is not an ASCII character!", c).expect("Could not send semihosting message!");
 
-      while usart2.sr.read().txe().bit_is_set() == true {}
+      while usart2.sr.read().txe().bit_is_clear()  == true {}
       usart2.dr.write(|w| w.dr().bits('?' as u16));
-      while usart2.sr.read().txe().bit_is_set() == true {}
+      while usart2.sr.read().txe().bit_is_clear()  == true {}
     }
   }
   
