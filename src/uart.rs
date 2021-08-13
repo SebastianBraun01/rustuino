@@ -646,8 +646,8 @@ pub mod serial {
     rcc.apb1enr.modify(|_, w| w.usart2en().enabled());
     
     usart2.brr.write(|w| {
-      w.div_mantissa().bits(usartdiv.0 as u16);
-      w.div_fraction().bits(usartdiv.1 as u8)
+      w.div_mantissa().bits(usartdiv.1 as u16);
+      w.div_fraction().bits(usartdiv.0 as u8)
     });
     
     if rxint == true {usart2.cr1.modify(|_, w| w.rxneie().enabled());}
