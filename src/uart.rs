@@ -673,7 +673,7 @@ pub mod serial {
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let usart2 = &peripheral_ptr.USART2;
     
-    unsafe {if UART_CONF[1] == false {panic!("UART USB channel ist not PINCONFIGured!");}}
+    // unsafe {if UART_CONF[1] == false {panic!("UART USB channel ist not PINCONFIGured!");}}
 
     if c.is_ascii() == true {
       while usart2.sr.read().txe().bit_is_set() == true {}
