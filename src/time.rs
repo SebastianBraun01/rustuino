@@ -136,7 +136,8 @@ impl PWM for PwmPin {
 
 // Helper functions ===============================================================================
 fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
   
   match block {
@@ -503,7 +504,8 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
 }
 
 fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   
   match timer {
     1 => {
