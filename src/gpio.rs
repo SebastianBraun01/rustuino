@@ -18,7 +18,8 @@ macro_rules! generate_ToInOut {
       $(
         impl ToInOut for [<P $letter:upper $number>] {
           fn input() -> InputPin {
-            let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+            let peripheral_ptr;
+            unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
             let rcc = &peripheral_ptr.RCC;
 
             let block = $letter;
@@ -76,7 +77,8 @@ macro_rules! generate_ToInOut {
           }
         
           fn output() -> OutputPin {
-            let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+            let peripheral_ptr;
+            unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
             let rcc = &peripheral_ptr.RCC;
 
             let block = $letter;
@@ -268,7 +270,8 @@ generate_ToInOut![
 // Function implementations =======================================================================
 impl Input for InputPin {
   fn bias(&mut self, bias: Bias) {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let pin = self.pin;
 
     match self.block {
@@ -343,7 +346,8 @@ impl Input for InputPin {
   }
 
   fn read(&self) -> bool {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     let bits = match self.block {
       'a' => {
@@ -388,7 +392,8 @@ impl Input for InputPin {
 
 impl Output for OutputPin{
   fn speed(&mut self, speed: Speed) {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let pin = self.pin;
 
     match self.block {
@@ -471,7 +476,8 @@ impl Output for OutputPin{
   }
 
   fn bias(&mut self, bias: Bias) {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let pin = self.pin;
 
     match self.block {
@@ -546,7 +552,8 @@ impl Output for OutputPin{
   }
 
   fn open_drain(&mut self) {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let pin = self.pin;
 
     match self.block {
@@ -589,7 +596,8 @@ impl Output for OutputPin{
   }
 
   fn write(&self, value: bool) {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let pin = self.pin;
 
     match self.block {
