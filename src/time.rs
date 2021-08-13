@@ -617,7 +617,8 @@ fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
 
 // Standalone time functions ======================================================================  
 pub fn delay(ms: u32) {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let systick = &peripheral_ptr.STK;
   
   if systick.ctrl.read().enable().bit_is_clear() {
@@ -639,7 +640,8 @@ pub fn delay(ms: u32) {
 }
 
 pub fn start_time() {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
   let tim6 = &peripheral_ptr.TIM6;
   
@@ -664,7 +666,8 @@ pub fn start_time() {
 }
 
 pub fn millis() -> usize {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let tim6 = &peripheral_ptr.TIM6;
   let buffer: usize;
   
