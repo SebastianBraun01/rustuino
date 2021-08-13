@@ -1,7 +1,5 @@
 use super::common::*;
 use super::include::{ADC1_MAP, ADC3_MAP, ADC_CONF};
-use cortex_m_semihosting::hprintln;
-use heapless::String;
 
 
 // Converter implementations ======================================================================
@@ -12,12 +10,13 @@ macro_rules! generate_ToAnalog {
     paste!{
       $(
         impl ToAnalog for [<P $letter:upper $number>] {
-          fn analog(resolution: u8, eocint: bool) -> Result<AnalogPin, String<20>> {
+          fn analog(resolution: u8, eocint: bool) -> AnalogPin {
             let block = $letter;
             let pin = $number;
 
             if !resolution == 6 && !resolution == 8 && !resolution == 10 && !resolution == 12 {
-              return Err(String::from("This is not an available ADC resolution!"));
+              rtt_target::rprintln!("{} Bit is not a possible ADC resolution! | .analog(...)", resolution);
+              panic!();
             }
             
             if block == 'a' && pin == 4 {dac_init(1);}
@@ -39,12 +38,12 @@ macro_rules! generate_ToAnalog {
               }
             }
   
-            return Ok(AnalogPin {
+            return AnalogPin {
               block,
               pin,
               res: resolution,
               eocint
-            });
+            };
           }
         }
       )+
@@ -92,7 +91,7 @@ impl Analog for AnalogPin {
     let val: u16;
     
     if value > 4095 {
-      hprintln!("Value outside of bounds!").expect("Could not send semihosting message!");
+      rtt_target::rprintln!("Analog value outside of bounds! | .analog_write(...)");
       val = 4095;
     }
     else {val = value;}
@@ -136,7 +135,10 @@ fn adc_init(adc: u8, block: char, pin: u8, resolution: u8, eocint: bool) {
       rcc.ahb1enr.modify(|_, w| w.gpiofen().enabled());
       gpiof.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (3 << (2 * pin)))});
     },
-    _   => panic!("P{}{} not available for ADC conversion!", block.to_uppercase(), pin)
+    _   => {
+      rtt_target::rprintln!("P{}{} not available for ADC conversion! | adc_init(...)", block.to_uppercase(), pin);
+      panic!();
+    }
   };
   
   match adc {
@@ -153,7 +155,10 @@ fn adc_init(adc: u8, block: char, pin: u8, resolution: u8, eocint: bool) {
         10 => adc1.cr1.modify(|_, w| w.res().ten_bit()),
         8  => adc1.cr1.modify(|_, w| w.res().eight_bit()),
         6  => adc1.cr1.modify(|_, w| w.res().six_bit()),
-        _  => panic!("{} is not a valid ADC resolution!", resolution)
+        _  => {
+          rtt_target::rprintln!("{} Bit is not a valid ADC resolution! | adc_init(...)", resolution);
+          panic!();
+        }
       };
       
       adc1.cr2.modify(|_, w| w.adon().enabled());
@@ -171,12 +176,18 @@ fn adc_init(adc: u8, block: char, pin: u8, resolution: u8, eocint: bool) {
         10 => adc3.cr1.modify(|_, w| w.res().ten_bit()),
         8  => adc3.cr1.modify(|_, w| w.res().eight_bit()),
         6  => adc3.cr1.modify(|_, w| w.res().six_bit()),
-        _  => panic!("{} is not a valid ADC resolution!", resolution)
+        _  => {
+          rtt_target::rprintln!("{} Bit is not a valid ADC resolution! | adc_init(...)", resolution);
+          panic!();
+        }
       };
       
       adc3.cr2.modify(|_, w| w.adon().enabled());
     },
-    _ => panic!("{} is not a valid ADC!", adc)
+    _ => {
+      rtt_target::rprintln!("ADC{} is not a valid ADC! | adc_init(...)", adc);
+      panic!();
+    }
   };
 }
 
@@ -209,5 +220,9 @@ fn dac_init(channel: u8) {
       w.tsel2().software();
       w.en2().enabled()
     });
+  }
+  else {
+    rtt_target::rprintln!("DAC{} is not a valid DAC channel! | dac_init(...)", channel);
+    panic!();
   }
 }

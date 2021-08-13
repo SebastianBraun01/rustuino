@@ -2,11 +2,9 @@
 
 use super::common::*;
 use super::include:: {TIMER_MAP, TIMER_CONF, TIME_COUNTER, DELAY_COUNTER};
-use cortex_m_semihosting::hprintln;
 use cortex_m::peripheral::NVIC;
 use cortex_m_rt::exception;
 use stm32f4::stm32f446::{Interrupt, interrupt};
-use heapless::String;
 
 
 // Converter implementations ======================================================================
@@ -17,7 +15,7 @@ macro_rules! generate_ToPwm {
     paste!{
       $(
         impl ToPwm for [<P $letter:upper $number>] {
-          fn pwm() -> Result<PwmPin, String<20>>{
+          fn pwm() -> PwmPin {
             let block = $letter;
             let pin = $number;
             let timer: usize;
@@ -30,24 +28,22 @@ macro_rules! generate_ToPwm {
               unsafe {
                 if TIMER_CONF[(timer * 4) - channel] == false {TIMER_CONF[(timer * 4) - channel] = true;}
                 else {
-                  let mut str_buffer: String<20> = String::new();
-                  core::fmt::write(&mut str_buffer, format_args!("Timer {} channel {} already in use!", timer, channel)).expect("Could not construct error message!");
-                  return Err(str_buffer);
+                  rtt_target::rprintln!("Timer {} channel {} already in use! | .pwm()", timer, channel);
+                  panic!();
                 }
               }
             }
             else {
-              let mut str_buffer: String<20> = String::new();
-              core::fmt::write(&mut str_buffer, format_args!("P{}{} is not available for pwm output!", block.to_uppercase(), pin)).expect("Could not construct error message!");
-              return Err(str_buffer);
+              rtt_target::rprintln!("P{}{} is not available for pwm output! | .pwm()", block.to_uppercase(), pin);
+              panic!();
             }
             
             pwm_init(timer, channel, block, pin);
             
-            return Ok(PwmPin {
+            return PwmPin {
               block,
               pin
-            });
+            };
           }
         }
       )+
@@ -122,12 +118,15 @@ impl PWM for PwmPin {
       
       unsafe {
         if TIMER_CONF[(timer * 4) - channel] == false {
-          hprintln!("Timer {} channel {} not configured!", timer, channel).expect("Could not send semihosting message!");
-          return;
+          rtt_target::rprintln!("Timer {} channel {} not configured! | .pwm_write(...)", timer, channel);
+          panic!();
         }
       }
     }
-    else {panic!("P{}{} is not available for pwm output!", block.to_uppercase(), pin);}
+    else {
+      rtt_target::rprintln!("P{}{} is not available for pwm output! | .pwm_write(...)", block.to_uppercase(), pin);
+      panic!();
+    }
     
     pwm_set_duty(timer, channel, value);
   }
@@ -303,7 +302,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
         }
       }
     },
-    _   => panic!("P{}{} is not available for PWM output!", block.to_uppercase(), pin)
+    _   => {
+      rtt_target::rprintln!("P{}{} is not available for PWM output! | pwm_init(...)", block.to_uppercase(), pin);
+      panic!();
+    }
   };
   
   match timer {
@@ -321,7 +323,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
         2 => tim1.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
         3 => tim1.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         4 => tim1.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     2 => {
@@ -338,7 +343,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
         2 => tim2.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
         3 => tim2.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         4 => tim2.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     3 => {
@@ -355,7 +363,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
         2 => tim3.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
         3 => tim3.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         4 => tim3.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     4 => {
@@ -372,7 +383,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
         2 => tim4.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
         3 => tim4.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         4 => tim4.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     5 => {
@@ -389,7 +403,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
         2 => tim5.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
         3 => tim5.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         4 => tim5.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     8 => {
@@ -406,7 +423,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
         2 => tim8.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
         3 => tim8.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         4 => tim8.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     9 => {
@@ -421,7 +441,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
       match channel {
         1 => tim9.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         2 => tim9.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     10 => {
@@ -436,7 +459,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
       match channel {
         1 => tim10.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         2 => tim10.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     11 => {
@@ -451,7 +477,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
       match channel {
         1 => tim11.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         2 => tim11.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     12 => {
@@ -466,7 +495,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
       match channel {
         1 => tim12.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         2 => tim12.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     13 => {
@@ -481,7 +513,10 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
       match channel {
         1 => tim13.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         2 => tim13.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     14 => {
@@ -496,10 +531,16 @@ fn pwm_init(timer: usize, channel: usize, block: char, pin: u8) {
       match channel {
         1 => tim14.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
         2 => tim14.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
-    _  => panic!("Timer {} is not a valid timer!", timer)
+    _  => {
+      rtt_target::rprintln!("Timer {} is not a valid timer! | pwm_init(...)", timer);
+      panic!();
+    }
   };
 }
 
@@ -515,7 +556,10 @@ fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
         2 => tim1.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
         3 => tim1.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
         4 => tim1.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     2 => {
@@ -525,7 +569,10 @@ fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
         2 => tim2.ccr2.write_with_zero(|w| w.ccr().bits(value as u32)),
         3 => tim2.ccr3.write_with_zero(|w| w.ccr().bits(value as u32)),
         4 => tim2.ccr4.write_with_zero(|w| w.ccr().bits(value as u32)),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     3 => {
@@ -535,7 +582,10 @@ fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
         2 => tim3.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
         3 => tim3.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
         4 => tim3.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     4 => {
@@ -545,7 +595,10 @@ fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
         2 => tim4.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
         3 => tim4.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
         4 => tim4.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     5 => {
@@ -555,7 +608,10 @@ fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
         2 => tim5.ccr2.write_with_zero(|w| w.ccr().bits(value as u32)),
         3 => tim5.ccr3.write_with_zero(|w| w.ccr().bits(value as u32)),
         4 => tim5.ccr4.write_with_zero(|w| w.ccr().bits(value as u32)),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     8 => {
@@ -565,7 +621,10 @@ fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
         2 => tim8.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
         3 => tim8.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
         4 => tim8.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     9 => {
@@ -573,21 +632,30 @@ fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
       match channel {
         1 => tim9.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
         2 => tim9.ccr2.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     10 => {
       let tim10 = &peripheral_ptr.TIM10;
       match channel {
         1 => tim10.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     11 => {
       let tim11 = &peripheral_ptr.TIM11;
       match channel {
         1 => tim11.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     12 => {
@@ -595,24 +663,36 @@ fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
       match channel {
         1 => tim12.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
         2 => tim12.ccr2.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     13 => {
       let tim13 = &peripheral_ptr.TIM13;
       match channel {
         1 => tim13.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
     14 => {
       let tim14 = &peripheral_ptr.TIM14;
       match channel {
         1 => tim14.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-        _ => panic!("Channel {} is not a valid CC channel!", channel)
+        _ => {
+          rtt_target::rprintln!("Channel {} is not a valid CC channel! | pwm_init(...)", channel);
+          panic!();
+        }
       };
     },
-    _ => panic!("Timer {} is not a valid timer!", timer)
+    _ => {
+      rtt_target::rprintln!("Timer {} is not a valid timer! | adc_init(...)", timer);
+      panic!();
+    }
   };
 }
 
@@ -650,7 +730,7 @@ pub fn start_time() {
   unsafe {
     if TIMER_CONF[20] == false {TIMER_CONF[20] = true;}
     else {
-      hprintln!("Millis Timer already configured!").expect("Could not send semihosting message!");
+      rtt_target::rprintln!("Millis Timer already configured! | start_time()");
       return;
     }
   }

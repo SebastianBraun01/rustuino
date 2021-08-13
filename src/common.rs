@@ -190,11 +190,11 @@ pub trait ToInOut: Sized {
 }
 
 pub trait ToAnalog: Sized {
-  fn analog(resolution: u8, eocint: bool) -> Result<AnalogPin, String<20>>;
+  fn analog(resolution: u8, eocint: bool) -> AnalogPin;
 }
 
 pub trait ToPwm: Sized {
-  fn pwm() -> Result<PwmPin, String<20>>;
+  fn pwm() -> PwmPin;
 }
 
 pub trait Input: Sized {

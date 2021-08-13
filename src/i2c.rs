@@ -3,7 +3,7 @@ use super::include::{I2C_MAP, I2C_CONF};
 use heapless::{Vec, String};
 
 // Initialisation function ========================================================================
-pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Result<I2cCore, String<20>> {
+pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Result<I2cCore, String<60>> {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
   let rcc = &peripheral_ptr.RCC;
 
@@ -14,7 +14,10 @@ pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Resul
     core = I2C_MAP.channel[index];
     unsafe {I2C_CONF[core as usize - 1] = true;}
   }
-  else {return Err(String::from("These pins are not available for I2C communication!"));}
+  else {
+    rtt_target::rprintln!("These pins are not available for I2C communication! | ::i2c_init(...)");
+    return Err(String::from("These pins are not available for I2C communication!"));
+  }
 
   // Setup Variablen
   let bus_freq = 16;
@@ -66,7 +69,10 @@ pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Resul
       // });
       i2c3.cr1.modify(|_, w| w.pe().enabled());
     },
-    _ => panic!("I2C {} is not a valid core!", core)
+    _ => {
+      rtt_target::rprintln!("I2C{} is not a valid core! | ::i2c_init(...)", core);
+      panic!();
+    }
   };
 
   return Ok(I2cCore {
@@ -124,7 +130,10 @@ impl I2C for I2cCore {
         }
         i2c3.cr1.write(|w| w.stop().set_bit());
       },
-      _ => panic!("I2C {} is not a valid core!", self.core)
+      _ => {
+        rtt_target::rprintln!("I2C{} is not a valid core! | .send_bytes(...)", self.core);
+        panic!();
+      }
     };
   }
 
@@ -226,7 +235,10 @@ impl I2C for I2cCore {
           vec.push(i2c3.dr.read().dr().bits()).unwrap();
         }
       },
-      _ => panic!("I2C {} is not a valid core!", self.core)
+      _ => {
+        rtt_target::rprintln!("I2C{} is not a valid core! | .recieve_bytes(...)", self.core);
+        panic!();
+      }
     };
   }
 }
@@ -274,6 +286,9 @@ fn i2c_setup_gpio(block: char, pin: u8, pullup: bool) {
       if pin > 7 {gpiof.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (4 << (4 * (pin - 8))))});}
       else {gpiof.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (4 << (4 * pin)))});}
     },
-    _   => panic!("P{}{} is not available for i2c transmission!", block.to_uppercase(), pin)
+    _   => {
+      rtt_target::rprintln!("P{}{} is not available for i2c transmission! | i2c_setup_gpio(...)", block.to_uppercase(), pin);
+      panic!();
+    }
   };
 }
