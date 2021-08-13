@@ -6,7 +6,8 @@ use heapless::String;
 
 // Initialisation function ========================================================================
 pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool, txint: bool) -> Result<UartCore, String<20>> {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
 
   let channel: u8;
@@ -111,7 +112,8 @@ impl UART for UartCore {
   }
 
   fn send_char(&self, c: char) {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   
     match self.channel {
       1 => {
@@ -207,7 +209,8 @@ impl UART for UartCore {
   }
 
   fn send_string(&self, s: &str) {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     for c in s.chars() {
       match self.channel {
@@ -305,7 +308,8 @@ impl UART for UartCore {
   }
 
   fn get_char(&self) -> char {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     let buffer = match self.channel {
       1 => {
@@ -345,7 +349,8 @@ impl UART for UartCore {
   }
 
   fn get_string<const N: usize>(&self, stopper: char) -> Result<String<N>, String<20>> {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let mut buffer: u8;
     let mut string_buffer: String<N> = String::new();
 
@@ -395,7 +400,8 @@ impl UART for UartCore {
 
 // Helper functions ===============================================================================
 fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
 
   match block {
@@ -482,7 +488,8 @@ fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
 }
 
 fn rx_interrupt(channel: u8, enable: bool) {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   
   match channel {
     1 => {
@@ -520,7 +527,8 @@ fn rx_interrupt(channel: u8, enable: bool) {
 }
 
 fn tx_interrupt(channel: u8, enable: bool) {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
   match channel {
     1 => {
@@ -558,7 +566,8 @@ fn tx_interrupt(channel: u8, enable: bool) {
 }
 
 fn set_baud(channel: u8, baud: u32) {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
   // (Mantisse, Fractal)
   let usartdiv: (f64, f64) = libm::modf(16000000.0 / (16.0 * baud as f64));
@@ -618,7 +627,8 @@ pub mod serial {
   use super::super::include::UART_CONF;
 
   pub fn init(baud: u32, rxint: bool, txint: bool) {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let rcc = &peripheral_ptr.RCC;
     let usart2 = &peripheral_ptr.USART2;
     let gpioa = &peripheral_ptr.GPIOA;
@@ -659,7 +669,8 @@ pub mod serial {
   }
 
   pub fn send_char_usb(c: char) {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let usart2 = &peripheral_ptr.USART2;
     
     unsafe {if UART_CONF[1] == false {panic!("UART USB channel ist not PINCONFIGured!");}}
@@ -679,7 +690,8 @@ pub mod serial {
   }
   
   pub fn recieve_char_usb() -> char {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let usart2 = &peripheral_ptr.USART2;
     let buffer: u8;
     
