@@ -66,10 +66,7 @@ macro_rules! generate_ToInOut {
                 rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
                 gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
               },
-              _   => {
-                rtt_target::rprintln!("P{}{} is not an available GPIO Pin | ::input()", block.to_uppercase(), pin);
-                panic!();
-              }
+              _   => panic!("P{}{} is not an available GPIO Pin | ::input()", block.to_uppercase(), pin)
             };
         
             return InputPin {
@@ -128,10 +125,7 @@ macro_rules! generate_ToInOut {
                 rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
                 gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
               },
-              _   => {
-                rtt_target::rprintln!("P{}{} is not an available GPIO Pin | ::output()", block.to_uppercase(), pin);
-                panic!();
-              }
+              _   => panic!("P{}{} is not an available GPIO Pin | ::output()", block.to_uppercase(), pin)
             };
         
             return OutputPin {
@@ -345,10 +339,7 @@ impl Input for InputPin {
           Bias::Pulldown => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
         };
       },
-      _   => {
-        rtt_target::rprintln!("P{}{} is not an available GPIO Pin | .bias(...)", self.block.to_uppercase(), pin);
-        panic!();
-      }
+      _   => panic!("P{}{} is not an available GPIO Pin | .bias(...)", self.block.to_uppercase(), pin)
     };
 
     self.bias = bias;
@@ -391,10 +382,7 @@ impl Input for InputPin {
         let gpioh = &peripheral_ptr.GPIOH;
         gpioh.idr.read().bits()
       },
-      _   => {
-        rtt_target::rprintln!("P{}{} is not an available GPIO Pin | .read()", self.block.to_uppercase(), self.pin);
-        panic!();
-      }
+      _   => panic!("P{}{} is not an available GPIO Pin | .read()", self.block.to_uppercase(), self.pin)
     };
   
     if bits & (1 << self.pin) == (1 << self.pin) {return true;}
@@ -481,10 +469,7 @@ impl Output for OutputPin{
           Speed::High => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin)))})
         };
       },
-      _   => {
-        rtt_target::rprintln!("P{}{} is not an available GPIO Pin | .speed(...)", self.block.to_uppercase(), pin);
-        panic!();
-      }
+      _   => panic!("P{}{} is not an available GPIO Pin | .speed(...)", self.block.to_uppercase(), pin)
     };
 
     self.speed = speed;
@@ -560,10 +545,7 @@ impl Output for OutputPin{
           Bias::Pulldown => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))})
         };
       },
-      _   => {
-        rtt_target::rprintln!("P{}{} is not an available GPIO Pin | .bias(...)", self.block.to_uppercase(), pin);
-        panic!();
-      }
+      _   => panic!("P{}{} is not an available GPIO Pin | .bias(...)", self.block.to_uppercase(), pin)
     };
 
     self.bias = bias;
@@ -607,10 +589,7 @@ impl Output for OutputPin{
         let gpioh = &peripheral_ptr.GPIOH;
         gpioh.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin))});
       },
-      _   => {
-        rtt_target::rprintln!("P{}{} is not an available GPIO Pin | .open_drain()", self.block.to_uppercase(), pin);
-        panic!();
-      }
+      _   => panic!("P{}{} is not an available GPIO Pin | .open_drain()", self.block.to_uppercase(), pin)
     };
 
     self.open_drain = true;
@@ -662,10 +641,7 @@ impl Output for OutputPin{
         if value == true {gpioh.bsrr.write(|w| unsafe {w.bits(1 << pin)});}
         else {gpioh.bsrr.write(|w| unsafe {w.bits(1 << (pin + 16))});}
       },
-      _   => {
-        rtt_target::rprintln!("P{}{} is not an available GPIO Pin | .write(...)", self.block.to_uppercase(), pin);
-        panic!();
-      }
+      _   => panic!("P{}{} is not an available GPIO Pin | .write(...)", self.block.to_uppercase(), pin)
     };
   }
 }

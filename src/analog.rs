@@ -15,8 +15,7 @@ macro_rules! generate_ToAnalog {
             let pin = $number;
 
             if !resolution == 6 && !resolution == 8 && !resolution == 10 && !resolution == 12 {
-              rtt_target::rprintln!("{} Bit is not a possible ADC resolution! | .analog(...)", resolution);
-              panic!();
+              panic!("{} Bit is not a possible ADC resolution! | .analog(...)", resolution);
             }
             
             if block == 'a' && pin == 4 {dac_init(1);}
@@ -135,10 +134,7 @@ fn adc_init(adc: u8, block: char, pin: u8, resolution: u8, eocint: bool) {
       rcc.ahb1enr.modify(|_, w| w.gpiofen().enabled());
       gpiof.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (3 << (2 * pin)))});
     },
-    _   => {
-      rtt_target::rprintln!("P{}{} not available for ADC conversion! | adc_init(...)", block.to_uppercase(), pin);
-      panic!();
-    }
+    _   => panic!("P{}{} not available for ADC conversion! | adc_init(...)", block.to_uppercase(), pin)
   };
   
   match adc {
@@ -155,10 +151,7 @@ fn adc_init(adc: u8, block: char, pin: u8, resolution: u8, eocint: bool) {
         10 => adc1.cr1.modify(|_, w| w.res().ten_bit()),
         8  => adc1.cr1.modify(|_, w| w.res().eight_bit()),
         6  => adc1.cr1.modify(|_, w| w.res().six_bit()),
-        _  => {
-          rtt_target::rprintln!("{} Bit is not a valid ADC resolution! | adc_init(...)", resolution);
-          panic!();
-        }
+        _  => panic!("{} Bit is not a valid ADC resolution! | adc_init(...)", resolution)
       };
       
       adc1.cr2.modify(|_, w| w.adon().enabled());
@@ -176,18 +169,12 @@ fn adc_init(adc: u8, block: char, pin: u8, resolution: u8, eocint: bool) {
         10 => adc3.cr1.modify(|_, w| w.res().ten_bit()),
         8  => adc3.cr1.modify(|_, w| w.res().eight_bit()),
         6  => adc3.cr1.modify(|_, w| w.res().six_bit()),
-        _  => {
-          rtt_target::rprintln!("{} Bit is not a valid ADC resolution! | adc_init(...)", resolution);
-          panic!();
-        }
+        _  => panic!("{} Bit is not a valid ADC resolution! | adc_init(...)", resolution)
       };
       
       adc3.cr2.modify(|_, w| w.adon().enabled());
     },
-    _ => {
-      rtt_target::rprintln!("ADC{} is not a valid ADC! | adc_init(...)", adc);
-      panic!();
-    }
+    _ => panic!("ADC{} is not a valid ADC! | adc_init(...)", adc)
   };
 }
 
@@ -221,8 +208,5 @@ fn dac_init(channel: u8) {
       w.en2().enabled()
     });
   }
-  else {
-    rtt_target::rprintln!("DAC{} is not a valid DAC channel! | dac_init(...)", channel);
-    panic!();
-  }
+  else {panic!("DAC{} is not a valid DAC channel! | dac_init(...)", channel);}
 }

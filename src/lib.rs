@@ -27,7 +27,5 @@ use core::panic::PanicInfo;
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
   rtt_target::rprintln!("{}", info);
-  loop {
-    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
-  }
+  loop {core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);}
 }

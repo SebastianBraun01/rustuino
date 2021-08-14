@@ -69,10 +69,7 @@ pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Resul
       // });
       i2c3.cr1.modify(|_, w| w.pe().enabled());
     },
-    _ => {
-      rtt_target::rprintln!("I2C{} is not a valid core! | ::i2c_init(...)", core);
-      panic!();
-    }
+    _ => panic!("I2C{} is not a valid core! | ::i2c_init(...)", core)
   };
 
   return Ok(I2cCore {
@@ -130,10 +127,7 @@ impl I2C for I2cCore {
         }
         i2c3.cr1.write(|w| w.stop().set_bit());
       },
-      _ => {
-        rtt_target::rprintln!("I2C{} is not a valid core! | .send_bytes(...)", self.core);
-        panic!();
-      }
+      _ => panic!("I2C{} is not a valid core! | .send_bytes(...)", self.core)
     };
   }
 
@@ -235,10 +229,7 @@ impl I2C for I2cCore {
           vec.push(i2c3.dr.read().dr().bits()).unwrap();
         }
       },
-      _ => {
-        rtt_target::rprintln!("I2C{} is not a valid core! | .recieve_bytes(...)", self.core);
-        panic!();
-      }
+      _ => panic!("I2C{} is not a valid core! | .recieve_bytes(...)", self.core)
     };
   }
 }
@@ -286,9 +277,6 @@ fn i2c_setup_gpio(block: char, pin: u8, pullup: bool) {
       if pin > 7 {gpiof.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (4 << (4 * (pin - 8))))});}
       else {gpiof.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (4 << (4 * pin)))});}
     },
-    _   => {
-      rtt_target::rprintln!("P{}{} is not available for i2c transmission! | i2c_setup_gpio(...)", block.to_uppercase(), pin);
-      panic!();
-    }
+    _   => panic!("P{}{} is not available for i2c transmission! | i2c_setup_gpio(...)", block.to_uppercase(), pin)
   };
 }

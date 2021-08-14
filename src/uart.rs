@@ -209,10 +209,7 @@ impl UART for UartCore {
           while usart6.sr.read().txe().bit_is_clear() == true {}
         }
       },
-      _ => {
-        rtt_target::rprintln!("U(S)ART{} is not a valid U(S)ART peripheral! | .send_char(...)", self.channel);
-        panic!();
-      }
+      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .send_char(...)", self.channel)
     };
   }
 
@@ -310,10 +307,7 @@ impl UART for UartCore {
             while usart6.sr.read().txe().bit_is_clear() == true {}
           }
         },
-        _ => {
-          rtt_target::rprintln!("U(S)ART{} is not a valid U(S)ART peripheral! | .send_string(...)", self.channel);
-          panic!();
-        }
+        _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .send_string(...)", self.channel)
       };
     }
   }
@@ -353,10 +347,7 @@ impl UART for UartCore {
         while usart6.sr.read().rxne().bit_is_clear() == true {}
         usart6.dr.read().dr().bits() as u8
       },
-      _ => {
-        rtt_target::rprintln!("U(S)ART{} is not a valid U(S)ART peripheral! | .get_char()", self.channel);
-        panic!();
-      }
+      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .get_char()", self.channel)
     };
   
     return buffer as char;
@@ -405,17 +396,11 @@ impl UART for UartCore {
           while usart6.sr.read().rxne().bit_is_clear() == true {}
           usart6.dr.read().dr().bits() as u8
         },
-        _ => {
-          rtt_target::rprintln!("U(S)ART{} is not a valid U(S)ART peripheral! | .get_string(...)", self.channel);
-          panic!();
-        }
+        _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .get_string(...)", self.channel)
       };
 
       if buffer == stopper as u8 {return Ok(string_buffer);}
-      if string_buffer.push(buffer as char).is_err() {
-        rtt_target::rprintln!("Could not write to String Object! | .get_string(...)");
-        panic!();
-      }
+      string_buffer.push(buffer as char).expect("Could not write to String Object! | .get_string(...)");
     }
   }
 }
@@ -506,10 +491,7 @@ fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
         else {gpiog.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
       }
     },
-    _   => {
-      rtt_target::rprintln!("P{}{} is not available for UART transmissions! | uart_setup_gpio(...)", block.to_uppercase(), pin);
-      panic!();
-    }
+    _   => panic!("P{}{} is not available for UART transmissions! | uart_setup_gpio(...)", block.to_uppercase(), pin)
   };
 }
 
@@ -548,10 +530,7 @@ fn rx_interrupt(channel: u8, enable: bool) {
       if enable == true {usart6.cr1.modify(|_, w| w.rxneie().enabled());}
       else {usart6.cr1.modify(|_, w| w.rxneie().disabled());}
     },
-    _ => {
-      rtt_target::rprintln!("U(S)ART{} is not a valid U(S)ART peripheral! | .rx_interrupt(...)", channel);
-      panic!();
-    }
+    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .rx_interrupt(...)", channel)
   };
 }
 
@@ -590,10 +569,7 @@ fn tx_interrupt(channel: u8, enable: bool) {
       if enable == true {usart6.cr1.modify(|_, w| w.tcie().enabled());}
       else {usart6.cr1.modify(|_, w| w.tcie().disabled());}
     },
-    _ => {
-      rtt_target::rprintln!("U(S)ART{} is not a valid U(S)ART peripheral! | .tx_interrupt(...)", channel);
-      panic!();
-    }
+    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .tx_interrupt(...)", channel)
   };
 }
 
@@ -647,10 +623,7 @@ fn set_baud(channel: u8, baud: u32) {
         w.div_fraction().bits((usartdiv.0 * 16.0) as u8)
       });
     },
-    _ => {
-      rtt_target::rprintln!("U(S)ART{} is not a valid U(S)ART peripheral! | set_baud(...)", channel);
-      panic!();
-    }
+    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | set_baud(...)", channel)
   }
 }
 
@@ -709,8 +682,7 @@ pub mod serial {
     
     unsafe {
       if UART_CONF[1] == false {
-        rtt_target::rprintln!("UART USB channel ist not configured! | ::send_char_usb(...)");
-        panic!();
+        panic!("UART USB channel ist not configured! | ::send_char_usb(...)");
       }
     }
 
@@ -736,8 +708,7 @@ pub mod serial {
     
     unsafe {
       if UART_CONF[1] == false {
-        rtt_target::rprintln!("UART USB channel ist not configured! | ::recieve_char_usb()");
-        panic!();
+        panic!("UART USB channel ist not configured! | ::recieve_char_usb()");
       }
     }
     
@@ -803,10 +774,7 @@ pub mod serial {
       loop {
         buff = rustuino::serial::recieve_char_usb();
         if buff == $stop as char {break;}
-        if str.push(buff).is_err() {
-          rtt_target::rprintln!("String buffer overflow! | sreads!(...)");
-          panic!();
-        };
+        str.push(buff).expect("String buffer overflow! | sreads!(...)");
       }
       str
     }};
