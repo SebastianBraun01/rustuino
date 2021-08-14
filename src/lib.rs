@@ -8,6 +8,7 @@ pub use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 pub use libm::*;
 pub use heapless::{Vec, String};
 pub use {common::*, gpio::*, analog::*, time::*, uart::*};
+pub use rtt_target::{rtt_init_print, rprint, rprintln};
 
 
 // Submodule includes =============================================================================
