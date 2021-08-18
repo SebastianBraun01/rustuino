@@ -722,9 +722,9 @@ pub mod serial {
   // Macro declerations ===========================================================================
   #[macro_export]
   macro_rules! sprint {
-    ($param:expr) => {
+    ($text:expr, $($args:tt)*) => {
       let mut txt_buff: String<50> = String::new();
-      if core::fmt::write(&mut txt_buff, format_args!($param)).is_err() {txt_buff = String::from("~\r\n")};
+      if core::fmt::write(&mut txt_buff, format_args!($text, $($args:tt)*)).is_err() {txt_buff = String::from("~\r\n")};
     
       for c in txt_buff.chars() {
         if c.is_ascii() == true {rustuino::serial::send_char_usb(c);}
@@ -735,9 +735,9 @@ pub mod serial {
 
   #[macro_export]
   macro_rules! sprintln {
-    ($param:expr) => {
+    ($text:expr, $($args:tt)*) => {
       let mut txt_buff: String<50> = String::new();
-      if core::fmt::write(&mut txt_buff, format_args!($param)).is_err() {txt_buff = String::from("~\r\n")};
+      if core::fmt::write(&mut txt_buff, format_args!($text, $($args:tt)*)).is_err() {txt_buff = String::from("~\r\n")};
     
       for c in txt_buff.chars() {
         if c.is_ascii() == true {rustuino::serial::send_char_usb(c);}
