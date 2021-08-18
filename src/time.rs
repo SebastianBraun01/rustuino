@@ -1,9 +1,6 @@
-#![allow(non_snake_case)]
-
 use super::common::*;
 use super::include:: {TIMER_MAP, TIMER_CONF, TIME_COUNTER, DELAY_COUNTER};
 use cortex_m::peripheral::NVIC;
-use cortex_m_rt::exception;
 use stm32f4::stm32f446::{Interrupt, interrupt};
 
 
@@ -610,17 +607,25 @@ fn pwm_set_duty(timer: usize, channel: usize, value: u8) {
 pub fn delay(ms: u32) {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  let systick = &peripheral_ptr.STK;
-  
-  if systick.ctrl.read().enable().bit_is_clear() {
-    // 2MHz mit 2000 PSC -> 1kHz
-    systick.load.write(|w| unsafe {w.reload().bits(2000000 / 1000)});
-    systick.val.reset();
-    systick.ctrl.modify(|_, w| {
-      w.tickint().set_bit();
-      w.enable().set_bit()
-    });
+  let rcc = &peripheral_ptr.RCC;
+  let tim6 = &peripheral_ptr.TIM6;
+
+  static CONFIGURED: bool = false;
+
+  if CONFIGURED == false {
+    rcc.apb1enr.modify(|_, w| w.tim6en().enabled());
+    tim6.cr1.modify(|_, w| w.arpe().enabled());
+    
+    tim6.dier.modify(|_, w| w.uie().enabled());
+    unsafe {NVIC::unmask(Interrupt::TIM6_DAC);}
+    
+    // 16MHz -> 1MHz : 1000 = 1kHz -> 1ms
+    tim6.psc.write(|w| w.psc().bits(16));
+    tim6.arr.write(|w| w.arr().bits(1000));
+    tim6.egr.write(|w| w.ug().update());
+    tim6.cr1.modify(|_, w| w.cen().enabled());
   }
+  else {tim6.cr1.modify(|_, w| w.cen().enabled());}
   
   unsafe {
     DELAY_COUNTER.1 = 0;
@@ -628,13 +633,15 @@ pub fn delay(ms: u32) {
     while DELAY_COUNTER.1 < ms {}
     DELAY_COUNTER.0 = false;
   }
+
+  tim6.cr1.modify(|_, w| w.cen().disabled());
 }
 
 pub fn start_time() {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
-  let tim6 = &peripheral_ptr.TIM6;
+  let tim7 = &peripheral_ptr.TIM6;
   
   unsafe {
     if TIMER_CONF[20] == false {TIMER_CONF[20] = true;}
@@ -644,41 +651,45 @@ pub fn start_time() {
     }
   }
   
-  rcc.apb1enr.modify(|_, w| w.tim6en().enabled());
-  tim6.cr1.modify(|_, w| w.arpe().enabled());
+  rcc.apb1enr.modify(|_, w| w.tim7en().enabled());
+  tim7.cr1.modify(|_, w| w.arpe().enabled());
   
-  tim6.dier.modify(|_, w| w.uie().enabled());
-  unsafe {NVIC::unmask(Interrupt::TIM1_UP_TIM10);}
+  tim7.dier.modify(|_, w| w.uie().enabled());
+  unsafe {NVIC::unmask(Interrupt::TIM7);}
   
-  tim6.psc.write(|w| w.psc().bits(8));
-  tim6.arr.write(|w| w.arr().bits(1000));
-  tim6.egr.write(|w| w.ug().update());
-  tim6.cr1.modify(|_, w| w.cen().enabled());
+  // 16MHz -> 1MHz : 1000 = 1kHz -> 1ms
+  tim7.psc.write(|w| w.psc().bits(16));
+  tim7.arr.write(|w| w.arr().bits(1000));
+  tim7.egr.write(|w| w.ug().update());
+  tim7.cr1.modify(|_, w| w.cen().enabled());
 }
 
 pub fn millis() -> usize {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  let tim6 = &peripheral_ptr.TIM6;
+  let tim7 = &peripheral_ptr.TIM6;
+
   let buffer: usize;
   
-  tim6.cr1.modify(|_, w| w.cen().disabled());
+  tim7.cr1.modify(|_, w| w.cen().disabled());
   unsafe {buffer = TIME_COUNTER;}
-  tim6.cr1.modify(|_, w| w.cen().enabled());
+  tim7.cr1.modify(|_, w| w.cen().enabled());
   
   return buffer;
 }
 
 
 // Interrupts and Exceptions ====================================================================
-#[exception]
-fn SysTick() {
+#[allow(non_snake_case)]
+#[interrupt]
+fn TIM6_DAC() {
   unsafe {
     if DELAY_COUNTER.0 == true {DELAY_COUNTER.1 += 1;}
   }
 }
 
+#[allow(non_snake_case)]
 #[interrupt]
-fn TIM1_UP_TIM10() {
+fn TIM7() {
   unsafe {TIME_COUNTER += 1;}
 }
