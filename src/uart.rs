@@ -722,7 +722,7 @@ pub mod serial {
   // Macro declerations ===========================================================================
   #[macro_export]
   macro_rules! sprint {
-    ($text:expr, $($args:tt)*) => {
+    ($text:expr, $($args:tt),*) => {
       let mut txt_buff: String<50> = String::new();
       if core::fmt::write(&mut txt_buff, format_args!($text, $($args:tt)*)).is_err() {txt_buff = String::from("~\r\n")};
     
@@ -735,7 +735,7 @@ pub mod serial {
 
   #[macro_export]
   macro_rules! sprintln {
-    ($text:expr, $($args:tt)*) => {
+    ($text:expr, $($args:tt),*) => {
       let mut txt_buff: String<50> = String::new();
       if core::fmt::write(&mut txt_buff, format_args!($text, $($args:tt)*)).is_err() {txt_buff = String::from("~\r\n")};
     
