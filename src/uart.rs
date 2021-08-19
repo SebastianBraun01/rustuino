@@ -730,8 +730,8 @@ pub mod serial {
       };
 
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::send_char_usb(c);}
-        else {$crate::send_char_usb('?');}
+        if c.is_ascii() == true {$crate::serial::send_char_usb(c);}
+        else {$crate::serial::send_char_usb('?');}
       }
     };
 
@@ -743,8 +743,8 @@ pub mod serial {
       };
 
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::send_char_usb(c);}
-        else {$crate::send_char_usb('?');}
+        if c.is_ascii() == true {$crate::serial::send_char_usb(c);}
+        else {$crate::serial::send_char_usb('?');}
       }
     };
   }
@@ -759,12 +759,12 @@ pub mod serial {
       };
 
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::send_char_usb(c);}
-        else {$crate::send_char_usb('?');}
+        if c.is_ascii() == true {$crate::serial::send_char_usb(c);}
+        else {$crate::serial::send_char_usb('?');}
       }
 
-      $crate::send_char_usb('\r');
-      $crate::send_char_usb('\n');
+      $crate::serial::send_char_usb('\r');
+      $crate::serial::send_char_usb('\n');
     };
 
     ($fmt:expr, $($args:tt)*) => {
@@ -775,26 +775,26 @@ pub mod serial {
       };
 
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::send_char_usb(c);}
-        else {$crate::send_char_usb('?');}
+        if c.is_ascii() == true {$crate::serial::send_char_usb(c);}
+        else {$crate::serial::send_char_usb('?');}
       }
 
-      $crate::send_char_usb('\r');
-      $crate::send_char_usb('\n');
+      $crate::serial::send_char_usb('\r');
+      $crate::serial::send_char_usb('\n');
     };
   }
 
   #[macro_export]
   macro_rules! sread {
     () => {{
-      let c_buff: char = $crate::recieve_char_usb();
+      let c_buff: char = $crate::serial::recieve_char_usb();
       c_buff
     }};
 
     ($c:expr) => {{
       let found: bool;
 
-      if $crate::recieve_char_usb() == $c {found = true;}
+      if $crate::serial::recieve_char_usb() == $c {found = true;}
       else {found = false;}
 
       found
@@ -807,7 +807,7 @@ pub mod serial {
       let mut str: String<50> = String::new();
       let mut buff: char;
       loop {
-        buff = $crate::recieve_char_usb();
+        buff = $crate::serial::recieve_char_usb();
         if buff == $stop as char {break;}
         str.push(buff).expect("String buffer overflow! | sreads!(...)");
       }
