@@ -10,7 +10,7 @@ pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool,
   let rcc = &peripheral_ptr.RCC;
 
   let channel: u8;
-  
+
   if UART_MAP.rx_pins.contains(&rx_pin) && UART_MAP.tx_pins.contains(&tx_pin) {
     let index = UART_MAP.rx_pins.iter().zip(UART_MAP.tx_pins.iter()).position(|i| i == (&rx_pin, &tx_pin)).unwrap();
     channel = UART_MAP.channel[index];
@@ -23,7 +23,7 @@ pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool,
 
   uart_setup_gpio(rx_pin.0, rx_pin.1, channel);
   uart_setup_gpio(tx_pin.0, tx_pin.1, channel);
-  
+
   match channel {
     1 => {
       let usart1 = &peripheral_ptr.USART1;
@@ -37,7 +37,7 @@ pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool,
     },
     3 => {
       let usart3 = &peripheral_ptr.USART3;
-      rcc.apb1enr.modify(|_, w| w.usart3en().enabled()); 
+      rcc.apb1enr.modify(|_, w| w.usart3en().enabled());
       set_baud(channel, baud);
       usart3.cr1.modify(|_, w| {
         w.te().enabled();
@@ -119,7 +119,7 @@ impl UART for UartCore {
   fn send_char(&self, c: char) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  
+
     match self.channel {
       1 => {
         let usart1 = &peripheral_ptr.USART1;
@@ -130,7 +130,7 @@ impl UART for UartCore {
         }
         else {
           rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-      
+
           while usart1.sr.read().txe().bit_is_clear() == true {}
           usart1.dr.write(|w| w.dr().bits('?' as u16));
           while usart1.sr.read().txe().bit_is_clear() == true {}
@@ -145,7 +145,7 @@ impl UART for UartCore {
         }
         else {
           rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-      
+
           while usart2.sr.read().txe().bit_is_clear() == true {}
           usart2.dr.write(|w| w.dr().bits('?' as u16));
           while usart2.sr.read().txe().bit_is_clear() == true {}
@@ -160,7 +160,7 @@ impl UART for UartCore {
         }
         else {
           rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-      
+
           while usart3.sr.read().txe().bit_is_clear() == true {}
           usart3.dr.write(|w| w.dr().bits('?' as u16));
           while usart3.sr.read().txe().bit_is_clear() == true {}
@@ -174,7 +174,7 @@ impl UART for UartCore {
         }
         else {
           rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-      
+
           while uart4.sr.read().txe().bit_is_clear() == true {}
           uart4.dr.write(|w| w.dr().bits('?' as u16));
           while uart4.sr.read().txe().bit_is_clear() == true {}
@@ -188,7 +188,7 @@ impl UART for UartCore {
         }
         else {
           rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-      
+
           while uart5.sr.read().txe().bit_is_clear() == true {}
           uart5.dr.write(|w| w.dr().bits('?' as u16));
           while uart5.sr.read().txe().bit_is_clear() == true {}
@@ -203,7 +203,7 @@ impl UART for UartCore {
         }
         else {
           rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-      
+
           while usart6.sr.read().txe().bit_is_clear() == true {}
           usart6.dr.write(|w| w.dr().bits('?' as u16));
           while usart6.sr.read().txe().bit_is_clear() == true {}
@@ -228,7 +228,7 @@ impl UART for UartCore {
           }
           else {
             rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-        
+
             while usart1.sr.read().txe().bit_is_clear() == true {}
             usart1.dr.write(|w| w.dr().bits('?' as u16));
             while usart1.sr.read().txe().bit_is_clear() == true {}
@@ -243,7 +243,7 @@ impl UART for UartCore {
           }
           else {
             rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-        
+
             while usart2.sr.read().txe().bit_is_clear() == true {}
             usart2.dr.write(|w| w.dr().bits('?' as u16));
             while usart2.sr.read().txe().bit_is_clear() == true {}
@@ -258,7 +258,7 @@ impl UART for UartCore {
           }
           else {
             rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-        
+
             while usart3.sr.read().txe().bit_is_clear() == true {}
             usart3.dr.write(|w| w.dr().bits('?' as u16));
             while usart3.sr.read().txe().bit_is_clear() == true {}
@@ -272,7 +272,7 @@ impl UART for UartCore {
           }
           else {
             rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-        
+
             while uart4.sr.read().txe().bit_is_clear() == true {}
             uart4.dr.write(|w| w.dr().bits('?' as u16));
             while uart4.sr.read().txe().bit_is_clear() == true {}
@@ -286,7 +286,7 @@ impl UART for UartCore {
           }
           else {
             rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-        
+
             while uart5.sr.read().txe().bit_is_clear() == true {}
             uart5.dr.write(|w| w.dr().bits('?' as u16));
             while uart5.sr.read().txe().bit_is_clear() == true {}
@@ -301,7 +301,7 @@ impl UART for UartCore {
           }
           else {
             rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-        
+
             while usart6.sr.read().txe().bit_is_clear() == true {}
             usart6.dr.write(|w| w.dr().bits('?' as u16));
             while usart6.sr.read().txe().bit_is_clear() == true {}
@@ -349,7 +349,7 @@ impl UART for UartCore {
       },
       _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .get_char()", self.channel)
     };
-  
+
     return buffer as char;
   }
 
@@ -498,7 +498,7 @@ fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
 fn rx_interrupt(channel: u8, enable: bool) {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  
+
   match channel {
     1 => {
       let usart1 = &peripheral_ptr.USART1;
@@ -639,7 +639,7 @@ pub mod serial {
     let rcc = &peripheral_ptr.RCC;
     let usart2 = &peripheral_ptr.USART2;
     let gpioa = &peripheral_ptr.GPIOA;
-    
+
     // (Mantisse, Fractal)
     let usartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));
 
@@ -649,25 +649,25 @@ pub mod serial {
         usart2.cr1.modify(|_, w| w.ue().disabled());
       }
     }
-    
+
     rcc.apb1enr.modify(|_, w| w.usart2en().enabled());
-    
+
     usart2.brr.write(|w| {
       w.div_mantissa().bits(usartdiv.1 as u16);
       w.div_fraction().bits((usartdiv.0 * 16.0) as u8)
     });
-    
+
     if rxint == true {usart2.cr1.modify(|_, w| w.rxneie().enabled());}
     if txint == true {usart2.cr1.modify(|_, w| w.tcie().enabled());}
-    
+
     usart2.cr1.modify(|_, w| {
       w.re().enabled();
       w.te().enabled();
       w.ue().enabled()
     });
-    
+
     unsafe {UART_CONF[1] = true;}
-    
+
     rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
     gpioa.moder.modify(|_, w| w.moder2().alternate());
     gpioa.moder.modify(|_, w| w.moder3().alternate());
@@ -679,7 +679,7 @@ pub mod serial {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let usart2 = &peripheral_ptr.USART2;
-    
+
     unsafe {
       if UART_CONF[1] == false {
         panic!("UART USB channel ist not configured! | ::send_char_usb(...)");
@@ -699,22 +699,22 @@ pub mod serial {
       while usart2.sr.read().txe().bit_is_clear()  == true {}
     }
   }
-  
+
   pub fn recieve_char_usb() -> char {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let usart2 = &peripheral_ptr.USART2;
     let buffer: u8;
-    
+
     unsafe {
       if UART_CONF[1] == false {
         panic!("UART USB channel ist not configured! | ::recieve_char_usb()");
       }
     }
-    
+
     while usart2.sr.read().rxne().bit_is_clear() == true {}
     buffer = usart2.dr.read().dr().bits() as u8;
-    
+
     return buffer as char;
   }
 
@@ -722,44 +722,79 @@ pub mod serial {
   // Macro declerations ===========================================================================
   #[macro_export]
   macro_rules! sprint {
-    ($text:expr, $($args:tt),*) => {
+    ($fmt:expr) => {
       let mut txt_buff: String<50> = String::new();
-      if core::fmt::write(&mut txt_buff, format_args!($text, $($args:tt)*)).is_err() {txt_buff = String::from("~\r\n")};
-    
+      if ::core::fmt::write(&mut txt_buff, format_args!($fmt)).is_err() {
+        rprintln("Could not construct serial string! | sprit!(...)");
+        txt_buff = String::from("~\r\n")
+      };
+
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {rustuino::serial::send_char_usb(c);}
-        else {rustuino::serial::send_char_usb('?');}
+        if c.is_ascii() == true {$crate::send_char_usb(c);}
+        else {$crate::send_char_usb('?');}
+      }
+    };
+
+    ($fmt:expr, $($args:tt)*) => {
+      let mut txt_buff: String<50> = String::new();
+      if ::core::fmt::write(&mut txt_buff, format_args!($fmt:expr, $($args:tt)*)).is_err() {
+        rprintln("Could not construct serial string! | sprit!(...)");
+        txt_buff = String::from("~\r\n")
+      };
+
+      for c in txt_buff.chars() {
+        if c.is_ascii() == true {$crate::send_char_usb(c);}
+        else {$crate::send_char_usb('?');}
       }
     };
   }
 
   #[macro_export]
   macro_rules! sprintln {
-    ($text:expr, $($args:tt),*) => {
+    ($fmt:expr) => {
       let mut txt_buff: String<50> = String::new();
-      if core::fmt::write(&mut txt_buff, format_args!($text, $($args:tt)*)).is_err() {txt_buff = String::from("~\r\n")};
-    
+      if ::core::fmt::write(&mut txt_buff, format_args!($fmt)).is_err() {
+        rprintln("Could not construct serial string! | sprit!(...)");
+        txt_buff = String::from("~")
+      };
+
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {rustuino::serial::send_char_usb(c);}
-        else {rustuino::serial::send_char_usb('?');}
+        if c.is_ascii() == true {$crate::send_char_usb(c);}
+        else {$crate::send_char_usb('?');}
       }
 
-      rustuino::serial::send_char_usb('\r');
-      rustuino::serial::send_char_usb('\n');
+      $crate::send_char_usb('\r');
+      $crate::send_char_usb('\n');
+    };
+
+    ($fmt:expr, $($args:tt)*) => {
+      let mut txt_buff: String<50> = String::new();
+      if ::core::fmt::write(&mut txt_buff, format_args!($fmt:expr, $($args:tt)*)).is_err() {
+        rprintln("Could not construct serial string! | sprit!(...)");
+        txt_buff = String::from("~")
+      };
+
+      for c in txt_buff.chars() {
+        if c.is_ascii() == true {$crate::send_char_usb(c);}
+        else {$crate::send_char_usb('?');}
+      }
+
+      $crate::send_char_usb('\r');
+      $crate::send_char_usb('\n');
     };
   }
 
   #[macro_export]
   macro_rules! sread {
     () => {{
-      let c_buff: char = rustuino::serial::recieve_char_usb();  
+      let c_buff: char = $crate::recieve_char_usb();
       c_buff
     }};
 
     ($c:expr) => {{
       let found: bool;
 
-      if rustuino::serial::recieve_char_usb() == $c {found = true;}
+      if $crate::recieve_char_usb() == $c {found = true;}
       else {found = false;}
 
       found
@@ -772,7 +807,7 @@ pub mod serial {
       let mut str: String<50> = String::new();
       let mut buff: char;
       loop {
-        buff = rustuino::serial::recieve_char_usb();
+        buff = $crate::recieve_char_usb();
         if buff == $stop as char {break;}
         str.push(buff).expect("String buffer overflow! | sreads!(...)");
       }
