@@ -725,26 +725,26 @@ pub mod serial {
     ($fmt:expr) => {
       let mut txt_buff: String<50> = String::new();
       if ::core::fmt::write(&mut txt_buff, format_args!($fmt)).is_err() {
-        rprintln("Could not construct serial string! | sprit!(...)");
+        rprintln!("Could not construct serial string! | sprit!(...)");
         txt_buff = String::from("~\r\n")
       };
 
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::serial::send_char_usb(c);}
-        else {$crate::serial::send_char_usb('?');}
+        if c.is_ascii() == true {$crate::uart::serial::send_char_usb(c);}
+        else {$crate::uart::serial::send_char_usb('?');}
       }
     };
 
     ($fmt:expr, $($args:tt)*) => {
       let mut txt_buff: String<50> = String::new();
       if ::core::fmt::write(&mut txt_buff, format_args!($fmt:expr, $($args:tt)*)).is_err() {
-        rprintln("Could not construct serial string! | sprit!(...)");
+        rprintln!("Could not construct serial string! | sprit!(...)");
         txt_buff = String::from("~\r\n")
       };
 
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::serial::send_char_usb(c);}
-        else {$crate::serial::send_char_usb('?');}
+        if c.is_ascii() == true {$crate::uart::serial::send_char_usb(c);}
+        else {$crate::uart::serial::send_char_usb('?');}
       }
     };
   }
@@ -754,47 +754,47 @@ pub mod serial {
     ($fmt:expr) => {
       let mut txt_buff: String<50> = String::new();
       if ::core::fmt::write(&mut txt_buff, format_args!($fmt)).is_err() {
-        rprintln("Could not construct serial string! | sprit!(...)");
+        rprintln!("Could not construct serial string! | spritln!(...)");
         txt_buff = String::from("~")
       };
 
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::serial::send_char_usb(c);}
-        else {$crate::serial::send_char_usb('?');}
+        if c.is_ascii() == true {$crate::uart::serial::send_char_usb(c);}
+        else {$crate::uart::serial::send_char_usb('?');}
       }
 
-      $crate::serial::send_char_usb('\r');
-      $crate::serial::send_char_usb('\n');
+      $crate::uart::serial::send_char_usb('\r');
+      $crate::uart::serial::send_char_usb('\n');
     };
 
     ($fmt:expr, $($args:tt)*) => {
       let mut txt_buff: String<50> = String::new();
       if ::core::fmt::write(&mut txt_buff, format_args!($fmt:expr, $($args:tt)*)).is_err() {
-        rprintln("Could not construct serial string! | sprit!(...)");
+        rprintln!("Could not construct serial string! | spritln!(...)");
         txt_buff = String::from("~")
       };
 
       for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::serial::send_char_usb(c);}
-        else {$crate::serial::send_char_usb('?');}
+        if c.is_ascii() == true {$crate::uart::serial::send_char_usb(c);}
+        else {$crate::uart::serial::send_char_usb('?');}
       }
 
-      $crate::serial::send_char_usb('\r');
-      $crate::serial::send_char_usb('\n');
+      $crate::uart::serial::send_char_usb('\r');
+      $crate::uart::serial::send_char_usb('\n');
     };
   }
 
   #[macro_export]
   macro_rules! sread {
     () => {{
-      let c_buff: char = $crate::serial::recieve_char_usb();
+      let c_buff: char = $crate::uart::serial::recieve_char_usb();
       c_buff
     }};
 
     ($c:expr) => {{
       let found: bool;
 
-      if $crate::serial::recieve_char_usb() == $c {found = true;}
+      if $crate::uart::serial::recieve_char_usb() == $c {found = true;}
       else {found = false;}
 
       found
@@ -807,7 +807,7 @@ pub mod serial {
       let mut str: String<50> = String::new();
       let mut buff: char;
       loop {
-        buff = $crate::serial::recieve_char_usb();
+        buff = $crate::uart::serial::recieve_char_usb();
         if buff == $stop as char {break;}
         str.push(buff).expect("String buffer overflow! | sreads!(...)");
       }
