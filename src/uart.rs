@@ -737,7 +737,7 @@ pub mod serial {
 
     ($fmt:expr, $($args:tt)*) => {
       let mut txt_buff: String<50> = String::new();
-      if ::core::fmt::write(&mut txt_buff, format_args!($fmt:expr, $($args:tt)*)).is_err() {
+      if ::core::fmt::write(&mut txt_buff, format_args!($fmt, $($args)*)).is_err() {
         rprintln!("Could not construct serial string! | sprit!(...)");
         txt_buff = String::from("~\r\n")
       };
@@ -769,7 +769,7 @@ pub mod serial {
 
     ($fmt:expr, $($args:tt)*) => {
       let mut txt_buff: String<50> = String::new();
-      if ::core::fmt::write(&mut txt_buff, format_args!($fmt:expr, $($args:tt)*)).is_err() {
+      if ::core::fmt::write(&mut txt_buff, format_args!($fmt, $($args)*)).is_err() {
         rprintln!("Could not construct serial string! | spritln!(...)");
         txt_buff = String::from("~")
       };
