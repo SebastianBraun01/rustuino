@@ -1,4 +1,4 @@
-use super::gpio::{Bias, Speed};
+use crate::gpio::{Bias, Speed};
 use heapless::{Vec, String};
 
 

@@ -1,4 +1,4 @@
-use super::common::*;
+use crate::common::*;
 
 
 // Analog pin config map ========================================================================

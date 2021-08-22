@@ -1,22 +1,24 @@
-use super::common::*;
-use super::include::{I2C_MAP, I2C_CONF};
-use heapless::{Vec, String};
+use crate::common::*;
+use crate::include::{I2C_MAP, I2C_CONF};
+use heapless::Vec;
+
 
 // Initialisation function ========================================================================
-pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Result<I2cCore, String<60>> {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Option<I2cCore> {
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
 
   let core: u8;
 
   if I2C_MAP.scl_pins.contains(&scl_pin) && I2C_MAP.sda_pins.contains(&sda_pin) {
     let index = I2C_MAP.scl_pins.iter().zip(I2C_MAP.sda_pins.iter()).position(|i| i == (&scl_pin, &sda_pin)).unwrap();
-    core = I2C_MAP.channel[index];
+    core = I2C_MAP.core[index];
     unsafe {I2C_CONF[core as usize - 1] = true;}
   }
   else {
     rtt_target::rprintln!("These pins are not available for I2C communication! | ::i2c_init(...)");
-    return Err(String::from("These pins are not available for I2C communication!"));
+    return None;
   }
 
   // Setup Variablen
@@ -72,7 +74,7 @@ pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Resul
     _ => panic!("I2C{} is not a valid core! | ::i2c_init(...)", core)
   };
 
-  return Ok(I2cCore {
+  return Some(I2cCore {
     scl: scl_pin,
     sda: sda_pin,
     core,
@@ -84,7 +86,8 @@ pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Resul
 // Communication functions ========================================================================
 impl I2C for I2cCore {
   fn send_bytes<const N: usize>(&self, addr: u8, data: &Vec<u8, N>) {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let _sr: u32;
   
     match self.core {
@@ -132,7 +135,8 @@ impl I2C for I2cCore {
   }
 
   fn recieve_bytes<const N: usize>(&self, addr: u8, vec: &mut Vec<u8, N>, nbytes: u8) {
-    let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let _sr: u32;
   
     match self.core {
@@ -237,7 +241,8 @@ impl I2C for I2cCore {
 
 // Helper functions ===============================================================================
 fn i2c_setup_gpio(block: char, pin: u8, pullup: bool) {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
 
   match block {

@@ -1,34 +1,34 @@
-use super::common::*;
-use super::include::{UART_MAP, UART_CONF};
+use crate::common::*;
+use crate::include::{UART_MAP, UART_CONF};
 use heapless::String;
 
 
 // Initialisation function ========================================================================
-pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool, txint: bool) -> Result<UartCore, String<60>> {
+pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool, txint: bool) -> Option<UartCore> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
 
-  let channel: u8;
+  let core: u8;
 
   if UART_MAP.rx_pins.contains(&rx_pin) && UART_MAP.tx_pins.contains(&tx_pin) {
     let index = UART_MAP.rx_pins.iter().zip(UART_MAP.tx_pins.iter()).position(|i| i == (&rx_pin, &tx_pin)).unwrap();
-    channel = UART_MAP.channel[index];
-    unsafe {UART_CONF[channel as usize - 1] = true;}
+    core = UART_MAP.core[index];
+    unsafe {UART_CONF[core as usize - 1] = true;}
   }
   else {
     rtt_target::rprintln!("These pins are not available for UART communication! | uart_init(...)");
-    return Err(String::from("These pins are not available for UART communication!"));
+    return None;
   }
 
-  uart_setup_gpio(rx_pin.0, rx_pin.1, channel);
-  uart_setup_gpio(tx_pin.0, tx_pin.1, channel);
+  uart_setup_gpio(rx_pin.0, rx_pin.1, core);
+  uart_setup_gpio(tx_pin.0, tx_pin.1, core);
 
-  match channel {
+  match core {
     1 => {
       let usart1 = &peripheral_ptr.USART1;
       rcc.apb2enr.modify(|_, w| w.usart1en().enabled());
-      set_baud(channel, baud);
+      set_baud(core, baud);
       usart1.cr1.modify(|_, w| {
         w.te().enabled();
         w.re().enabled();
@@ -38,7 +38,7 @@ pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool,
     3 => {
       let usart3 = &peripheral_ptr.USART3;
       rcc.apb1enr.modify(|_, w| w.usart3en().enabled());
-      set_baud(channel, baud);
+      set_baud(core, baud);
       usart3.cr1.modify(|_, w| {
         w.te().enabled();
         w.re().enabled();
@@ -48,7 +48,7 @@ pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool,
     4 => {
       let uart4 = &peripheral_ptr.UART4;
       rcc.apb1enr.modify(|_, w| w.uart4en().enabled());
-      set_baud(channel, baud);
+      set_baud(core, baud);
       uart4.cr1.modify(|_, w| {
         w.te().enabled();
         w.re().enabled();
@@ -58,7 +58,7 @@ pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool,
     5 => {
       let uart5 = &peripheral_ptr.UART5;
       rcc.apb1enr.modify(|_, w| w.uart5en().enabled());
-      set_baud(channel, baud);
+      set_baud(core, baud);
       uart5.cr1.modify(|_, w| {
         w.te().enabled();
         w.re().enabled();
@@ -68,7 +68,7 @@ pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool,
     6 => {
       let usart6 = &peripheral_ptr.USART6;
       rcc.apb2enr.modify(|_, w| w.usart6en().enabled());
-      set_baud(channel, baud);
+      set_baud(core, baud);
       usart6.cr1.modify(|_, w| {
         w.te().enabled();
         w.re().enabled();
@@ -76,18 +76,18 @@ pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool,
       });
     },
     _ => {
-      rtt_target::rprintln!("U(S)ART{} is not a valid U(S)ART peripheral! | uart_init(...)", channel);
-      return Err(String::from("This is not a valid U(S)ART peripheral! | uart_init(...)"));
+      rtt_target::rprintln!("U(S)ART{} is not a valid U(S)ART peripheral! | uart_init(...)", core);
+      return None;
     }
   };
 
-  if rxint == true {rx_interrupt(channel, true);}
-  if txint == true {tx_interrupt(channel, true);}
+  if rxint == true {rx_interrupt(core, true);}
+  if txint == true {tx_interrupt(core, true);}
 
-  return Ok(UartCore {
+  return Some(UartCore {
     rx: rx_pin,
     tx: tx_pin,
-    channel,
+    core,
     rx_int: rxint,
     tx_int: txint
   });
@@ -97,30 +97,30 @@ pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool,
 // Function implementations =======================================================================
 impl UART for UartCore {
   fn rxint_enable(&self) {
-    rx_interrupt(self.channel, true);
+    rx_interrupt(self.core, true);
   }
 
   fn rxint_disable(&self) {
-    rx_interrupt(self.channel, false);
+    rx_interrupt(self.core, false);
   }
 
   fn txint_enable(&self) {
-    tx_interrupt(self.channel, true);
+    tx_interrupt(self.core, true);
   }
 
   fn txint_disable(&self) {
-    tx_interrupt(self.channel, false);
+    tx_interrupt(self.core, false);
   }
 
   fn change_baud(&self, baud: u32) {
-    set_baud(self.channel, baud);
+    set_baud(self.core, baud);
   }
 
   fn send_char(&self, c: char) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
-    match self.channel {
+    match self.core {
       1 => {
         let usart1 = &peripheral_ptr.USART1;
         if c.is_ascii() == true {
@@ -209,7 +209,7 @@ impl UART for UartCore {
           while usart6.sr.read().txe().bit_is_clear() == true {}
         }
       },
-      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .send_char(...)", self.channel)
+      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .send_char(...)", self.core)
     };
   }
 
@@ -218,7 +218,7 @@ impl UART for UartCore {
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     for c in s.chars() {
-      match self.channel {
+      match self.core {
         1 => {
           let usart1 = &peripheral_ptr.USART1;
           if c.is_ascii() == true {
@@ -307,7 +307,7 @@ impl UART for UartCore {
             while usart6.sr.read().txe().bit_is_clear() == true {}
           }
         },
-        _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .send_string(...)", self.channel)
+        _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .send_string(...)", self.core)
       };
     }
   }
@@ -316,7 +316,7 @@ impl UART for UartCore {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
-    let buffer = match self.channel {
+    let buffer = match self.core {
       1 => {
         let usart1 = &peripheral_ptr.USART1;
         while usart1.sr.read().rxne().bit_is_clear() == true {}
@@ -347,7 +347,7 @@ impl UART for UartCore {
         while usart6.sr.read().rxne().bit_is_clear() == true {}
         usart6.dr.read().dr().bits() as u8
       },
-      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .get_char()", self.channel)
+      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .get_char()", self.core)
     };
 
     return buffer as char;
@@ -365,7 +365,7 @@ impl UART for UartCore {
     }
 
     loop {
-      buffer = match self.channel {
+      buffer = match self.core {
         1 => {
           let usart1 = &peripheral_ptr.USART1;
           while usart1.sr.read().rxne().bit_is_clear() == true {}
@@ -396,7 +396,7 @@ impl UART for UartCore {
           while usart6.sr.read().rxne().bit_is_clear() == true {}
           usart6.dr.read().dr().bits() as u8
         },
-        _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .get_string(...)", self.channel)
+        _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .get_string(...)", self.core)
       };
 
       if buffer == stopper as u8 {return Ok(string_buffer);}
@@ -407,7 +407,7 @@ impl UART for UartCore {
 
 
 // Helper functions ===============================================================================
-fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
+fn uart_setup_gpio(block: char, pin: u8, core: u8) {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
@@ -417,7 +417,7 @@ fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
       let gpioa = &peripheral_ptr.GPIOA;
       rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
       gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if channel < 4 {
+      if core < 4 {
         if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
         else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
       }
@@ -430,7 +430,7 @@ fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
       let gpiob = &peripheral_ptr.GPIOB;
       rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
       gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if channel < 4 {
+      if core < 4 {
         if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
         else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
       }
@@ -443,7 +443,7 @@ fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
       let gpioc = &peripheral_ptr.GPIOC;
       rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
       gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if channel < 4 {
+      if core < 4 {
         if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
         else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
       }
@@ -456,7 +456,7 @@ fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
       let gpiod = &peripheral_ptr.GPIOD;
       rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
       gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if channel < 4 {
+      if core < 4 {
         if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
         else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
       }
@@ -469,7 +469,7 @@ fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
       let gpioe = &peripheral_ptr.GPIOE;
       rcc.ahb1enr.modify(|_, w| w.gpioeen().enabled());
       gpioe.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if channel < 4 {
+      if core < 4 {
         if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
         else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
       }
@@ -482,7 +482,7 @@ fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
       let gpiog = &peripheral_ptr.GPIOG;
       rcc.ahb1enr.modify(|_, w| w.gpiogen().enabled());
       gpiog.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if channel < 4 {
+      if core < 4 {
         if pin > 7 {gpiog.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
         else {gpiog.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
       }
@@ -495,11 +495,11 @@ fn uart_setup_gpio(block: char, pin: u8, channel: u8) {
   };
 }
 
-fn rx_interrupt(channel: u8, enable: bool) {
+fn rx_interrupt(core: u8, enable: bool) {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
-  match channel {
+  match core {
     1 => {
       let usart1 = &peripheral_ptr.USART1;
       if enable == true {usart1.cr1.modify(|_, w| w.rxneie().enabled());}
@@ -530,15 +530,15 @@ fn rx_interrupt(channel: u8, enable: bool) {
       if enable == true {usart6.cr1.modify(|_, w| w.rxneie().enabled());}
       else {usart6.cr1.modify(|_, w| w.rxneie().disabled());}
     },
-    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .rx_interrupt(...)", channel)
+    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .rx_interrupt(...)", core)
   };
 }
 
-fn tx_interrupt(channel: u8, enable: bool) {
+fn tx_interrupt(core: u8, enable: bool) {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
-  match channel {
+  match core {
     1 => {
       let usart1 = &peripheral_ptr.USART1;
       if enable == true {usart1.cr1.modify(|_, w| w.tcie().enabled());}
@@ -569,18 +569,18 @@ fn tx_interrupt(channel: u8, enable: bool) {
       if enable == true {usart6.cr1.modify(|_, w| w.tcie().enabled());}
       else {usart6.cr1.modify(|_, w| w.tcie().disabled());}
     },
-    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .tx_interrupt(...)", channel)
+    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .tx_interrupt(...)", core)
   };
 }
 
-fn set_baud(channel: u8, baud: u32) {
+fn set_baud(core: u8, baud: u32) {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
   // (Mantisse, Fractal)
   let usartdiv: (f64, f64) = libm::modf(16000000.0 / (16.0 * baud as f64));
 
-  match channel {
+  match core {
     1 => {
       let usart1 = &peripheral_ptr.USART1;
       usart1.brr.modify(|_, w| {
@@ -623,7 +623,7 @@ fn set_baud(channel: u8, baud: u32) {
         w.div_fraction().bits((usartdiv.0 * 16.0) as u8)
       });
     },
-    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | set_baud(...)", channel)
+    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | set_baud(...)", core)
   }
 }
 
@@ -682,7 +682,7 @@ pub mod serial {
 
     unsafe {
       if UART_CONF[1] == false {
-        panic!("UART USB channel ist not configured! | ::send_char_usb(...)");
+        panic!("UART USB core ist not configured! | ::send_char_usb(...)");
       }
     }
 
@@ -708,7 +708,7 @@ pub mod serial {
 
     unsafe {
       if UART_CONF[1] == false {
-        panic!("UART USB channel ist not configured! | ::recieve_char_usb()");
+        panic!("UART USB core ist not configured! | ::recieve_char_usb()");
       }
     }
 
