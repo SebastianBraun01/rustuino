@@ -1,5 +1,6 @@
 use super::common::*;
 
+
 // Analog pin config map ========================================================================
 pub struct ADC1Map {
   pub pin: [(char, u8); 16],
@@ -28,14 +29,14 @@ pub static mut ADC_CONF: [bool; 2] = [false, false];
 pub struct UARTMap {
   pub tx_pins: [(char, u8); 11],
   pub rx_pins: [(char, u8); 11],
-  pub channel: [u8; 11]
+  pub core: [u8; 11]
 }
 
 // Noch entscheiden ob USART2 in die Liste soll!
 pub const UART_MAP: UARTMap = UARTMap{
   tx_pins: [A9,  B6, B10, C10, D8, A0, C6, C10, C12, E8, G14],
   rx_pins: [A10, B7, B11, C11, D9, A1, C7, C11, D2,  E7, G9],
-  channel: [1,   1,  3,   3,   3,  4,  6,  4,   5,   5,  6]
+  core: [1,   1,  3,   3,   3,  4,  6,  4,   5,   5,  6]
 };
 
 pub static mut UART_CONF: [bool; 6] = [false, false, false, false, false, false];
@@ -83,13 +84,33 @@ pub static mut TIME_COUNTER: usize = 0;
 pub struct I2CMap {
   pub scl_pins: [(char, u8); 9],
   pub sda_pins: [(char, u8); 9],
-  pub channel: [u8; 9]
+  pub core: [u8; 9]
 }
 
 pub const I2C_MAP: I2CMap = I2CMap{
   scl_pins: [B6, B6, B8, B8, B10, B10, F1, F1,  A8],
   sda_pins: [B7, B9, B7, B9, B11, F0,  F0, B11, B4],
-  channel:  [1,  1,  1,  1,  2,   2,   2,  2,   3]
+  core:  [1,  1,  1,  1,  2,   2,   2,  2,   3]
 };
 
 pub static mut I2C_CONF: [bool; 3] = [false, false, false];
+
+
+// SPI Channel map ================================================================================
+pub struct SPIMap {
+  pub sck_pins: [(char, u8); 7],
+  pub miso_pins: [(char, u8); 7],
+  pub mosi_pins: [(char, u8); 7],
+  pub core: [u8; 7],
+  pub af: [u32; 7]
+}
+
+pub const SPI_MAP: SPIMap = SPIMap {
+  sck_pins:  [A5, B3, B3, B13, C10, E12, G11],
+  miso_pins: [A6, B4, B4, B14, C11, E13, G12],
+  mosi_pins: [A7, B5, B5, B15, C12, E14, G13],
+  core:      [1,  1,  3,  2,   3,   4,   4],
+  af:        [5,  5,  6,  5,   6,   5,   6]
+};
+
+pub static mut SPI_CONF: [bool; 4] = [false, false, false, false];

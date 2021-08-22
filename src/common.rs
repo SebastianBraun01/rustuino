@@ -170,7 +170,7 @@ pub struct PwmPin {
 pub struct UartCore {
   pub rx: (char, u8),
   pub tx: (char, u8),
-  pub channel: u8,
+  pub core: u8,
   pub rx_int: bool,
   pub tx_int: bool
 }
@@ -180,6 +180,13 @@ pub struct I2cCore {
   pub sda: (char, u8),
   pub core: u8,
   pub pullup: bool
+}
+
+pub struct SpiCore {
+  pub sck: (char, u8),
+  pub miso: (char, u8),
+  pub mosi: (char, u8),
+  pub core: u8
 }
 
 
@@ -233,4 +240,9 @@ pub trait UART: Sized {
 pub trait I2C: Sized {
   fn send_bytes<const N: usize>(&self, addr: u8, data: &Vec<u8, N>);
   fn recieve_bytes<const N: usize>(&self, addr: u8, vec: &mut Vec<u8, N>, nbytes: u8);
+}
+
+pub trait SPI: Sized {
+  fn send_bytes(&self, data: u8);
+  fn recieve_bytes(&self);
 }

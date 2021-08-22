@@ -1,5 +1,5 @@
-use super::common::*;
-use super::include:: {TIMER_MAP, TIMER_CONF, TIME_COUNTER, DELAY_COUNTER};
+use crate::common::*;
+use crate::include:: {TIMER_MAP, TIMER_CONF, TIME_COUNTER, DELAY_COUNTER};
 use cortex_m::peripheral::NVIC;
 use stm32f4::stm32f446::{Interrupt, interrupt};
 
@@ -610,12 +610,10 @@ pub fn delay(ms: u32) {
   let rcc = &peripheral_ptr.RCC;
   let tim6 = &peripheral_ptr.TIM6;
 
-  static CONFIGURED: bool = false;
-
-  if CONFIGURED == false {
+  if rcc.apb1enr.read().tim6en().is_disabled() == true {
     rcc.apb1enr.modify(|_, w| w.tim6en().enabled());
     tim6.cr1.modify(|_, w| w.arpe().enabled());
-    
+
     tim6.dier.modify(|_, w| w.uie().enabled());
     unsafe {NVIC::unmask(Interrupt::TIM6_DAC);}
     
@@ -626,7 +624,7 @@ pub fn delay(ms: u32) {
     tim6.cr1.modify(|_, w| w.cen().enabled());
   }
   else {tim6.cr1.modify(|_, w| w.cen().enabled());}
-  
+
   unsafe {
     DELAY_COUNTER.1 = 0;
     DELAY_COUNTER.0 = true;
@@ -641,7 +639,7 @@ pub fn start_time() {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
-  let tim7 = &peripheral_ptr.TIM6;
+  let tim7 = &peripheral_ptr.TIM7;
   
   unsafe {
     if TIMER_CONF[20] == false {TIMER_CONF[20] = true;}
@@ -685,6 +683,7 @@ pub fn millis() -> usize {
 fn TIM6_DAC() {
   unsafe {
     if DELAY_COUNTER.0 == true {DELAY_COUNTER.1 += 1;}
+    rtt_target::rprintln!("Delay-counter: {}", DELAY_COUNTER.1);
   }
 }
 

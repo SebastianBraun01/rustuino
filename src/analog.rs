@@ -1,5 +1,5 @@
-use super::common::*;
-use super::include::{ADC1_MAP, ADC3_MAP, ADC_CONF};
+use crate::common::*;
+use crate::include::{ADC1_MAP, ADC3_MAP, ADC_CONF};
 
 
 // Converter implementations ======================================================================

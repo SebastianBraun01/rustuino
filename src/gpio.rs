@@ -1,4 +1,4 @@
-use super::common::*;
+use crate::common::*;
 
 pub enum Speed {
   Low, Medium, Fast, High
