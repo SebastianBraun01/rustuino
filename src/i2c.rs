@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::include::{I2C_MAP, I2C_CONF};
+use stm32f4::stm32f446::{NVIC, Interrupt};
 use heapless::Vec;
 
 
@@ -78,13 +79,66 @@ pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Optio
     scl: scl_pin,
     sda: sda_pin,
     core,
-    pullup
+    pullup,
+    buff_int: false
   });
 }
 
 
 // Communication functions ========================================================================
 impl I2C for I2cCore {
+  fn buffint_enable(&mut self) {
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+
+    match self.core {
+      1 => {
+        let i2c1 = &peripheral_ptr.I2C1;
+        unsafe {NVIC::unmask(Interrupt::I2C1_EV);}
+        i2c1.cr2.modify(|_, w| w.itbufen().enabled());
+      },
+      2 => {
+        let i2c2 = &peripheral_ptr.I2C2;
+        unsafe {NVIC::unmask(Interrupt::I2C2_EV);}
+        i2c2.cr2.modify(|_, w| w.itbufen().enabled());
+      },
+      3 => {
+        let i2c3 = &peripheral_ptr.I2C3;
+        unsafe {NVIC::unmask(Interrupt::I2C3_EV);}
+        i2c3.cr2.modify(|_, w| w.itbufen().enabled());
+      },
+      _ => panic!("I2C{} is not a valid core! | .buffint_enable(...)", self.core)
+    };
+
+    self.buff_int = true;
+  }
+
+  fn buffint_disable(&mut self) {
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+
+    match self.core {
+      1 => {
+        let i2c1 = &peripheral_ptr.I2C1;
+        NVIC::mask(Interrupt::I2C1_EV);
+        i2c1.cr2.modify(|_, w| w.itbufen().disabled());
+      },
+      2 => {
+        let i2c2 = &peripheral_ptr.I2C2;
+        NVIC::mask(Interrupt::I2C2_EV);
+        i2c2.cr2.modify(|_, w| w.itbufen().disabled());
+      },
+      3 => {
+        let i2c3 = &peripheral_ptr.I2C3;
+        NVIC::mask(Interrupt::I2C3_EV);
+        i2c3.cr2.modify(|_, w| w.itbufen().disabled());
+      },
+      _ => panic!("I2C{} is not a valid core! | .buffint_enable(...)", self.core)
+    };
+
+    self.buff_int = false;
+  }
+
   fn send_bytes<const N: usize>(&self, addr: u8, data: &Vec<u8, N>) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}

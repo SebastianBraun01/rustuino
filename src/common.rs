@@ -179,14 +179,17 @@ pub struct I2cCore {
   pub scl: (char, u8),
   pub sda: (char, u8),
   pub core: u8,
-  pub pullup: bool
+  pub pullup: bool,
+  pub buff_int: bool
 }
 
 pub struct SpiCore {
   pub sck: (char, u8),
   pub miso: (char, u8),
   pub mosi: (char, u8),
-  pub core: u8
+  pub core: u8,
+  pub rx_int: bool,
+  pub tx_int: bool
 }
 
 
@@ -226,10 +229,10 @@ pub trait PWM: Sized {
 }
 
 pub trait UART: Sized {
-  fn rxint_enable(&self);
-  fn rxint_disable(&self);
-  fn txint_enable(&self);
-  fn txint_disable(&self);
+  fn rxint_enable(&mut self);
+  fn rxint_disable(&mut self);
+  fn txint_enable(&mut self);
+  fn txint_disable(&mut self);
   fn change_baud(&self, baud: u32);
   fn send_char(&self, c: char);
   fn send_string(&self, s: &str);
@@ -238,11 +241,17 @@ pub trait UART: Sized {
 }
 
 pub trait I2C: Sized {
+  fn buffint_enable(&mut self);
+  fn buffint_disable(&mut self);
   fn send_bytes<const N: usize>(&self, addr: u8, data: &Vec<u8, N>);
   fn recieve_bytes<const N: usize>(&self, addr: u8, vec: &mut Vec<u8, N>, nbytes: u8);
 }
 
 pub trait SPI: Sized {
+  fn rxint_enable(&mut self);
+  fn rxint_disable(&mut self);
+  fn txint_enable(&mut self);
+  fn txint_disable(&mut self);
   fn send_bytes(&self, data: u8);
   fn recieve_bytes(&self);
 }

@@ -1,10 +1,11 @@
 use crate::common::*;
 use crate::include::{UART_MAP, UART_CONF};
+use stm32f4::stm32f446::{NVIC, Interrupt};
 use heapless::String;
 
 
 // Initialisation function ========================================================================
-pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool, txint: bool) -> Option<UartCore> {
+pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32) -> Option<UartCore> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
@@ -81,35 +82,180 @@ pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32, rxint: bool,
     }
   };
 
-  if rxint == true {rx_interrupt(core, true);}
-  if txint == true {tx_interrupt(core, true);}
-
   return Some(UartCore {
     rx: rx_pin,
     tx: tx_pin,
     core,
-    rx_int: rxint,
-    tx_int: txint
+    rx_int: false,
+    tx_int: false
   });
 }
 
 
 // Function implementations =======================================================================
 impl UART for UartCore {
-  fn rxint_enable(&self) {
-    rx_interrupt(self.core, true);
+  fn rxint_enable(&mut self) {
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  
+    match self.core {
+      1 => {
+        let usart1 = &peripheral_ptr.USART1;
+        unsafe {NVIC::unmask(Interrupt::USART1);}
+        usart1.cr1.modify(|_, w| w.rxneie().enabled());
+      },
+      2 => {
+        let usart2 = &peripheral_ptr.USART2;
+        unsafe {NVIC::unmask(Interrupt::USART2);}
+        usart2.cr1.modify(|_, w| w.rxneie().enabled());
+      },
+      3 => {
+        let usart3 = &peripheral_ptr.USART3;
+        unsafe {NVIC::unmask(Interrupt::USART3);}
+        usart3.cr1.modify(|_, w| w.rxneie().enabled());
+      },
+      4 => {
+        let uart4 = &peripheral_ptr.UART4;
+        unsafe {NVIC::unmask(Interrupt::UART4);}
+        uart4.cr1.modify(|_, w| w.rxneie().enabled());
+      },
+      5 => {
+        let uart5 = &peripheral_ptr.UART5;
+        unsafe {NVIC::unmask(Interrupt::UART5);}
+        uart5.cr1.modify(|_, w| w.rxneie().enabled());
+      },
+      6 => {
+        let usart6 = &peripheral_ptr.USART6;
+        unsafe {NVIC::unmask(Interrupt::USART6);}
+        usart6.cr1.modify(|_, w| w.rxneie().enabled());
+      },
+      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .rx_interrupt(...)", self.core)
+    };
+
+    self.rx_int = true;
   }
 
-  fn rxint_disable(&self) {
-    rx_interrupt(self.core, false);
+  fn rxint_disable(&mut self) {
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  
+    match self.core {
+      1 => {
+        let usart1 = &peripheral_ptr.USART1;
+        NVIC::mask(Interrupt::USART1);
+        usart1.cr1.modify(|_, w| w.rxneie().disabled());
+      },
+      2 => {
+        let usart2 = &peripheral_ptr.USART2;
+        NVIC::mask(Interrupt::USART2);
+        usart2.cr1.modify(|_, w| w.rxneie().disabled());
+      },
+      3 => {
+        let usart3 = &peripheral_ptr.USART3;
+        NVIC::mask(Interrupt::USART3);
+        usart3.cr1.modify(|_, w| w.rxneie().disabled());
+      },
+      4 => {
+        let uart4 = &peripheral_ptr.UART4;
+        NVIC::mask(Interrupt::UART4);
+        uart4.cr1.modify(|_, w| w.rxneie().disabled());
+      },
+      5 => {
+        let uart5 = &peripheral_ptr.UART5;
+        NVIC::mask(Interrupt::UART5);
+        uart5.cr1.modify(|_, w| w.rxneie().disabled());
+      },
+      6 => {
+        let usart6 = &peripheral_ptr.USART6;
+        NVIC::mask(Interrupt::USART6);
+        usart6.cr1.modify(|_, w| w.rxneie().disabled());
+      },
+      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .rx_interrupt(...)", self.core)
+    };
+
+    self.rx_int = false;
   }
 
-  fn txint_enable(&self) {
-    tx_interrupt(self.core, true);
+  fn txint_enable(&mut self) {
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  
+    match self.core {
+      1 => {
+        let usart1 = &peripheral_ptr.USART1;
+        unsafe {NVIC::unmask(Interrupt::USART1);}
+        usart1.cr1.modify(|_, w| w.tcie().enabled());
+      },
+      2 => {
+        let usart2 = &peripheral_ptr.USART2;
+        unsafe {NVIC::unmask(Interrupt::USART2);}
+        usart2.cr1.modify(|_, w| w.tcie().enabled());
+      },
+      3 => {
+        let usart3 = &peripheral_ptr.USART3;
+        unsafe {NVIC::unmask(Interrupt::USART3);}
+        usart3.cr1.modify(|_, w| w.tcie().enabled());
+      },
+      4 => {
+        let uart4 = &peripheral_ptr.UART4;
+        unsafe {NVIC::unmask(Interrupt::UART4);}
+        uart4.cr1.modify(|_, w| w.tcie().enabled());
+      },
+      5 => {
+        let uart5 = &peripheral_ptr.UART5;
+        unsafe {NVIC::unmask(Interrupt::UART5);}
+        uart5.cr1.modify(|_, w| w.tcie().enabled());
+      },
+      6 => {
+        let usart6 = &peripheral_ptr.USART6;
+        unsafe {NVIC::unmask(Interrupt::USART6);}
+        usart6.cr1.modify(|_, w| w.tcie().enabled());
+      },
+      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .tx_interrupt(...)", self.core)
+    };
+
+    self.tx_int = true;
   }
 
-  fn txint_disable(&self) {
-    tx_interrupt(self.core, false);
+  fn txint_disable(&mut self) {
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  
+    match self.core {
+      1 => {
+        let usart1 = &peripheral_ptr.USART1;
+        NVIC::mask(Interrupt::USART1);
+        usart1.cr1.modify(|_, w| w.tcie().disabled());
+      },
+      2 => {
+        let usart2 = &peripheral_ptr.USART2;
+        NVIC::mask(Interrupt::USART2);
+        usart2.cr1.modify(|_, w| w.tcie().disabled());
+      },
+      3 => {
+        let usart3 = &peripheral_ptr.USART3;
+        NVIC::mask(Interrupt::USART3);
+        usart3.cr1.modify(|_, w| w.tcie().disabled());
+      },
+      4 => {
+        let uart4 = &peripheral_ptr.UART4;
+        NVIC::mask(Interrupt::UART4);
+        uart4.cr1.modify(|_, w| w.tcie().disabled());
+      },
+      5 => {
+        let uart5 = &peripheral_ptr.UART5;
+        NVIC::mask(Interrupt::UART5);
+        uart5.cr1.modify(|_, w| w.tcie().disabled());
+      },
+      6 => {
+        let usart6 = &peripheral_ptr.USART6;
+        NVIC::mask(Interrupt::USART6);
+        usart6.cr1.modify(|_, w| w.tcie().disabled());
+      },
+      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .tx_interrupt(...)", self.core)
+    };
+
+    self.tx_int = false;
   }
 
   fn change_baud(&self, baud: u32) {
@@ -492,84 +638,6 @@ fn uart_setup_gpio(block: char, pin: u8, core: u8) {
       }
     },
     _   => panic!("P{}{} is not available for UART transmissions! | uart_setup_gpio(...)", block.to_uppercase(), pin)
-  };
-}
-
-fn rx_interrupt(core: u8, enable: bool) {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-
-  match core {
-    1 => {
-      let usart1 = &peripheral_ptr.USART1;
-      if enable == true {usart1.cr1.modify(|_, w| w.rxneie().enabled());}
-      else {usart1.cr1.modify(|_, w| w.rxneie().disabled());}
-    },
-    2 => {
-      let usart2 = &peripheral_ptr.USART2;
-      if enable == true {usart2.cr1.modify(|_, w| w.rxneie().enabled());}
-      else {usart2.cr1.modify(|_, w| w.rxneie().disabled());}
-    },
-    3 => {
-      let usart3 = &peripheral_ptr.USART3;
-      if enable == true {usart3.cr1.modify(|_, w| w.rxneie().enabled());}
-      else {usart3.cr1.modify(|_, w| w.rxneie().disabled());}
-    },
-    4 => {
-      let uart4 = &peripheral_ptr.UART4;
-      if enable == true {uart4.cr1.modify(|_, w| w.rxneie().enabled());}
-      else {uart4.cr1.modify(|_, w| w.rxneie().disabled());}
-    },
-    5 => {
-      let uart5 = &peripheral_ptr.UART5;
-      if enable == true {uart5.cr1.modify(|_, w| w.rxneie().enabled());}
-      else {uart5.cr1.modify(|_, w| w.rxneie().disabled());}
-    },
-    6 => {
-      let usart6 = &peripheral_ptr.USART6;
-      if enable == true {usart6.cr1.modify(|_, w| w.rxneie().enabled());}
-      else {usart6.cr1.modify(|_, w| w.rxneie().disabled());}
-    },
-    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .rx_interrupt(...)", core)
-  };
-}
-
-fn tx_interrupt(core: u8, enable: bool) {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-
-  match core {
-    1 => {
-      let usart1 = &peripheral_ptr.USART1;
-      if enable == true {usart1.cr1.modify(|_, w| w.tcie().enabled());}
-      else {usart1.cr1.modify(|_, w| w.tcie().disabled());}
-    },
-    2 => {
-      let usart2 = &peripheral_ptr.USART2;
-      if enable == true {usart2.cr1.modify(|_, w| w.tcie().enabled());}
-      else {usart2.cr1.modify(|_, w| w.tcie().disabled());}
-    },
-    3 => {
-      let usart3 = &peripheral_ptr.USART3;
-      if enable == true {usart3.cr1.modify(|_, w| w.tcie().enabled());}
-      else {usart3.cr1.modify(|_, w| w.tcie().disabled());}
-    },
-    4 => {
-      let uart4 = &peripheral_ptr.UART4;
-      if enable == true {uart4.cr1.modify(|_, w| w.tcie().enabled());}
-      else {uart4.cr1.modify(|_, w| w.tcie().disabled());}
-    },
-    5 => {
-      let uart5 = &peripheral_ptr.UART5;
-      if enable == true {uart5.cr1.modify(|_, w| w.tcie().enabled());}
-      else {uart5.cr1.modify(|_, w| w.tcie().disabled());}
-    },
-    6 => {
-      let usart6 = &peripheral_ptr.USART6;
-      if enable == true {usart6.cr1.modify(|_, w| w.tcie().enabled());}
-      else {usart6.cr1.modify(|_, w| w.tcie().disabled());}
-    },
-    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .tx_interrupt(...)", core)
   };
 }
 
