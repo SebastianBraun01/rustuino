@@ -1,4 +1,18 @@
-use crate::common::*;
+use crate::include::pins::*;
+
+pub struct InputPin {
+  pub block: char,
+  pub pin: u8,
+  pub bias: Bias
+}
+
+pub struct OutputPin {
+  pub block: char,
+  pub pin: u8,
+  pub bias: Bias,
+  pub speed: Speed,
+  pub open_drain: bool
+}
 
 pub enum Speed {
   Low, Medium, Fast, High
@@ -6,6 +20,11 @@ pub enum Speed {
 
 pub enum Bias {
   None, Pullup, Pulldown
+}
+
+pub trait ToInOut: Sized {
+  fn input() -> InputPin;
+  fn output() -> OutputPin;
 }
 
 
@@ -268,8 +287,8 @@ generate_ToInOut![
 
 
 // Function implementations =======================================================================
-impl Input for InputPin {
-  fn bias(&mut self, bias: Bias) {
+impl InputPin {
+  pub fn bias(&mut self, bias: Bias) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let pin = self.pin;
@@ -345,7 +364,7 @@ impl Input for InputPin {
     self.bias = bias;
   }
 
-  fn read(&self) -> bool {
+  pub fn read(&self) -> bool {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
@@ -390,8 +409,8 @@ impl Input for InputPin {
   }
 }
 
-impl Output for OutputPin{
-  fn speed(&mut self, speed: Speed) {
+impl OutputPin {
+  pub fn speed(&mut self, speed: Speed) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let pin = self.pin;
@@ -475,7 +494,7 @@ impl Output for OutputPin{
     self.speed = speed;
   }
 
-  fn bias(&mut self, bias: Bias) {
+  pub fn bias(&mut self, bias: Bias) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let pin = self.pin;
@@ -551,7 +570,7 @@ impl Output for OutputPin{
     self.bias = bias;
   }
 
-  fn open_drain(&mut self) {
+  pub fn open_drain(&mut self) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let pin = self.pin;
@@ -595,7 +614,7 @@ impl Output for OutputPin{
     self.open_drain = true;
   }
 
-  fn write(&self, value: bool) {
+  pub fn write(&self, value: bool) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let pin = self.pin;

@@ -1,7 +1,16 @@
-use crate::common::*;
+use crate::include::pins::*;
 use crate::include:: {TIMER_MAP, TIMER_CONF, TIME_COUNTER, DELAY_COUNTER};
 use cortex_m::peripheral::NVIC;
 use stm32f4::stm32f446::{Interrupt, interrupt};
+
+pub struct PwmPin {
+  pub block: char,
+  pub pin: u8
+}
+
+pub trait ToPwm: Sized {
+  fn pwm() -> PwmPin;
+}
 
 
 // Converter implementations ======================================================================
@@ -96,8 +105,8 @@ generate_ToPwm![
 
 
 // Function implementations =======================================================================
-impl PWM for PwmPin {
-  fn pwm_write(&self, value: u8) {
+impl PwmPin {
+  pub fn pwm_write(&self, value: u8) {
     let block = self.block;
     let pin = self.pin;
     let timer: usize;

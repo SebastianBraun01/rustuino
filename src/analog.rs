@@ -1,5 +1,16 @@
-use crate::common::*;
+use crate::include::pins::*;
 use crate::include::{ADC1_MAP, ADC3_MAP, ADC_CONF};
+
+pub struct AnalogPin {
+  pub block: char,
+  pub pin: u8,
+  pub res: u8,
+  pub eocint: bool
+}
+
+pub trait ToAnalog: Sized {
+  fn analog(resolution: u8, eocint: bool) -> AnalogPin;
+}
 
 
 // Converter implementations ======================================================================
@@ -59,8 +70,8 @@ generate_ToAnalog![
 
 
 // Functions implementations ======================================================================
-impl Analog for AnalogPin {
-  fn analog_read(&self) -> u16 {
+impl AnalogPin {
+  pub fn analog_read(&self) -> u16 {
     let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
 
     let buffer = if self.block == 'f' {
@@ -84,7 +95,7 @@ impl Analog for AnalogPin {
     return buffer;
   }
 
-  fn analog_write(&self, value: u16) {
+  pub fn analog_write(&self, value: u16) {
     let peripheral_ptr = stm32f4::stm32f446::Peripherals::take().unwrap();
     let dac = &peripheral_ptr.DAC;
     let val: u16;

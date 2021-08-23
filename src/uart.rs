@@ -1,7 +1,14 @@
-use crate::common::*;
 use crate::include::{UART_MAP, UART_CONF};
 use stm32f4::stm32f446::{NVIC, Interrupt};
 use heapless::String;
+
+pub struct UartCore {
+  pub rx: (char, u8),
+  pub tx: (char, u8),
+  pub core: u8,
+  pub rx_int: bool,
+  pub tx_int: bool
+}
 
 
 // Initialisation function ========================================================================
@@ -93,8 +100,8 @@ pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32) -> Option<Ua
 
 
 // Function implementations =======================================================================
-impl UART for UartCore {
-  fn rxint_enable(&mut self) {
+impl UartCore {
+  pub fn rxint_enable(&mut self) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   
@@ -135,7 +142,7 @@ impl UART for UartCore {
     self.rx_int = true;
   }
 
-  fn rxint_disable(&mut self) {
+  pub fn rxint_disable(&mut self) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   
@@ -176,7 +183,7 @@ impl UART for UartCore {
     self.rx_int = false;
   }
 
-  fn txint_enable(&mut self) {
+  pub fn txint_enable(&mut self) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   
@@ -217,7 +224,7 @@ impl UART for UartCore {
     self.tx_int = true;
   }
 
-  fn txint_disable(&mut self) {
+  pub fn txint_disable(&mut self) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   
@@ -258,11 +265,11 @@ impl UART for UartCore {
     self.tx_int = false;
   }
 
-  fn change_baud(&self, baud: u32) {
+  pub fn change_baud(&self, baud: u32) {
     set_baud(self.core, baud);
   }
 
-  fn send_char(&self, c: char) {
+  pub fn send_char(&self, c: char) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
@@ -359,7 +366,7 @@ impl UART for UartCore {
     };
   }
 
-  fn send_string(&self, s: &str) {
+  pub fn send_string(&self, s: &str) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
@@ -458,7 +465,7 @@ impl UART for UartCore {
     }
   }
 
-  fn get_char(&self) -> char {
+  pub fn get_char(&self) -> char {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
@@ -499,7 +506,7 @@ impl UART for UartCore {
     return buffer as char;
   }
 
-  fn get_string<const N: usize>(&self, stopper: char) -> Result<String<N>, String<20>> {
+  pub fn get_string<const N: usize>(&self, stopper: char) -> Result<String<N>, String<20>> {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let mut buffer: u8;

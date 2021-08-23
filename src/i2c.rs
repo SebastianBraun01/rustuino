@@ -1,7 +1,14 @@
-use crate::common::*;
 use crate::include::{I2C_MAP, I2C_CONF};
 use stm32f4::stm32f446::{NVIC, Interrupt};
 use heapless::Vec;
+
+pub struct I2cCore {
+  pub scl: (char, u8),
+  pub sda: (char, u8),
+  pub core: u8,
+  pub pullup: bool,
+  pub buff_int: bool
+}
 
 
 // Initialisation function ========================================================================
@@ -86,8 +93,8 @@ pub fn i2c_init(scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool) -> Optio
 
 
 // Communication functions ========================================================================
-impl I2C for I2cCore {
-  fn buffint_enable(&mut self) {
+impl I2cCore {
+  pub fn buffint_enable(&mut self) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
@@ -113,7 +120,7 @@ impl I2C for I2cCore {
     self.buff_int = true;
   }
 
-  fn buffint_disable(&mut self) {
+  pub fn buffint_disable(&mut self) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
@@ -139,7 +146,7 @@ impl I2C for I2cCore {
     self.buff_int = false;
   }
 
-  fn send_bytes<const N: usize>(&self, addr: u8, data: &Vec<u8, N>) {
+  pub fn send_bytes<const N: usize>(&self, addr: u8, data: &Vec<u8, N>) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let _sr: u32;
@@ -188,7 +195,7 @@ impl I2C for I2cCore {
     };
   }
 
-  fn recieve_bytes<const N: usize>(&self, addr: u8, vec: &mut Vec<u8, N>, nbytes: u8) {
+  pub fn recieve_bytes<const N: usize>(&self, addr: u8, vec: &mut Vec<u8, N>, nbytes: u8) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let _sr: u32;
