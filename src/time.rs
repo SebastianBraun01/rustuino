@@ -3,7 +3,7 @@ use crate::include:: {TIMER_MAP, TIMER_CONF, TIME_COUNTER, DELAY_COUNTER};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 
 /// This struct holds the configuration of a pin that has been configured as an pwm pin.
-/// 
+///
 /// To configure a pin as an pwm pin, call the pwm function on the appropriate pin label. The function returns the pin struct with the settings of the pin.
 /// # Example
 /// ```rust,no_run
@@ -11,11 +11,11 @@ use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 /// #![no_main]
 ///
 /// use rustuino::*;
-/// 
+///
 /// #[entry]
 /// fn main() -> ! {
 ///   let pin = PA0::pwm();
-/// 
+///
 ///   loop {
 ///     for i in 0..256 {
 ///       pin.pwm_write(i);
@@ -41,11 +41,11 @@ pub trait ToPwm: Sized {
   /// #![no_main]
   ///
   /// use rustuino::*;
-  /// 
+  ///
   /// #[entry]
   /// fn main() -> ! {
   ///   let pin = PA0::pwm();
-  /// 
+  ///
   ///   loop {
   ///     for i in 0..256 {
   ///       pin.pwm_write(i);
@@ -60,22 +60,22 @@ pub trait ToPwm: Sized {
 
     let timer: usize;
     let channel: usize;
-    
+
     if TIMER_MAP.pin.contains(&(block, pin)) {
       timer = TIMER_MAP.timer[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       channel = TIMER_MAP.ccch[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      
+
       unsafe {
         if TIMER_CONF[(timer * 4) - channel] == false {TIMER_CONF[(timer * 4) - channel] = true;}
         else {panic!("Timer {} channel {} already in use! | .pwm()", timer, channel);}
       }
     }
     else {panic!("P{}{} is not available for pwm output! | .pwm()", block.to_uppercase(), pin);}
-    
+
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let rcc = &peripheral_ptr.RCC;
-    
+
     match block {
       'a' => {
         let gpioa = &peripheral_ptr.GPIOA;
@@ -241,17 +241,17 @@ pub trait ToPwm: Sized {
       },
       _   => panic!("P{}{} is not available for PWM output! | pwm_init(...)", block.to_uppercase(), pin)
     };
-    
+
     match timer {
       1 => {
         let tim1 = &peripheral_ptr.TIM1;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim1.cr1.modify(|_, w| w.arpe().enabled());
         tim1.psc.write(|w| w.psc().bits(1000));
         tim1.arr.write_with_zero(|w| w.arr().bits(255));
         tim1.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim1.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim1.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -262,13 +262,13 @@ pub trait ToPwm: Sized {
       },
       2 => {
         let tim2 = &peripheral_ptr.TIM2;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim2.cr1.modify(|_, w| w.arpe().enabled());
         tim2.psc.write(|w| w.psc().bits(1000));
         tim2.arr.write_with_zero(|w| w.arr().bits(255));
         tim2.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim2.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim2.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -279,13 +279,13 @@ pub trait ToPwm: Sized {
       },
       3 => {
         let tim3 = &peripheral_ptr.TIM3;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim3.cr1.modify(|_, w| w.arpe().enabled());
         tim3.psc.write(|w| w.psc().bits(1000));
         tim3.arr.write_with_zero(|w| w.arr().bits(255));
         tim3.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim3.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim3.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -296,13 +296,13 @@ pub trait ToPwm: Sized {
       },
       4 => {
         let tim4 = &peripheral_ptr.TIM4;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim4.cr1.modify(|_, w| w.arpe().enabled());
         tim4.psc.write(|w| w.psc().bits(1000));
         tim4.arr.write_with_zero(|w| w.arr().bits(255));
         tim4.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim4.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim4.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -313,13 +313,13 @@ pub trait ToPwm: Sized {
       },
       5 => {
         let tim5 = &peripheral_ptr.TIM5;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim5.cr1.modify(|_, w| w.arpe().enabled());
         tim5.psc.write(|w| w.psc().bits(1000));
         tim5.arr.write_with_zero(|w| w.arr().bits(255));
         tim5.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim5.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim5.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -330,13 +330,13 @@ pub trait ToPwm: Sized {
       },
       8 => {
         let tim8 = &peripheral_ptr.TIM8;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim8.cr1.modify(|_, w| w.arpe().enabled());
         tim8.psc.write(|w| w.psc().bits(1000));
         tim8.arr.write_with_zero(|w| w.arr().bits(255));
         tim8.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim8.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim8.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -347,13 +347,13 @@ pub trait ToPwm: Sized {
       },
       9 => {
         let tim9 = &peripheral_ptr.TIM9;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim9.cr1.modify(|_, w| w.arpe().enabled());
         tim9.psc.write(|w| w.psc().bits(1000));
         tim9.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
         tim9.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim9.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim9.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -362,13 +362,13 @@ pub trait ToPwm: Sized {
       },
       10 => {
         let tim10 = &peripheral_ptr.TIM10;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim10.cr1.modify(|_, w| w.arpe().enabled());
         tim10.psc.write(|w| w.psc().bits(1000));
         tim10.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
         tim10.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim10.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim10.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -377,13 +377,13 @@ pub trait ToPwm: Sized {
       },
       11 => {
         let tim11 = &peripheral_ptr.TIM11;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim11.cr1.modify(|_, w| w.arpe().enabled());
         tim11.psc.write(|w| w.psc().bits(1000));
         tim11.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
         tim11.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim11.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim11.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -392,13 +392,13 @@ pub trait ToPwm: Sized {
       },
       12 => {
         let tim12 = &peripheral_ptr.TIM12;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim12.cr1.modify(|_, w| w.arpe().enabled());
         tim12.psc.write(|w| w.psc().bits(1000));
         tim12.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
         tim12.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim12.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim12.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -407,13 +407,13 @@ pub trait ToPwm: Sized {
       },
       13 => {
         let tim13 = &peripheral_ptr.TIM13;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim13.cr1.modify(|_, w| w.arpe().enabled());
         tim13.psc.write(|w| w.psc().bits(1000));
         tim13.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
         tim13.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim13.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim13.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -422,13 +422,13 @@ pub trait ToPwm: Sized {
       },
       14 => {
         let tim14 = &peripheral_ptr.TIM14;
-        
+
         rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
         tim14.cr1.modify(|_, w| w.arpe().enabled());
         tim14.psc.write(|w| w.psc().bits(1000));
         tim14.arr.write(|w| unsafe {w.arr().bits(255)});
         tim14.egr.write(|w| w.ug().set_bit());
-        
+
         match channel {
           1 => tim14.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
           2 => tim14.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
@@ -437,7 +437,7 @@ pub trait ToPwm: Sized {
       },
       _  => panic!("Timer {} is not a valid timer! | pwm_init(...)", timer)
     };
-    
+
     return PwmPin {
       block,
       pin
@@ -448,7 +448,7 @@ pub trait ToPwm: Sized {
 macro_rules! generate_ToPwm {
   ($([$letter:literal, $number:literal]),+) => {
     use paste::paste;
-    
+
     paste!{
       $(
         impl ToPwm for [<P $letter:upper $number>] {
@@ -522,7 +522,7 @@ impl PwmPin {
   ///
   /// // Configure pin as an pwm pin
   /// let pin = PA0::pwm();
-  /// 
+  ///
   /// // Write to the output pin
   /// pin.pwm_write(0);
   /// pin.pwm_write(255);
@@ -533,11 +533,11 @@ impl PwmPin {
 
     let timer: usize;
     let channel: usize;
-    
+
     if TIMER_MAP.pin.contains(&(block, pin)) {
       timer = TIMER_MAP.timer[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
       channel = TIMER_MAP.ccch[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      
+
       unsafe {
         if TIMER_CONF[(timer * 4) - channel] == false {
           panic!("Timer {} channel {} not configured! | .pwm_write(...)", timer, channel);
@@ -545,10 +545,10 @@ impl PwmPin {
       }
     }
     else {panic!("P{}{} is not available for pwm output! | .pwm_write(...)", block.to_uppercase(), pin);}
-    
+
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-    
+
     match timer {
       1 => {
         let tim1 = &peripheral_ptr.TIM1;
@@ -667,10 +667,13 @@ impl PwmPin {
 /// use rustuino::*;
 ///
 /// let pin = PA0::output();
-/// 
-/// pin.write(false);
-/// delay(500);
-/// pin.write(0);
+///
+/// loop {
+///   pin.write(true);
+///   delay(1000);
+///   pin.write(false);
+///   delay(1000);
+/// }
 /// ```
 pub fn delay(ms: u32) {
   let peripheral_ptr;
@@ -684,7 +687,7 @@ pub fn delay(ms: u32) {
 
     tim6.dier.modify(|_, w| w.uie().enabled());
     unsafe {NVIC::unmask(Interrupt::TIM6_DAC);}
-    
+
     // 16MHz -> 1MHz : 1000 = 1kHz -> 1ms
     tim6.psc.write(|w| w.psc().bits(16));
     tim6.arr.write(|w| w.arr().bits(1000));
@@ -708,18 +711,23 @@ pub fn delay(ms: u32) {
 /// ```rust,no_run
 /// use rustuino::*;
 ///
-/// let pin = PA0::output();
-/// 
-/// pin.write(false);
-/// delay(500);
-/// pin.write(0);
+/// let mut counter: usize = 0;
+/// let delay: usize = 1000;
+/// start_time();
+///
+/// loop {
+///   if counter + delay >= millis() {
+///     // Do something
+///     counter = millis();
+///   }
+/// }
 /// ```
 pub fn start_time() {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
   let tim7 = &peripheral_ptr.TIM7;
-  
+
   unsafe {
     if TIMER_CONF[20] == false {TIMER_CONF[20] = true;}
     else {
@@ -727,13 +735,13 @@ pub fn start_time() {
       return;
     }
   }
-  
+
   rcc.apb1enr.modify(|_, w| w.tim7en().enabled());
   tim7.cr1.modify(|_, w| w.arpe().enabled());
-  
+
   tim7.dier.modify(|_, w| w.uie().enabled());
   unsafe {NVIC::unmask(Interrupt::TIM7);}
-  
+
   // 16MHz -> 1MHz : 1000 = 1kHz -> 1ms
   tim7.psc.write(|w| w.psc().bits(16));
   tim7.arr.write(|w| w.arr().bits(1000));
@@ -741,16 +749,22 @@ pub fn start_time() {
   tim7.cr1.modify(|_, w| w.cen().enabled());
 }
 
-/// For non-blocking delays. Gives back the time since start_time() was run in milliseconds
+/// Non-blocking delay function. Gives back the time in milliseconds since start_time() was
+/// invoked.
 /// # Examples
 /// ```rust,no_run
 /// use rustuino::*;
 ///
-/// let pin = PA0::output();
-/// 
-/// pin.write(false);
-/// delay(500);
-/// pin.write(0);
+/// let mut counter: usize = 0;
+/// let delay: usize = 1000;
+/// start_time();
+///
+/// loop {
+///   if counter + delay >= millis() {
+///     // Do something
+///     counter = millis();
+///   }
+/// }
 /// ```
 pub fn millis() -> usize {
   let peripheral_ptr;
@@ -758,11 +772,11 @@ pub fn millis() -> usize {
   let tim7 = &peripheral_ptr.TIM6;
 
   let buffer: usize;
-  
+
   tim7.cr1.modify(|_, w| w.cen().disabled());
   unsafe {buffer = TIME_COUNTER;}
   tim7.cr1.modify(|_, w| w.cen().enabled());
-  
+
   return buffer;
 }
 

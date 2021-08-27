@@ -1,7 +1,7 @@
 use crate::include::pins::*;
 
 /// This struct holds the configuration of a pin that has been configured as an input.
-/// 
+///
 /// To configure a pin as an input, call the input function on the appropriate pin label. The function returns the pin struct with the settings of the pin.
 /// # Example
 /// ```rust,no_run
@@ -9,12 +9,12 @@ use crate::include::pins::*;
 /// #![no_main]
 ///
 /// use rustuino::*;
-/// 
+///
 /// #[entry]
 /// fn main() -> ! {
 ///   let pin1 = PA0::input();
 ///   let pin2 = PA1::output();
-/// 
+///
 ///   loop {
 ///     if pin1.read() == true {
 ///       pin2.write(true);
@@ -41,12 +41,12 @@ pub struct InputPin {
 /// #![no_main]
 ///
 /// use rustuino::*;
-/// 
+///
 /// #[entry]
 /// fn main() -> ! {
 ///   let pin1 = PA0::input();
 ///   let pin2 = PA1::output();
-/// 
+///
 ///   loop {
 ///     if pin1.read() == true {
 ///       pin2.write(true);
@@ -88,7 +88,7 @@ pub trait ToDigital: Sized {
   ///
   /// // Configure pin as input
   /// let pin = PA0::input();
-  /// 
+  ///
   /// // Read the digital value from the pin
   /// let state: bool = pin.read();
   /// ```
@@ -150,7 +150,7 @@ pub trait ToDigital: Sized {
       bias: Bias::None
     };
   }
-  
+
   /// Configures a pin as a digital output and gives back the associated pin struct.
   /// # Examples
   /// ```rust,no_run
@@ -158,7 +158,7 @@ pub trait ToDigital: Sized {
   ///
   /// // Configure pin as output
   /// let pin = PA0::output();
-  /// 
+  ///
   /// // Set the value of the pin
   /// pin.write(true);
   /// pin.write(false);
@@ -231,7 +231,7 @@ macro_rules! generate_ToInOut {
 
     paste!{
       $(
-        impl ToDigital for [<P $letter:upper $number>] {        
+        impl ToDigital for [<P $letter:upper $number>] {
           const BLOCK: char = $letter;
           const PIN: u8 = $number;
         }
@@ -367,16 +367,16 @@ generate_ToInOut![
 
 // Function implementations =======================================================================
 impl InputPin {
-  /// Sets the internal pullup/pulldown resistor of the pin.
+  /// Sets the internal pullup/pulldown resistor of the pin. By default no bias is set.
   /// # Examples
   /// ```rust,no_run
   /// use rustuino::*;
   ///
   /// // Configure pin as input
   /// let mut pin = PA0::input();
-  /// 
+  ///
   /// // Set the bias of the pin
-  /// pin.bias(Bias::None);
+  /// pin.bias(Bias::None); // Default
   /// pin.bias(Bias::Pullup);
   /// pin.bias(Bias::Pulldown);
   /// ```
@@ -463,7 +463,7 @@ impl InputPin {
   ///
   /// // Configure pin as input
   /// let pin = PA0::input();
-  /// 
+  ///
   /// // Read the digital value from the pin
   /// let state: bool = pin.read();
   /// ```
@@ -506,23 +506,23 @@ impl InputPin {
       },
       _   => panic!("P{}{} is not an available GPIO Pin | .read()", self.block.to_uppercase(), self.pin)
     };
-  
+
     if bits & (1 << self.pin) == (1 << self.pin) {return true;}
     else {return false;}
   }
 }
 
 impl OutputPin {
-  /// Sets the max speed of the GPIO pin.
+  /// Sets the max speed of the GPIO pin. Low is the default for all pins.
   /// # Examples
   /// ```rust,no_run
   /// use rustuino::*;
   ///
   /// // Configure pin as output
   /// let mut pin = PA0::output();
-  /// 
+  ///
   /// // Set the speed
-  /// pin.speed(Speed::Low);
+  /// pin.speed(Speed::Low); // Default
   /// pin.speed(Speed::Medium);
   /// pin.speed(Speed::Fast);
   /// pin.speed(Speed::High);
@@ -611,16 +611,16 @@ impl OutputPin {
     self.speed = speed;
   }
 
-  /// Sets the internal pullup/pulldown resistor of the pin.
+  /// Sets the internal pullup/pulldown resistor of the pin. By default no bias is set.
   /// # Examples
   /// ```rust,no_run
   /// use rustuino::*;
   ///
   /// // Configure pin as output
   /// let mut pin = PA0::output();
-  /// 
+  ///
   /// // Set the bias of the pin
-  /// pin.bias(Bias::None);
+  /// pin.bias(Bias::None); // Default
   /// pin.bias(Bias::Pullup);
   /// pin.bias(Bias::Pulldown);
   /// ```
@@ -700,15 +700,16 @@ impl OutputPin {
     self.bias = bias;
   }
 
-  /// Set the driving of the pin from push-pull to open-drain.
+  /// Set the driving circuit of the pin to open-drain. By default the pin is in push-pull
+  /// configuration.
   /// # Examples
   /// ```rust,no_run
   /// use rustuino::*;
   ///
   /// // Configure pin as output
   /// let mut pin = PA0::output();
-  /// 
-  /// // Set the pin to open-drain, the default behaviour is push-pull
+  ///
+  /// // Set the pin to open-drain
   /// pin.open_drain();
   /// ```
   pub fn open_drain(&mut self) {
@@ -762,7 +763,7 @@ impl OutputPin {
   ///
   /// // Configure pin as output
   /// let pin = PA0::output();
-  /// 
+  ///
   /// // Set the value of the pin
   /// pin.write(true);
   /// pin.write(false);

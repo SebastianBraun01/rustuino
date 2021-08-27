@@ -2,22 +2,22 @@ use crate::include::pins::*;
 use crate::include::{ADC_MAP, ADC_CONF, DAC_MAP, DAC_CONF};
 
 /// This struct holds the configuration of a pin that has been configured as an analog pin.
-/// 
-/// To configure a pin as an analog pin, call the associated function on the appropriate pin label. The function returns the pin struct with the settings of the pin.
+///
+/// To configure a pin as an analog pin, call either the input or output functions on the appropriate pin label. The function returns the pin struct with the settings of the pin.
 /// # Example
 /// ```rust,no_run
 /// #![no_std]
 /// #![no_main]
 ///
 /// use rustuino::*;
-/// 
+///
 /// #[entry]
 /// fn main() -> ! {
 ///   let pin1 = PA0::analog(10, false);
 ///   let pin2 = PA1::output();
-/// 
+///
 ///   let mut adc_value: u16;
-/// 
+///
 ///   loop {
 ///     adc_value = pin1.analog_read();
 ///     if adc_value > 4095 / 2 {
@@ -50,9 +50,7 @@ pub trait ToAnalog: Sized {
   ///
   /// // Configure pin as an analog pin
   /// let mut pin = PA0::analog_input();
-  /// 
-  /// // Change the ADC/DAC resolution of the pin
-  /// pin.analog_resolution(12);
+  ///
   /// // Read the analog value
   /// let value = pin.analog_read();
   /// ```
@@ -148,7 +146,7 @@ pub trait ToAnalog: Sized {
     }
     else {panic!("P{}{} not available for ADC conversion! | ::analog_input(...)", block.to_uppercase(), pin);}
   }
-  
+
   /// Configures a pin as an analog output and gives back the associated pin struct.
   /// # Examples
   /// ```rust,no_run
@@ -156,7 +154,7 @@ pub trait ToAnalog: Sized {
   ///
   /// // Configure pin as an analog pin
   /// let pin = PA4::analog_output();
-  /// 
+  ///
   /// // Write the analog value
   /// pin.analog_write(0);
   /// pin.analog_write(4095);
@@ -246,7 +244,7 @@ macro_rules! generate_ToAnalog {
 
     paste!{
       $(
-        impl ToAnalog for [<P $letter:upper $number>] {        
+        impl ToAnalog for [<P $letter:upper $number>] {
           const BLOCK: char = $letter;
           const PIN: u8 = $number;
         }
@@ -272,7 +270,7 @@ impl AnalogPin {
   ///
   /// // Configure pin as an analog pin
   /// let mut pin = PA0::analog_input();
-  /// 
+  ///
   /// // Change the ADC/DAC resolution of the pin
   /// pin.analog_resolution(6);
   /// pin.analog_resolution(8);
@@ -282,7 +280,7 @@ impl AnalogPin {
   pub fn analog_resolution(&mut self, res: u8) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-    
+
     if self.dir == false {
       if self.channel == false {
         let adc1 = &peripheral_ptr.ADC1;
@@ -319,7 +317,7 @@ impl AnalogPin {
   ///
   /// // Configure pin as an analog pin
   /// let pin = PA0::analog_input();
-  /// 
+  ///
   /// // Read the analog value
   /// let value: u16 = pin.analog_read();
   /// ```
@@ -331,7 +329,7 @@ impl AnalogPin {
       let adc3 = &peripheral_ptr.ADC3;
       let channel = ADC_MAP.channel[ADC_MAP.pin.iter().position(|&i| i == ('f', self.pin)).unwrap()];
       adc3.sqr3.modify(|_, w| unsafe {w.sq1().bits(channel)});
-  
+
       adc3.cr2.write(|w| w.swstart().start());
       while adc3.sr.read().eoc().is_not_complete() == true {}
       adc3.dr.read().data().bits() as u16
@@ -344,7 +342,7 @@ impl AnalogPin {
       while adc1.sr.read().eoc().is_not_complete() == true {}
       adc1.dr.read().data().bits() as u16
     };
-  
+
     return buffer;
   }
 
@@ -355,7 +353,7 @@ impl AnalogPin {
   ///
   /// // Configure pin as an analog pin
   /// let pin = PA4::analog_output();
-  /// 
+  ///
   /// // Write the analog value
   /// pin.analog_write(0);
   /// pin.analog_write(4095);
@@ -365,13 +363,13 @@ impl AnalogPin {
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let dac = &peripheral_ptr.DAC;
     let val: u16;
-    
+
     if value > 4095 {
       rtt_target::rprintln!("Analog value outside of bounds! | .analog_write(...)");
       val = 4095;
     }
     else {val = value;}
-    
+
     if self.pin == 4  {
       dac.dhr12r1.write(|w| w.dacc1dhr().bits(val));
       dac.swtrigr.write(|w| w.swtrig1().enabled());
