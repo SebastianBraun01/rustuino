@@ -1,160 +1,239 @@
 use crate::include::pins::*;
 
+/// This struct holds the configuration of a pin that has been configured as an input.
+/// 
+/// To configure a pin as an input, call the input function on the appropriate pin label. The function returns the pin struct with the settings of the pin.
+/// # Example
+/// ```rust,no_run
+/// #![no_std]
+/// #![no_main]
+///
+/// use rustuino::*;
+/// 
+/// #[entry]
+/// fn main() -> ! {
+///   let pin1 = PA0::input();
+///   let pin2 = PA1::output();
+/// 
+///   loop {
+///     if pin1.read() == true {
+///       pin2.write(true);
+///     }
+///     else {
+///       pin2.write(false);
+///     }
+///     delay(1000);
+///   }
+/// }
+/// ```
 pub struct InputPin {
-  pub block: char,
-  pub pin: u8,
-  pub bias: Bias
+  block: char,
+  pin: u8,
+  bias: Bias
 }
 
+/// Struct that holds the configuration of a pin that has been configured as an output.
+///
+/// To configure a pin as an output, call the output function on the appropriate pin label. The function returns the pin struct with the settings of the pin.
+/// # Example
+/// ```rust,no_run
+/// #![no_std]
+/// #![no_main]
+///
+/// use rustuino::*;
+/// 
+/// #[entry]
+/// fn main() -> ! {
+///   let pin1 = PA0::input();
+///   let pin2 = PA1::output();
+/// 
+///   loop {
+///     if pin1.read() == true {
+///       pin2.write(true);
+///     }
+///     else {
+///       pin2.write(false);
+///     }
+///     delay(1000);
+///   }
+/// }
+/// ```
 pub struct OutputPin {
-  pub block: char,
-  pub pin: u8,
-  pub bias: Bias,
-  pub speed: Speed,
-  pub open_drain: bool
+  block: char,
+  pin: u8,
+  bias: Bias,
+  speed: Speed,
+  open_drain: bool
 }
 
+/// Represents the options to configure the GPIO speed of a pin.
 pub enum Speed {
   Low, Medium, Fast, High
 }
 
+/// Represents the options to configure the bias of a pin.
 pub enum Bias {
   None, Pullup, Pulldown
 }
 
-pub trait ToInOut: Sized {
-  fn input() -> InputPin;
-  fn output() -> OutputPin;
+/// This trait is implemented on all pin structs that are able to be used as a digital IO pin (all of them).
+pub trait ToDigital: Sized {
+  const BLOCK: char;
+  const PIN: u8;
+
+  /// Configures a pin as a digital input and gives back the associated pin struct.
+  /// # Examples
+  /// ```rust,no_run
+  /// use rustuino::*;
+  ///
+  /// // Configure pin as input
+  /// let pin = PA0::input();
+  /// 
+  /// // Read the digital value from the pin
+  /// let state: bool = pin.read();
+  /// ```
+  fn input() -> InputPin {
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+    let rcc = &peripheral_ptr.RCC;
+
+    let block = Self::BLOCK;
+    let pin = Self::PIN;
+
+    match block {
+      'a' => {
+        let gpioa = &peripheral_ptr.GPIOA;
+        rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+        gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
+      },
+      'b' => {
+        let gpiob = &peripheral_ptr.GPIOB;
+        rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+        gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
+      },
+      'c' => {
+        let gpioc = &peripheral_ptr.GPIOC;
+        rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+        gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
+      },
+      'd' => {
+        let gpiod = &peripheral_ptr.GPIOD;
+        rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+        gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
+      },
+      'e' => {
+        let gpioe = &peripheral_ptr.GPIOE;
+        rcc.ahb1enr.modify(|_, w| w.gpioeen().enabled());
+        gpioe.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
+      },
+      'f' => {
+        let gpiof = &peripheral_ptr.GPIOF;
+        rcc.ahb1enr.modify(|_, w| w.gpiofen().enabled());
+        gpiof.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
+      },
+      'g' => {
+        let gpiog = &peripheral_ptr.GPIOG;
+        rcc.ahb1enr.modify(|_, w| w.gpiogen().enabled());
+        gpiog.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
+      },
+      'h' => {
+        let gpioh = &peripheral_ptr.GPIOH;
+        rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+        gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
+      },
+      _   => panic!("P{}{} is not an available GPIO Pin | ::input()", block.to_uppercase(), pin)
+    };
+
+    return InputPin {
+      block,
+      pin,
+      bias: Bias::None
+    };
+  }
+  
+  /// Configures a pin as a digital output and gives back the associated pin struct.
+  /// # Examples
+  /// ```rust,no_run
+  /// use rustuino::*;
+  ///
+  /// // Configure pin as output
+  /// let pin = PA0::output();
+  /// 
+  /// // Set the value of the pin
+  /// pin.write(true);
+  /// pin.write(false);
+  /// ```
+  fn output() -> OutputPin {
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+    let rcc = &peripheral_ptr.RCC;
+
+    let block = Self::BLOCK;
+    let pin = Self::PIN;
+
+    match block {
+      'a' => {
+        let gpioa = &peripheral_ptr.GPIOA;
+        rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+        gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
+      },
+      'b' => {
+        let gpiob = &peripheral_ptr.GPIOB;
+        rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+        gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
+      },
+      'c' => {
+        let gpioc = &peripheral_ptr.GPIOC;
+        rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+        gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
+      },
+      'd' => {
+        let gpiod = &peripheral_ptr.GPIOD;
+        rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+        gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
+      },
+      'e' => {
+        let gpioe = &peripheral_ptr.GPIOE;
+        rcc.ahb1enr.modify(|_, w| w.gpioeen().enabled());
+        gpioe.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
+      },
+      'f' => {
+        let gpiof = &peripheral_ptr.GPIOF;
+        rcc.ahb1enr.modify(|_, w| w.gpiofen().enabled());
+        gpiof.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
+      },
+      'g' => {
+        let gpiog = &peripheral_ptr.GPIOG;
+        rcc.ahb1enr.modify(|_, w| w.gpiogen().enabled());
+        gpiog.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
+      },
+      'h' => {
+        let gpioh = &peripheral_ptr.GPIOH;
+        rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+        gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
+      },
+      _   => panic!("P{}{} is not an available GPIO Pin | ::output()", block.to_uppercase(), pin)
+    };
+
+    return OutputPin {
+      block,
+      pin,
+      bias: Bias::None,
+      speed: Speed::Low,
+      open_drain: false
+    };
+  }
 }
 
-
-// Converter implementations ======================================================================
 macro_rules! generate_ToInOut {
   ($([$letter:literal, $number: literal]),+) => {
     use paste::paste;
 
     paste!{
       $(
-        impl ToInOut for [<P $letter:upper $number>] {
-          fn input() -> InputPin {
-            let peripheral_ptr;
-            unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-            let rcc = &peripheral_ptr.RCC;
-
-            let block = $letter;
-            let pin = $number;
-
-            match block {
-              'a' => {
-                let gpioa = &peripheral_ptr.GPIOA;
-                rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
-                gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
-              },
-              'b' => {
-                let gpiob = &peripheral_ptr.GPIOB;
-                rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
-                gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
-              },
-              'c' => {
-                let gpioc = &peripheral_ptr.GPIOC;
-                rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
-                gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
-              },
-              'd' => {
-                let gpiod = &peripheral_ptr.GPIOD;
-                rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
-                gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
-              },
-              'e' => {
-                let gpioe = &peripheral_ptr.GPIOE;
-                rcc.ahb1enr.modify(|_, w| w.gpioeen().enabled());
-                gpioe.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
-              },
-              'f' => {
-                let gpiof = &peripheral_ptr.GPIOF;
-                rcc.ahb1enr.modify(|_, w| w.gpiofen().enabled());
-                gpiof.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
-              },
-              'g' => {
-                let gpiog = &peripheral_ptr.GPIOG;
-                rcc.ahb1enr.modify(|_, w| w.gpiogen().enabled());
-                gpiog.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
-              },
-              'h' => {
-                let gpioh = &peripheral_ptr.GPIOH;
-                rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
-                gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)))});
-              },
-              _   => panic!("P{}{} is not an available GPIO Pin | ::input()", block.to_uppercase(), pin)
-            };
-        
-            return InputPin {
-              block,
-              pin,
-              bias: Bias::None
-            };
-          }
-        
-          fn output() -> OutputPin {
-            let peripheral_ptr;
-            unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-            let rcc = &peripheral_ptr.RCC;
-
-            let block = $letter;
-            let pin = $number;
-
-            match block {
-              'a' => {
-                let gpioa = &peripheral_ptr.GPIOA;
-                rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
-                gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
-              },
-              'b' => {
-                let gpiob = &peripheral_ptr.GPIOB;
-                rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
-                gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
-              },
-              'c' => {
-                let gpioc = &peripheral_ptr.GPIOC;
-                rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
-                gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
-              },
-              'd' => {
-                let gpiod = &peripheral_ptr.GPIOD;
-                rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
-                gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
-              },
-              'e' => {
-                let gpioe = &peripheral_ptr.GPIOE;
-                rcc.ahb1enr.modify(|_, w| w.gpioeen().enabled());
-                gpioe.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
-              },
-              'f' => {
-                let gpiof = &peripheral_ptr.GPIOF;
-                rcc.ahb1enr.modify(|_, w| w.gpiofen().enabled());
-                gpiof.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
-              },
-              'g' => {
-                let gpiog = &peripheral_ptr.GPIOG;
-                rcc.ahb1enr.modify(|_, w| w.gpiogen().enabled());
-                gpiog.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
-              },
-              'h' => {
-                let gpioh = &peripheral_ptr.GPIOH;
-                rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
-                gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (1 << (2 * pin)))});
-              },
-              _   => panic!("P{}{} is not an available GPIO Pin | ::output()", block.to_uppercase(), pin)
-            };
-        
-            return OutputPin {
-              block,
-              pin,
-              bias: Bias::None,
-              speed: Speed::Low,
-              open_drain: false
-            };
-          }
+        impl ToDigital for [<P $letter:upper $number>] {        
+          const BLOCK: char = $letter;
+          const PIN: u8 = $number;
         }
       )+
     }
@@ -288,6 +367,19 @@ generate_ToInOut![
 
 // Function implementations =======================================================================
 impl InputPin {
+  /// Sets the internal pullup/pulldown resistor of the pin.
+  /// # Examples
+  /// ```rust,no_run
+  /// use rustuino::*;
+  ///
+  /// // Configure pin as input
+  /// let mut pin = PA0::input();
+  /// 
+  /// // Set the bias of the pin
+  /// pin.bias(Bias::None);
+  /// pin.bias(Bias::Pullup);
+  /// pin.bias(Bias::Pulldown);
+  /// ```
   pub fn bias(&mut self, bias: Bias) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -364,6 +456,17 @@ impl InputPin {
     self.bias = bias;
   }
 
+  /// Reads the input value of the pin.
+  /// # Examples
+  /// ```rust,no_run
+  /// use rustuino::*;
+  ///
+  /// // Configure pin as input
+  /// let pin = PA0::input();
+  /// 
+  /// // Read the digital value from the pin
+  /// let state: bool = pin.read();
+  /// ```
   pub fn read(&self) -> bool {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -410,6 +513,20 @@ impl InputPin {
 }
 
 impl OutputPin {
+  /// Sets the max speed of the GPIO pin.
+  /// # Examples
+  /// ```rust,no_run
+  /// use rustuino::*;
+  ///
+  /// // Configure pin as output
+  /// let mut pin = PA0::output();
+  /// 
+  /// // Set the speed
+  /// pin.speed(Speed::Low);
+  /// pin.speed(Speed::Medium);
+  /// pin.speed(Speed::Fast);
+  /// pin.speed(Speed::High);
+  /// ```
   pub fn speed(&mut self, speed: Speed) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -494,6 +611,19 @@ impl OutputPin {
     self.speed = speed;
   }
 
+  /// Sets the internal pullup/pulldown resistor of the pin.
+  /// # Examples
+  /// ```rust,no_run
+  /// use rustuino::*;
+  ///
+  /// // Configure pin as output
+  /// let mut pin = PA0::output();
+  /// 
+  /// // Set the bias of the pin
+  /// pin.bias(Bias::None);
+  /// pin.bias(Bias::Pullup);
+  /// pin.bias(Bias::Pulldown);
+  /// ```
   pub fn bias(&mut self, bias: Bias) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -570,6 +700,17 @@ impl OutputPin {
     self.bias = bias;
   }
 
+  /// Set the driving of the pin from push-pull to open-drain.
+  /// # Examples
+  /// ```rust,no_run
+  /// use rustuino::*;
+  ///
+  /// // Configure pin as output
+  /// let mut pin = PA0::output();
+  /// 
+  /// // Set the pin to open-drain, the default behaviour is push-pull
+  /// pin.open_drain();
+  /// ```
   pub fn open_drain(&mut self) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -614,6 +755,18 @@ impl OutputPin {
     self.open_drain = true;
   }
 
+  /// Writes the digital value to the output pin.
+  /// # Examples
+  /// ```rust,no_run
+  /// use rustuino::*;
+  ///
+  /// // Configure pin as output
+  /// let pin = PA0::output();
+  /// 
+  /// // Set the value of the pin
+  /// pin.write(true);
+  /// pin.write(false);
+  /// ```
   pub fn write(&self, value: bool) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
