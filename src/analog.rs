@@ -3,6 +3,8 @@
 use crate::gpio::pins::*;
 use crate::gpio::GpioError;
 
+
+// Public Functions ===============================================================================
 pub fn enable_channel(pin: (char, u8)) -> Result<(), GpioError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -299,6 +301,8 @@ pub fn analog_wave_freq(freq: u32) {
   tim5.arr.write(|w| w.arr().bits(val.into()));
 }
 
+
+// Private Functions ==============================================================================
 fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), GpioError> {
   const PINS: [(char, u8); 16] = [A0, A1, A2, A3, A4, A5, A6, A7, B0, B1, C0, C1, C2, C3, C4, C5];
   const CORES: [u8; 16]        = [1,  1,  1,  1,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1];

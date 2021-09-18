@@ -4,6 +4,8 @@ use crate::gpio::pins::*;
 use crate::gpio::{GpioError, pin_mode, GpioMode};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 
+
+// Public PWM Functions ===========================================================================
 pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -177,6 +179,8 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
   return Ok(());
 }
 
+
+// Private PWM Functions ==========================================================================
 fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
   const PINS: [(char, u8); 31] = [A0, A1, A2, A3, A5, A8, A9, A10, A11, A15, B0, B1, B2, B3, B8, B9, B10, B11, B13, B14, B15, A6, A7, B4, B5, B6, B7, C6, C7, C8, C9];
   const TIMERS: [u8; 31] = [2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 3, 3, 3, 3, 4, 4, 3, 3, 3, 3];
@@ -330,7 +334,7 @@ pub fn millis() -> usize {
 }
 
 
-// Interrupts and Exceptions ====================================================================
+// Interrupts =====================================================================================
 #[allow(non_snake_case)]
 #[interrupt]
 fn TIM6_DAC() {

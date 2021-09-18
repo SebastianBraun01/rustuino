@@ -112,6 +112,8 @@ pub enum GpioError {
   NotConfigured
 }
 
+
+// Public Functions ===============================================================================
 pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -500,6 +502,8 @@ pub fn open_drain(pin: (char, u8), op: bool) -> Result<(), GpioError> {
   return Ok(());
 }
 
+
+// Private Functions ==============================================================================
 fn check_pin(pin: (char, u8)) -> Result<(), GpioError> {
   if pin.1 > 15 || (pin.1 != 2 && pin.0 == 'd') || ((pin.1 != 0 && pin.0 == 'd') && (pin.1 != 1 && pin.0 == 'd')) {
     rtt_target::rprintln!("P{}{} is not an available GPIO Pin!", pin.0.to_uppercase(), pin.1);

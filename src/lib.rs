@@ -4,10 +4,9 @@
 pub use cortex_m_rt::{entry, exception};
 pub use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 
-// Für benutzer
 pub use libm;
 pub use heapless::{Vec, String};
-pub use {analog::*, time::*, uart::serial};
+pub use {time::*, uart::serial};
 pub use gpio::{*, pins::*};
 pub use analog::{adc_resolution, analog_read, analog_write, analog_write_noise, analog_write_triangle, analog_wave_freq};
 pub use rtt_target::{rtt_init_print, rprint, rprintln};
