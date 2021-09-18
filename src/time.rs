@@ -1,668 +1,215 @@
-use crate::include::pins::*;
-use crate::include:: {TIMER_MAP, TIMER_CONF, TIME_COUNTER, DELAY_COUNTER};
+//! This module contains everything that is related to timer based functions.
+
+use crate::gpio::pins::*;
+use crate::gpio::{GpioError, pin_mode, GpioMode};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 
-/// This struct holds the configuration of a pin that has been configured as an pwm pin.
-///
-/// To configure a pin as an pwm pin, call the pwm function on the appropriate pin label. The function returns the pin struct with the settings of the pin.
-/// # Example
-/// ```rust,no_run
-/// #![no_std]
-/// #![no_main]
-///
-/// use rustuino::*;
-///
-/// #[entry]
-/// fn main() -> ! {
-///   let pin = PA0::pwm();
-///
-///   loop {
-///     for i in 0..256 {
-///       pin.pwm_write(i);
-///       delay(50);
-///     }
-///   }
-/// }
-/// ```
-pub struct PwmPin {
-  pub block: char,
-  pub pin: u8
-}
+pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let rcc = &peripheral_ptr.RCC;
 
-/// This trait is implemented on all pin structs that are able to be used with the internal timers
-pub trait ToPwm: Sized {
-  const BLOCK: char;
-  const PIN: u8;
+  let (timer, ccch, af) = match check_pwm(pin) {
+    Ok(target) => target,
+    Err(error) => return Err(error)
+  };
 
-  /// Configures the pin as a pwm output and gives back the associated pin struct.
-  /// # Example
-  /// ```rust,no_run
-  /// #![no_std]
-  /// #![no_main]
-  ///
-  /// use rustuino::*;
-  ///
-  /// #[entry]
-  /// fn main() -> ! {
-  ///   let pin = PA0::pwm();
-  ///
-  ///   loop {
-  ///     for i in 0..256 {
-  ///       pin.pwm_write(i);
-  ///       delay(50);
-  ///     }
-  ///   }
-  /// }
-  /// ```
-  fn pwm() -> PwmPin {
-    let block = Self::BLOCK;
-    let pin = Self::PIN;
+  if let Err(error) = pin_mode(pin, GpioMode::AlternateFunction(af.into())) {return Err(error);}
 
-    let timer: usize;
-    let channel: usize;
-
-    if TIMER_MAP.pin.contains(&(block, pin)) {
-      timer = TIMER_MAP.timer[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      channel = TIMER_MAP.ccch[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-
-      unsafe {
-        if TIMER_CONF[(timer * 4) - channel] == false {TIMER_CONF[(timer * 4) - channel] = true;}
-        else {panic!("Timer {} channel {} already in use! | .pwm()", timer, channel);}
-      }
-    }
-    else {panic!("P{}{} is not available for pwm output! | .pwm()", block.to_uppercase(), pin);}
-
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-    let rcc = &peripheral_ptr.RCC;
-
-    match block {
-      'a' => {
-        let gpioa = &peripheral_ptr.GPIOA;
-        rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
-        gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-        if timer == 1 || timer == 2 {
-          if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
-          else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
+  match timer {
+    1 => {
+      let tim1 = &peripheral_ptr.TIM1;
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim1.cr1.modify(|_, w| w.arpe().enabled());
+      tim1.psc.write(|w| w.psc().bits(1000));
+      tim1.arr.write(|w| w.arr().bits(255));
+      tim1.egr.write(|w| w.ug().set_bit());
+      match ccch {
+        1 => tim1.ccmr1_output_mut().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
+        2 => tim1.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
+        3 => tim1.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
+        4 => tim1.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
+        _ => {
+          rtt_target::rprintln!("Channel{} is not a valid CC channel! | setup_pwm()", ccch);
+          return Err(GpioError::ConfigurationError);
         }
-        else if timer == 3 || timer == 4 || timer == 5 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
-            else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
-          }
+      };
+      tim1.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
+      tim1.cr1.modify(|_, w| w.cen().enabled());
+    },
+    2 => {
+      let tim2 = &peripheral_ptr.TIM2;
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim2.cr1.modify(|_, w| w.arpe().enabled());
+      tim2.psc.write(|w| w.psc().bits(1000));
+      tim2.arr.write(|w| w.arr().bits(255));
+      tim2.egr.write(|w| w.ug().set_bit());
+      match ccch {
+        1 => tim2.ccmr1_output_mut().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
+        2 => tim2.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
+        3 => tim2.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
+        4 => tim2.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
+        _ => {
+          rtt_target::rprintln!("Channel{} is not a valid CC channel! | setup_pwm()", ccch);
+          return Err(GpioError::ConfigurationError);
         }
-        else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
-            else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
-          }
+      };
+      tim2.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
+      tim2.cr1.modify(|_, w| w.cen().enabled());
+    },
+    3 => {
+      let tim3 = &peripheral_ptr.TIM3;
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim3.cr1.modify(|_, w| w.arpe().enabled());
+      tim3.psc.write(|w| w.psc().bits(1000));
+      tim3.arr.write(|w| w.arr().bits(255));
+      tim3.egr.write(|w| w.ug().set_bit());
+      match ccch {
+        1 => tim3.ccmr1_output_mut().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
+        2 => tim3.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
+        3 => tim3.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
+        4 => tim3.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
+        _ => {
+          rtt_target::rprintln!("Channel{} is not a valid CC channel! | setup_pwm()", ccch);
+          return Err(GpioError::ConfigurationError);
         }
-        else {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
-            else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
-          }
+      };
+      tim3.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
+      tim3.cr1.modify(|_, w| w.cen().enabled());
+    },
+    4 => {
+      let tim4 = &peripheral_ptr.TIM4;
+      rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
+      tim4.cr1.modify(|_, w| w.arpe().enabled());
+      tim4.psc.write(|w| w.psc().bits(1000));
+      tim4.arr.write(|w| w.arr().bits(255));
+      tim4.egr.write(|w| w.ug().set_bit());
+      match ccch {
+        1 => tim4.ccmr1_output_mut().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
+        2 => tim4.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
+        3 => tim4.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
+        4 => tim4.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
+        _ => {
+          rtt_target::rprintln!("Channel{} is not a valid CC channel! | setup_pwm()", ccch);
+          return Err(GpioError::ConfigurationError);
         }
-      },
-      'b' => {
-        let gpiob = &peripheral_ptr.GPIOB;
-        rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
-        gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-        if timer == 1 || timer == 2 {
-          if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
-          else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
-        }
-        else if timer == 3 || timer == 4 || timer == 5 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
-            else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
-          }
-        }
-        else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
-            else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
-          }
-        }
-        else {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
-            else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
-          }
-        }
-      },
-      'c' => {
-        let gpioc = &peripheral_ptr.GPIOC;
-        rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
-        gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-        if timer == 1 || timer == 2 {
-          if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
-          else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
-        }
-        else if timer == 3 || timer == 4 || timer == 5 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
-            else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
-          }
-        }
-        else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
-            else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
-          }
-        }
-        else {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
-            else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
-          }
-        }
-      },
-      'd' => {
-        let gpiod = &peripheral_ptr.GPIOD;
-        rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
-        gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-        if timer == 1 || timer == 2 {
-          if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
-          else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
-        }
-        else if timer == 3 || timer == 4 || timer == 5 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
-            else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
-          }
-        }
-        else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
-            else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
-          }
-        }
-        else {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
-            else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
-          }
-        }
-      },
-      'e' => {
-        let gpioe = &peripheral_ptr.GPIOE;
-        rcc.ahb1enr.modify(|_, w| w.gpioeen().enabled());
-        gpioe.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-        if timer == 1 || timer == 2 {
-          if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
-          else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
-        }
-        else if timer == 3 || timer == 4 || timer == 5 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
-            else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
-          }
-        }
-        else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
-            else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
-          }
-        }
-        else {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
-            else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
-          }
-        }
-      },
-      'f' => {
-        let gpiof = &peripheral_ptr.GPIOF;
-        rcc.ahb1enr.modify(|_, w| w.gpiofen().enabled());
-        gpiof.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-        if timer == 1 || timer == 2 {
-          if pin > 7 {gpiof.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (pin - 8))))});}
-          else {gpiof.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * pin)))});}
-        }
-        else if timer == 3 || timer == 4 || timer == 5 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpiof.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * (pin - 8))))});}
-            else {gpiof.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (2 << (4 * pin)))});}
-          }
-        }
-        else if timer == 8 || timer == 9 || timer == 10 || timer == 11 {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpiof.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * (pin - 8))))});}
-            else {gpiof.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (4 * pin)))});}
-          }
-        }
-        else {
-          if timer == 1 || timer == 2 {
-            if pin > 7 {gpiof.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * (pin - 8))))});}
-            else {gpiof.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (9 << (4 * pin)))});}
-          }
-        }
-      },
-      _   => panic!("P{}{} is not available for PWM output! | pwm_init(...)", block.to_uppercase(), pin)
-    };
-
-    match timer {
-      1 => {
-        let tim1 = &peripheral_ptr.TIM1;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim1.cr1.modify(|_, w| w.arpe().enabled());
-        tim1.psc.write(|w| w.psc().bits(1000));
-        tim1.arr.write_with_zero(|w| w.arr().bits(255));
-        tim1.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim1.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim1.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          3 => tim1.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          4 => tim1.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      2 => {
-        let tim2 = &peripheral_ptr.TIM2;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim2.cr1.modify(|_, w| w.arpe().enabled());
-        tim2.psc.write(|w| w.psc().bits(1000));
-        tim2.arr.write_with_zero(|w| w.arr().bits(255));
-        tim2.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim2.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim2.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          3 => tim2.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          4 => tim2.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      3 => {
-        let tim3 = &peripheral_ptr.TIM3;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim3.cr1.modify(|_, w| w.arpe().enabled());
-        tim3.psc.write(|w| w.psc().bits(1000));
-        tim3.arr.write_with_zero(|w| w.arr().bits(255));
-        tim3.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim3.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim3.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          3 => tim3.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          4 => tim3.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      4 => {
-        let tim4 = &peripheral_ptr.TIM4;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim4.cr1.modify(|_, w| w.arpe().enabled());
-        tim4.psc.write(|w| w.psc().bits(1000));
-        tim4.arr.write_with_zero(|w| w.arr().bits(255));
-        tim4.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim4.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim4.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          3 => tim4.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          4 => tim4.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      5 => {
-        let tim5 = &peripheral_ptr.TIM5;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim5.cr1.modify(|_, w| w.arpe().enabled());
-        tim5.psc.write(|w| w.psc().bits(1000));
-        tim5.arr.write_with_zero(|w| w.arr().bits(255));
-        tim5.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim5.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim5.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          3 => tim5.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          4 => tim5.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      8 => {
-        let tim8 = &peripheral_ptr.TIM8;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim8.cr1.modify(|_, w| w.arpe().enabled());
-        tim8.psc.write(|w| w.psc().bits(1000));
-        tim8.arr.write_with_zero(|w| w.arr().bits(255));
-        tim8.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim8.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim8.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          3 => tim8.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          4 => tim8.ccmr2_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      9 => {
-        let tim9 = &peripheral_ptr.TIM9;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim9.cr1.modify(|_, w| w.arpe().enabled());
-        tim9.psc.write(|w| w.psc().bits(1000));
-        tim9.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
-        tim9.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim9.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim9.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      10 => {
-        let tim10 = &peripheral_ptr.TIM10;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim10.cr1.modify(|_, w| w.arpe().enabled());
-        tim10.psc.write(|w| w.psc().bits(1000));
-        tim10.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
-        tim10.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim10.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim10.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      11 => {
-        let tim11 = &peripheral_ptr.TIM11;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim11.cr1.modify(|_, w| w.arpe().enabled());
-        tim11.psc.write(|w| w.psc().bits(1000));
-        tim11.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
-        tim11.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim11.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim11.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      12 => {
-        let tim12 = &peripheral_ptr.TIM12;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim12.cr1.modify(|_, w| w.arpe().enabled());
-        tim12.psc.write(|w| w.psc().bits(1000));
-        tim12.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
-        tim12.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim12.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim12.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      13 => {
-        let tim13 = &peripheral_ptr.TIM13;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim13.cr1.modify(|_, w| w.arpe().enabled());
-        tim13.psc.write(|w| w.psc().bits(1000));
-        tim13.arr.write_with_zero(|w| unsafe {w.arr().bits(255)});
-        tim13.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim13.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim13.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      14 => {
-        let tim14 = &peripheral_ptr.TIM14;
-
-        rcc.apb2enr.modify(|_, w| w.tim1en().enabled());
-        tim14.cr1.modify(|_, w| w.arpe().enabled());
-        tim14.psc.write(|w| w.psc().bits(1000));
-        tim14.arr.write(|w| unsafe {w.arr().bits(255)});
-        tim14.egr.write(|w| w.ug().set_bit());
-
-        match channel {
-          1 => tim14.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 3))}),
-          2 => tim14.ccmr1_output_mut().modify(|r, w| unsafe {w.bits(r.bits() | (0xD << 11))}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      _  => panic!("Timer {} is not a valid timer! | pwm_init(...)", timer)
-    };
-
-    return PwmPin {
-      block,
-      pin
-    };
-  }
-}
-
-macro_rules! generate_ToPwm {
-  ($([$letter:literal, $number:literal]),+) => {
-    use paste::paste;
-
-    paste!{
-      $(
-        impl ToPwm for [<P $letter:upper $number>] {
-          const BLOCK: char = $letter;
-          const PIN: u8 = $number;
-        }
-      )+
+      };
+      tim4.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
+      tim4.cr1.modify(|_, w| w.cen().enabled());
+    },
+    _  => {
+      rtt_target::rprintln!("Timer{} is not a valid timer! | setup_pwm()", timer);
+      return Err(GpioError::ConfigurationError);
     }
   };
+
+  return Ok(());
 }
 
-generate_ToPwm![
-['a', 0],
-['a', 1],
-['a', 2],
-['a', 3],
-['a', 5],
-['a', 6],
-['a', 7],
-['a', 8],
-['a', 9],
-['a', 10],
-['a', 11],
-['a', 15],
+pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
-['b', 0],
-['b', 1],
-['b', 2],
-['b', 3],
-['b', 4],
-['b', 5],
-['b', 6],
-['b', 7],
-['b', 8],
-['b', 9],
-['b', 10],
-['b', 11],
-['b', 14],
-['b', 15],
+  let (timer, ccch, _af) = match check_pwm(pin) {
+    Ok(target) => target,
+    Err(error) => return Err(error)
+  };
 
-['c', 6],
-['c', 7],
-['c', 8],
-['c', 9],
-
-['d', 12],
-['d', 13],
-['d', 14],
-['d', 15],
-
-['e', 5],
-['e', 6],
-['e', 9],
-['e', 11],
-['e', 13],
-['e', 14],
-
-['f', 6],
-['f', 7],
-['f', 8],
-['f', 9]
-];
-
-
-// Function implementations =======================================================================
-impl PwmPin {
-  /// Write a pwm signal with the specified duty cycle to the output pin.
-  /// # Examples
-  /// ```rust,no_run
-  /// use rustuino::*;
-  ///
-  /// // Configure pin as an pwm pin
-  /// let pin = PA0::pwm();
-  ///
-  /// // Write to the output pin
-  /// pin.pwm_write(0);
-  /// pin.pwm_write(255);
-  /// ```
-  pub fn pwm_write(&self, value: u8) {
-    let block = self.block;
-    let pin = self.pin;
-
-    let timer: usize;
-    let channel: usize;
-
-    if TIMER_MAP.pin.contains(&(block, pin)) {
-      timer = TIMER_MAP.timer[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-      channel = TIMER_MAP.ccch[TIMER_MAP.pin.iter().position(|&i| i == (block, pin)).unwrap()] as usize;
-
-      unsafe {
-        if TIMER_CONF[(timer * 4) - channel] == false {
-          panic!("Timer {} channel {} not configured! | .pwm_write(...)", timer, channel);
+  match timer {
+    1 => {
+      let tim1 = &peripheral_ptr.TIM1;
+      match ccch {
+        1 => tim1.ccr1.write(|w| w.ccr().bits(value.into())),
+        2 => tim1.ccr2.write(|w| w.ccr().bits(value.into())),
+        3 => tim1.ccr3.write(|w| w.ccr().bits(value.into())),
+        4 => tim1.ccr4.write(|w| w.ccr().bits(value.into())),
+        _ => {
+          rtt_target::rprintln!("Channel{} is not a valid CC channel! | pwm_write()", ccch);
+          return Err(GpioError::ConfigurationError);
         }
-      }
+      };
+    },
+    2 => {
+      let tim2 = &peripheral_ptr.TIM2;
+      match ccch {
+        1 => tim2.ccr1.write(|w| w.ccr().bits(value.into())),
+        2 => tim2.ccr2.write(|w| w.ccr().bits(value.into())),
+        3 => tim2.ccr3.write(|w| w.ccr().bits(value.into())),
+        4 => tim2.ccr4.write(|w| w.ccr().bits(value.into())),
+        _ => {
+          rtt_target::rprintln!("Channel{} is not a valid CC channel! | pwm_write()", ccch);
+          return Err(GpioError::ConfigurationError);
+        }
+      };
+    },
+    3 => {
+      let tim3 = &peripheral_ptr.TIM3;
+      match ccch {
+        1 => tim3.ccr1.write(|w| w.ccr().bits(value.into())),
+        2 => tim3.ccr2.write(|w| w.ccr().bits(value.into())),
+        3 => tim3.ccr3.write(|w| w.ccr().bits(value.into())),
+        4 => tim3.ccr4.write(|w| w.ccr().bits(value.into())),
+        _ => {
+          rtt_target::rprintln!("Channel{} is not a valid CC channel! | pwm_write()", ccch);
+          return Err(GpioError::ConfigurationError);
+        }
+      };
+    },
+    4 => {
+      let tim4 = &peripheral_ptr.TIM4;
+      match ccch {
+        1 => tim4.ccr1.write(|w| w.ccr().bits(value.into())),
+        2 => tim4.ccr2.write(|w| w.ccr().bits(value.into())),
+        3 => tim4.ccr3.write(|w| w.ccr().bits(value.into())),
+        4 => tim4.ccr4.write(|w| w.ccr().bits(value.into())),
+        _ => {
+          rtt_target::rprintln!("Channel{} is not a valid CC channel! | pwm_write()", ccch);
+          return Err(GpioError::ConfigurationError);
+        }
+      };
+    },
+    _ => {
+      rtt_target::rprintln!("Timer{} is not a valid timer! | pwm_write()", timer);
+      return Err(GpioError::ConfigurationError);
     }
-    else {panic!("P{}{} is not available for pwm output! | .pwm_write(...)", block.to_uppercase(), pin);}
+  };
 
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  return Ok(());
+}
 
-    match timer {
-      1 => {
-        let tim1 = &peripheral_ptr.TIM1;
-        match channel {
-          1 => tim1.ccr1.write_with_zero(|w| w.ccr().bits(value as u16)),
-          2 => tim1.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
-          3 => tim1.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
-          4 => tim1.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      2 => {
-        let tim2 = &peripheral_ptr.TIM2;
-        match channel {
-          1 => tim2.ccr1.write_with_zero(|w| w.ccr().bits(value as u32)),
-          2 => tim2.ccr2.write_with_zero(|w| w.ccr().bits(value as u32)),
-          3 => tim2.ccr3.write_with_zero(|w| w.ccr().bits(value as u32)),
-          4 => tim2.ccr4.write_with_zero(|w| w.ccr().bits(value as u32)),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      3 => {
-        let tim3 = &peripheral_ptr.TIM3;
-        match channel {
-          1 => tim3.ccr1.write_with_zero(|w| w.ccr().bits(value as u16)),
-          2 => tim3.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
-          3 => tim3.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
-          4 => tim3.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      4 => {
-        let tim4 = &peripheral_ptr.TIM4;
-        match channel {
-          1 => tim4.ccr1.write_with_zero(|w| w.ccr().bits(value as u16)),
-          2 => tim4.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
-          3 => tim4.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
-          4 => tim4.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      5 => {
-        let tim5 = &peripheral_ptr.TIM5;
-        match channel {
-          1 => tim5.ccr1.write_with_zero(|w| w.ccr().bits(value as u32)),
-          2 => tim5.ccr2.write_with_zero(|w| w.ccr().bits(value as u32)),
-          3 => tim5.ccr3.write_with_zero(|w| w.ccr().bits(value as u32)),
-          4 => tim5.ccr4.write_with_zero(|w| w.ccr().bits(value as u32)),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      8 => {
-        let tim8 = &peripheral_ptr.TIM8;
-        match channel {
-          1 => tim8.ccr1.write_with_zero(|w| w.ccr().bits(value as u16)),
-          2 => tim8.ccr2.write_with_zero(|w| w.ccr().bits(value as u16)),
-          3 => tim8.ccr3.write_with_zero(|w| w.ccr().bits(value as u16)),
-          4 => tim8.ccr4.write_with_zero(|w| w.ccr().bits(value as u16)),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      9 => {
-        let tim9 = &peripheral_ptr.TIM9;
-        match channel {
-          1 => tim9.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-          2 => tim9.ccr2.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      10 => {
-        let tim10 = &peripheral_ptr.TIM10;
-        match channel {
-          1 => tim10.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      11 => {
-        let tim11 = &peripheral_ptr.TIM11;
-        match channel {
-          1 => tim11.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      12 => {
-        let tim12 = &peripheral_ptr.TIM12;
-        match channel {
-          1 => tim12.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-          2 => tim12.ccr2.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      13 => {
-        let tim13 = &peripheral_ptr.TIM13;
-        match channel {
-          1 => tim13.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      14 => {
-        let tim14 = &peripheral_ptr.TIM14;
-        match channel {
-          1 => tim14.ccr1.write_with_zero(|w| unsafe {w.ccr().bits(value as u16)}),
-          _ => panic!("Channel {} is not a valid CC channel! | pwm_init(...)", channel)
-        };
-      },
-      _ => panic!("Timer {} is not a valid timer! | adc_init(...)", timer)
+fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
+  const PINS: [(char, u8); 31] = [A0, A1, A2, A3, A5, A8, A9, A10, A11, A15, B0, B1, B2, B3, B8, B9, B10, B11, B13, B14, B15, A6, A7, B4, B5, B6, B7, C6, C7, C8, C9];
+  const TIMERS: [u8; 31] = [2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 3, 3, 3, 3, 4, 4, 3, 3, 3, 3];
+  const CCCHS: [u8; 31] = [1, 2, 3, 4, 1, 1, 2, 3, 4, 1, 2, 3, 4, 2, 1, 2, 3, 4, 1, 2, 3, 1, 2, 1, 2, 1, 2, 1, 2, 3, 4];
+
+  if PINS.contains(&pin) == false {return Err(GpioError::NoPinForFunction);}
+  else {
+    let timer = TIMERS[PINS.iter().position(|&i| i == pin).unwrap()];
+    let ccch = CCCHS[PINS.iter().position(|&i| i == pin).unwrap()];
+    let af = match timer {
+      1 => 1,
+      2 => 1,
+      3 => 2,
+      4 => 2,
+      _  => {
+        rtt_target::rprintln!("Timer{} is not a valid timer! | check_pwm()", timer);
+        return Err(GpioError::ConfigurationError);
+      }
     };
+
+    return Ok((timer, ccch, af));
   }
 }
 
 
 // Standalone time functions ======================================================================
+static mut DELAY_COUNTER: (bool, u32) = (false, 0);
+static mut TIME_COUNTER: usize = 0;
+
 /// Lets the microcontroller wait for the specified time in milliseconds. In this time no other instructions can be run.
-/// # Examples
+///
+/// # Example
+///
 /// ```rust,no_run
 /// use rustuino::*;
 ///
@@ -706,8 +253,12 @@ pub fn delay(ms: u32) {
   tim6.cr1.modify(|_, w| w.cen().disabled());
 }
 
-/// Starts a timer that will continuously count the time in milliseconds. This is used for non-blocking delay-functions and timer-functions.
-/// # Examples
+/// Starts a timer that will continuously count the time in milliseconds.
+///
+/// This is used for non-blocking delays like [millis] and other time related applications.
+///
+/// # Example
+///
 /// ```rust,no_run
 /// use rustuino::*;
 ///
@@ -728,12 +279,9 @@ pub fn start_time() {
   let rcc = &peripheral_ptr.RCC;
   let tim7 = &peripheral_ptr.TIM7;
 
-  unsafe {
-    if TIMER_CONF[20] == false {TIMER_CONF[20] = true;}
-    else {
-      rtt_target::rprintln!("Millis Timer already configured! | start_time()");
-      return;
-    }
+  if rcc.apb1enr.read().tim7en().is_enabled() == true {
+    rtt_target::rprintln!("Millis Timer already configured! | start_time()");
+    return;
   }
 
   rcc.apb1enr.modify(|_, w| w.tim7en().enabled());
@@ -749,9 +297,10 @@ pub fn start_time() {
   tim7.cr1.modify(|_, w| w.cen().enabled());
 }
 
-/// Non-blocking delay function. Gives back the time in milliseconds since start_time() was
-/// invoked.
-/// # Examples
+/// Non-blocking delay function. Gives back the time in milliseconds since [start_time] was invoked.
+///
+/// # Example
+///
 /// ```rust,no_run
 /// use rustuino::*;
 ///
@@ -796,3 +345,4 @@ fn TIM6_DAC() {
 fn TIM7() {
   unsafe {TIME_COUNTER += 1;}
 }
+

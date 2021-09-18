@@ -11,7 +11,7 @@ pub fn enable_channel(pin: (char, u8)) -> Result<(), GpioError> {
 
   let (core, channel) = match check_channel(pin, true, true) {
     Ok(values) => values,
-    Err(err) => {return Err(GpioError::NoPinForFunction);}
+    Err(_) => {return Err(GpioError::NoPinForFunction);}
   };
 
   match core {
@@ -69,7 +69,7 @@ pub fn enable_channel(pin: (char, u8)) -> Result<(), GpioError> {
     },
     _ => {
       rtt_target::rprintln!("ADC{} is not a valid ADC peripheral! | enable_channel()", core);
-      return Err(GpioError::AdcConfigurationError);
+      return Err(GpioError::ConfigurationError);
     }
   };
 
@@ -108,7 +108,7 @@ pub fn adc_resolution(pin: (char, u8), res: u8) -> Result<(), GpioError> {
         },
         _ => {
           rtt_target::rprintln!("ADC{} is not a valid ADC peripheral! | adc_resolution()", target.0);
-          return Err(GpioError::AdcConfigurationError);
+          return Err(GpioError::ConfigurationError);
         }
       };
     },
@@ -161,7 +161,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
     },
     _ => {
       rtt_target::rprintln!("ADC{} is not a valid ADC peripheral! | analog_read()", target.0);
-      return Err(GpioError::AdcConfigurationError);
+      return Err(GpioError::ConfigurationError);
     }
   };
 
@@ -237,7 +237,7 @@ pub fn analog_write_noise(pin: (char, u8), level: u8) -> Result<(), GpioError> {
     dac.cr.modify(|_, w| {
       w.ten2().disabled();
       w.wave2().noise();
-      unsafe {w.tsel2().bits(0x011);}
+      w.tsel2().bits(0x011);
       w.mamp2().bits(lvl);
       w.ten2().enabled()
     });
@@ -275,7 +275,7 @@ pub fn analog_write_triangle(pin: (char, u8), level: u8) -> Result<(), GpioError
     dac.cr.modify(|_, w| {
       w.ten2().disabled();
       w.wave2().triangle();
-      unsafe {w.tsel2().bits(0x011);}
+      w.tsel2().bits(0x011);
       w.mamp2().bits(lvl);
       w.ten2().enabled()
     });
@@ -300,14 +300,14 @@ pub fn analog_wave_freq(freq: u32) {
 }
 
 fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), GpioError> {
-  const pins: [(char, u8); 16] = [A0, A1, A2, A3, A4, A5, A6, A7, B0, B1, C0, C1, C2, C3, C4, C5];
-  const cores: [u8; 16]        = [1,  1,  1,  1,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1];
-  const channels: [u8; 16]     = [0,  1,  2,  3,  1,  2,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15];
+  const PINS: [(char, u8); 16] = [A0, A1, A2, A3, A4, A5, A6, A7, B0, B1, C0, C1, C2, C3, C4, C5];
+  const CORES: [u8; 16]        = [1,  1,  1,  1,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1];
+  const CHANNELS: [u8; 16]     = [0,  1,  2,  3,  1,  2,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15];
 
-  if pins.contains(&pin) == false {return Err(GpioError::NoPinForFunction);}
+  if PINS.contains(&pin) == false {return Err(GpioError::NoPinForFunction);}
   else {
-    let core = cores[pins.iter().position(|&i| i == pin).unwrap()];
-    let channel = channels[pins.iter().position(|&i| i == pin).unwrap()];
+    let core = CORES[PINS.iter().position(|&i| i == pin).unwrap()];
+    let channel = CHANNELS[PINS.iter().position(|&i| i == pin).unwrap()];
 
     if dac == false && core == 0 {return Err(GpioError::NoPinForFunction);}
     else if adc == false && core != 0 {return Err(GpioError::NoPinForFunction);}

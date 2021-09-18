@@ -108,7 +108,7 @@ pub enum GpioError {
   InvalidAlternateFunction,
   NoPinForFunction,
   InvalidArguments,
-  AdcConfigurationError,
+  ConfigurationError,
   NotConfigured
 }
 
