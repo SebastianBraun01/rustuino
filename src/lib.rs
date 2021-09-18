@@ -7,7 +7,8 @@ pub use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 // Für benutzer
 pub use libm;
 pub use heapless::{Vec, String};
-pub use {include::pins::*, gpio::*, analog::*, time::*, uart::serial};
+pub use {analog::*, time::*, uart::serial};
+pub use gpio::{*, pins::*};
 pub use rtt_target::{rtt_init_print, rprint, rprintln};
 
 
