@@ -1,7 +1,8 @@
 //! This module contains everything that is related to timer based functions.
 
-use crate::gpio::pins::*;
-use crate::gpio::{GpioError, pin_mode, GpioMode, return_pinmode};
+use crate::include::pins::*;
+use crate::gpio::{pin_mode, GpioMode, return_pinmode};
+use crate::include::{GpioError, ProgError};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 
 
@@ -117,7 +118,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
-  if return_pinmode(pin) != GpioMode::AlternateFunction(af.into()) {
+  if return_pinmode(pin) != Ok(GpioMode::AlternateFunction(af.into())) {
     rtt_target::rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
     return Err(GpioError::WrongMode);
   }
@@ -191,7 +192,7 @@ fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
   const TIMERS: [u8; 31] = [2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 3, 3, 3, 3, 4, 4, 3, 3, 3, 3];
   const CCCHS: [u8; 31] = [1, 2, 3, 4, 1, 1, 2, 3, 4, 1, 2, 3, 4, 2, 1, 2, 3, 4, 1, 2, 3, 1, 2, 1, 2, 1, 2, 1, 2, 3, 4];
 
-  if PINS.contains(&pin) == false {return Err(GpioError::NoPinForFunction);}
+  if PINS.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
   else {
     let timer = TIMERS[PINS.iter().position(|&i| i == pin).unwrap()];
     let ccch = CCCHS[PINS.iter().position(|&i| i == pin).unwrap()];

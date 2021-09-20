@@ -1,79 +1,7 @@
 //! This module contains everything that is related to the digital IO functionality.
 
 use crate::analog::enable_channel;
-
-/// Pin aliases for function parameters.
-pub mod pins {
-  macro_rules! generate_pins {
-    ($([$block:literal, $pin:literal]),+) => {
-      use paste::paste;
-
-      paste!{
-        $(
-          pub const [<$block:upper $pin>]: (char, u8) = ($block, $pin);
-        )+
-      }
-    };
-  }
-
-  generate_pins![
-    ['a', 0],
-    ['a', 1],
-    ['a', 2],
-    ['a', 3],
-    ['a', 4],
-    ['a', 5],
-    ['a', 6],
-    ['a', 7],
-    ['a', 8],
-    ['a', 9],
-    ['a', 10],
-    ['a', 11],
-    ['a', 12],
-    ['a', 13],
-    ['a', 14],
-    ['a', 15],
-
-    ['b', 0],
-    ['b', 1],
-    ['b', 2],
-    ['b', 3],
-    ['b', 4],
-    ['b', 5],
-    ['b', 6],
-    ['b', 7],
-    ['b', 8],
-    ['b', 9],
-    ['b', 10],
-    ['b', 11],
-    ['b', 12],
-    ['b', 13],
-    ['b', 14],
-    ['b', 15],
-
-    ['c', 0],
-    ['c', 1],
-    ['c', 2],
-    ['c', 3],
-    ['c', 4],
-    ['c', 5],
-    ['c', 6],
-    ['c', 7],
-    ['c', 8],
-    ['c', 9],
-    ['c', 10],
-    ['c', 11],
-    ['c', 12],
-    ['c', 13],
-    ['c', 14],
-    ['c', 15],
-
-    ['d', 2],
-
-    ['h', 0],
-    ['h', 1]
-  ];
-}
+use crate::include::{GpioError, ProgError};
 
 // Represents available GPIO modes.
 #[derive(PartialEq, Eq)]
@@ -103,16 +31,6 @@ pub enum GpioBias {
   None, Pullup, Pulldown
 }
 
-pub enum GpioError {
-  WrongMode,
-  InvalidPin,
-  InvalidAlternateFunction,
-  NoPinForFunction,
-  InvalidArguments,
-  ConfigurationError,
-  NotConfigured
-}
-
 
 // Public Functions ===============================================================================
 pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
@@ -130,7 +48,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
         GpioMode::Input => gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
         GpioMode::Output => gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
         GpioMode::AlternateFunction(af) => {
-          if af > 15 {return Err(GpioError::InvalidAlternateFunction);}
+          if af > 15 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
           gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
           if pin.1 > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
           else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
@@ -148,7 +66,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
         GpioMode::Input => gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
         GpioMode::Output => gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
         GpioMode::AlternateFunction(af) => {
-          if af > 15 {return Err(GpioError::InvalidAlternateFunction);}
+          if af > 15 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
           gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
           if pin.1 > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
           else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
@@ -166,7 +84,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
         GpioMode::Input => gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
         GpioMode::Output => gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
         GpioMode::AlternateFunction(af) => {
-          if af > 15 {return Err(GpioError::InvalidAlternateFunction);}
+          if af > 15 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
           gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
           if pin.1 > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
           else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
@@ -184,7 +102,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
         GpioMode::Input => gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
         GpioMode::Output => gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
         GpioMode::AlternateFunction(af) => {
-          if af > 15 {return Err(GpioError::InvalidAlternateFunction);}
+          if af > 15 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
           gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
           if pin.1 > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
           else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
@@ -202,7 +120,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
         GpioMode::Input => gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
         GpioMode::Output => gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
         GpioMode::AlternateFunction(af) => {
-          if af > 15 {return Err(GpioError::InvalidAlternateFunction);}
+          if af > 15 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
           gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
           if pin.1 > 7 {gpioh.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
           else {gpioh.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
@@ -215,7 +133,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
     },
     _   => {
       rtt_target::rprintln!("P{}{} is not an available GPIO Pin! | pin_mode()", pin.0.to_uppercase(), pin.1);
-      return Err(GpioError::InvalidPin);
+      return Err(GpioError::Prog(ProgError::InvalidArguments));
     }
   };
 
@@ -276,7 +194,7 @@ pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
     },
     _   => {
       rtt_target::rprintln!("P{}{} is not an available GPIO Pin! | digital_write()", pin.0.to_uppercase(), pin.1);
-      return Err(GpioError::InvalidPin);
+      return Err(GpioError::Prog(ProgError::InvalidArguments));
     }
   };
 
@@ -337,7 +255,7 @@ pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
     },
     _   => {
       rtt_target::rprintln!("P{}{} is not an available GPIO Pin! | digital_read()", pin.0.to_uppercase(), pin.1);
-      return Err(GpioError::InvalidPin);
+      return Err(GpioError::Prog(ProgError::InvalidArguments));
     }
   };
 
@@ -394,7 +312,7 @@ pub fn set_bias(pin: (char, u8), bias: GpioBias) -> Result<(), GpioError> {
     },
     _   => {
       rtt_target::rprintln!("P{}{} is not an available GPIO Pin! | set_bias()", pin.0.to_uppercase(), pin.1);
-      return Err(GpioError::InvalidPin);
+      return Err(GpioError::Prog(ProgError::InvalidArguments));
     }
   };
 
@@ -455,7 +373,7 @@ pub fn set_speed(pin: (char, u8), speed: GpioSpeed) -> Result<(), GpioError> {
     },
     _   => {
       rtt_target::rprintln!("P{}{} is not an available GPIO Pin! | set_speed()", pin.0.to_uppercase(), pin.1);
-      return Err(GpioError::InvalidPin);
+      return Err(GpioError::Prog(ProgError::InvalidArguments));
     }
   };
 
@@ -496,14 +414,14 @@ pub fn open_drain(pin: (char, u8), op: bool) -> Result<(), GpioError> {
     },
     _   => {
       rtt_target::rprintln!("P{}{} is not an available GPIO Pin! | open_drain()", pin.0.to_uppercase(), pin.1);
-      return Err(GpioError::InvalidPin);
+      return Err(GpioError::Prog(ProgError::InvalidArguments));
     }
   };
 
   return Ok(());
 }
 
-pub fn return_pinmode(pin: (char, u8)) -> GpioMode {
+pub fn return_pinmode(pin: (char, u8)) -> Result<GpioMode, GpioError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
@@ -528,7 +446,10 @@ pub fn return_pinmode(pin: (char, u8)) -> GpioMode {
       let gpioh = &peripheral_ptr.GPIOH;
       gpioh.moder.read().bits()
     },
-    _   => panic!("P{}{} is not an available GPIO Pin! | return_pinmode()", pin.0.to_uppercase(), pin.1)
+    _   => {
+      rtt_target::rprintln!("P{}{} is not an available GPIO Pin! | return_pinmode()", pin.0.to_uppercase(), pin.1);
+      return Err(GpioError::Prog(ProgError::InvalidArguments));
+    }
   };
 
   let mut af = match pin.0 {
@@ -557,7 +478,10 @@ pub fn return_pinmode(pin: (char, u8)) -> GpioMode {
       if pin.1 > 7 {gpioh.afrh.read().bits()}
       else {gpioh.afrl.read().bits()}
     },
-    _   => panic!("P{}{} is not an available GPIO Pin! | return_pinmode()", pin.0.to_uppercase(), pin.1)
+    _   => {
+      rtt_target::rprintln!("P{}{} is not an available GPIO Pin! | return_pinmode()", pin.0.to_uppercase(), pin.1);
+      return Err(GpioError::Prog(ProgError::InvalidArguments));
+    }
   };
 
   bits = (bits & (3 << (2 * pin.1))) >> pin.1;
@@ -566,11 +490,14 @@ pub fn return_pinmode(pin: (char, u8)) -> GpioMode {
   else {af = (af & (15 << (4 * pin.1))) >> (4 * pin.1)}
 
   match bits {
-    0 => return GpioMode::Input,
-    1 => return GpioMode::Output,
-    2 => return GpioMode::AlternateFunction(af),
-    3 => return GpioMode::Analog,
-    _ => panic!("Not a possible GPIO mode! | return_pinmode()")
+    0 => return Ok(GpioMode::Input),
+    1 => return Ok(GpioMode::Output),
+    2 => return Ok(GpioMode::AlternateFunction(af)),
+    3 => return Ok(GpioMode::Analog),
+    _   => {
+      rtt_target::rprintln!("Not a possible GPIO mode! | return_pinmode()");
+      return Err(GpioError::ConfigurationError);
+    }
   };
 }
 
@@ -579,7 +506,7 @@ pub fn return_pinmode(pin: (char, u8)) -> GpioMode {
 fn check_pin(pin: (char, u8)) -> Result<(), GpioError> {
   if pin.1 > 15 || (pin.1 != 2 && pin.0 == 'd') || ((pin.1 != 0 && pin.0 == 'd') && (pin.1 != 1 && pin.0 == 'd')) {
     rtt_target::rprintln!("P{}{} is not an available GPIO Pin!", pin.0.to_uppercase(), pin.1);
-    return Err(GpioError::InvalidPin);
+    return Err(GpioError::Prog(ProgError::InvalidArguments));
   }
   else {return Ok(());}
 }

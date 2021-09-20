@@ -1,7 +1,8 @@
 //! This module contains everything that is related to the analog IO functionality.
 
-use crate::gpio::pins::*;
-use crate::gpio::{GpioError, GpioMode, return_pinmode};
+use crate::include::pins::*;
+use crate::gpio::{GpioMode, return_pinmode};
+use crate::include::{GpioError, ProgError};
 
 
 // Public Functions ===============================================================================
@@ -13,7 +14,10 @@ pub fn enable_channel(pin: (char, u8)) -> Result<(), GpioError> {
 
   let (core, channel) = match check_channel(pin, true, true) {
     Ok(values) => values,
-    Err(_) => {return Err(GpioError::NoPinForFunction);}
+    Err(error) => {
+      rtt_target::rprintln!("P{}{} is not available for analog functions! | enable_channel()", pin.0.to_uppercase(), pin.1);
+      return Err(error);
+    }
   };
 
   match core {
@@ -89,7 +93,7 @@ pub fn adc_resolution(pin: (char, u8), res: u8) -> Result<(), GpioError> {
     12 => 0,
     _ => {
       rtt_target::rprintln!("{} is not a available ADC resolution! | adc_resolution()", res);
-      return Err(GpioError::InvalidArguments);
+      return Err(GpioError::Prog(ProgError::InvalidArguments));
     }
   };
 
@@ -129,7 +133,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
     Err(error) => return Err(error)
   };
 
-  if return_pinmode(pin) != GpioMode::Analog {
+  if return_pinmode(pin) != Ok(GpioMode::Analog) {
     rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
     return Err(GpioError::WrongMode);
   }
@@ -139,7 +143,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
       let adc1 = &peripheral_ptr.ADC1;
       if adc1.cr2.read().adon().is_disabled() == true {
         rtt_target::rprintln!("ADC{} not configured! | analog_read()", target.0);
-        return Err(GpioError::NotConfigured);
+        return Err(GpioError::Prog(ProgError::NotConfigured));
       }
       adc1.sqr3.modify(|_, w| unsafe {w.sq1().bits(target.1)});
       adc1.cr2.write(|w| w.swstart().start());
@@ -150,7 +154,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
       let adc2 = &peripheral_ptr.ADC2;
       if adc2.cr2.read().adon().is_disabled() == true {
         rtt_target::rprintln!("ADC{} not configured! | analog_read()", target.0);
-        return Err(GpioError::NotConfigured);
+        return Err(GpioError::Prog(ProgError::NotConfigured));
       }      adc2.sqr3.modify(|_, w| unsafe {w.sq1().bits(target.1)});
       adc2.cr2.write(|w| w.swstart().start());
       while adc2.sr.read().eoc().is_not_complete() == true {}
@@ -160,7 +164,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
       let adc3 = &peripheral_ptr.ADC3;
       if adc3.cr2.read().adon().is_disabled() == true {
         rtt_target::rprintln!("ADC{} not configured! | analog_read()", target.0);
-        return Err(GpioError::NotConfigured);
+        return Err(GpioError::Prog(ProgError::NotConfigured));
       }      adc3.sqr3.modify(|_, w| unsafe {w.sq1().bits(target.1)});
       adc3.cr2.write(|w| w.swstart().start());
       while adc3.sr.read().eoc().is_not_complete() == true {}
@@ -191,7 +195,7 @@ pub fn analog_write(pin: (char, u8), value: u16) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
-  if return_pinmode(pin) != GpioMode::Analog {
+  if return_pinmode(pin) != Ok(GpioMode::Analog) {
     rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write()", pin.0.to_uppercase(), pin.1);
     return Err(GpioError::WrongMode);
   }
@@ -236,7 +240,7 @@ pub fn analog_write_noise(pin: (char, u8), level: u8) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
-  if return_pinmode(pin) != GpioMode::Analog {
+  if return_pinmode(pin) != Ok(GpioMode::Analog) {
     rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_noise()", pin.0.to_uppercase(), pin.1);
     return Err(GpioError::WrongMode);
   }
@@ -279,7 +283,7 @@ pub fn analog_write_triangle(pin: (char, u8), level: u8) -> Result<(), GpioError
     Err(error) => return Err(error)
   };
 
-  if return_pinmode(pin) != GpioMode::Analog {
+  if return_pinmode(pin) != Ok(GpioMode::Analog) {
     rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_triangle()", pin.0.to_uppercase(), pin.1);
     return Err(GpioError::WrongMode);
   }
@@ -328,13 +332,13 @@ fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), Gpio
   const CORES: [u8; 16]        = [1,  1,  1,  1,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1];
   const CHANNELS: [u8; 16]     = [0,  1,  2,  3,  1,  2,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15];
 
-  if PINS.contains(&pin) == false {return Err(GpioError::NoPinForFunction);}
+  if PINS.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
   else {
     let core = CORES[PINS.iter().position(|&i| i == pin).unwrap()];
     let channel = CHANNELS[PINS.iter().position(|&i| i == pin).unwrap()];
 
-    if dac == false && core == 0 {return Err(GpioError::NoPinForFunction);}
-    else if adc == false && core != 0 {return Err(GpioError::NoPinForFunction);}
+    if dac == false && core == 0 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
+    else if adc == false && core != 0 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
     else {return Ok((core, channel));}
   }
 }
