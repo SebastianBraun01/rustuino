@@ -1,7 +1,7 @@
 //! This module contains everything that is related to the analog IO functionality.
 
 use crate::gpio::pins::*;
-use crate::gpio::GpioError;
+use crate::gpio::{GpioError, GpioMode, return_pinmode};
 
 
 // Public Functions ===============================================================================
@@ -129,6 +129,11 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
     Err(error) => return Err(error)
   };
 
+  if return_pinmode(pin) != GpioMode::Analog {
+    rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
+    return Err(GpioError::WrongMode);
+  }
+
   let buffer = match target.0 {
     1 => {
       let adc1 = &peripheral_ptr.ADC1;
@@ -186,6 +191,11 @@ pub fn analog_write(pin: (char, u8), value: u16) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
+  if return_pinmode(pin) != GpioMode::Analog {
+    rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write()", pin.0.to_uppercase(), pin.1);
+    return Err(GpioError::WrongMode);
+  }
+
   if target.1 == 1 {
     if dac.cr.read().wave1().is_disabled() == false {
       dac.cr.modify(|_, w| {
@@ -226,6 +236,11 @@ pub fn analog_write_noise(pin: (char, u8), level: u8) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
+  if return_pinmode(pin) != GpioMode::Analog {
+    rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_noise()", pin.0.to_uppercase(), pin.1);
+    return Err(GpioError::WrongMode);
+  }
+
   if target.1 == 1 {
     dac.cr.modify(|_, w| {
       w.ten1().disabled();
@@ -263,6 +278,11 @@ pub fn analog_write_triangle(pin: (char, u8), level: u8) -> Result<(), GpioError
     Ok(p) => p,
     Err(error) => return Err(error)
   };
+
+  if return_pinmode(pin) != GpioMode::Analog {
+    rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_triangle()", pin.0.to_uppercase(), pin.1);
+    return Err(GpioError::WrongMode);
+  }
 
   if target.1 == 1 {
     dac.cr.modify(|_, w| {

@@ -1,7 +1,7 @@
 //! This module contains everything that is related to timer based functions.
 
 use crate::gpio::pins::*;
-use crate::gpio::{GpioError, pin_mode, GpioMode};
+use crate::gpio::{GpioError, pin_mode, GpioMode, return_pinmode};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 
 
@@ -112,10 +112,15 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
-  let (timer, ccch, _af) = match check_pwm(pin) {
+  let (timer, ccch, af) = match check_pwm(pin) {
     Ok(target) => target,
     Err(error) => return Err(error)
   };
+
+  if return_pinmode(pin) != GpioMode::AlternateFunction(af.into()) {
+    rtt_target::rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
+    return Err(GpioError::WrongMode);
+  }
 
   match timer {
     1 => {

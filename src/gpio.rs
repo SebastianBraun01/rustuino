@@ -76,6 +76,7 @@ pub mod pins {
 }
 
 // Represents available GPIO modes.
+#[derive(PartialEq, Eq)]
 pub enum GpioMode {
   Input,
   Output,
@@ -500,6 +501,77 @@ pub fn open_drain(pin: (char, u8), op: bool) -> Result<(), GpioError> {
   };
 
   return Ok(());
+}
+
+pub fn return_pinmode(pin: (char, u8)) -> GpioMode {
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+
+  let mut bits = match pin.0 {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      gpioa.moder.read().bits()
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      gpiob.moder.read().bits()
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      gpioc.moder.read().bits()
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      gpiod.moder.read().bits()
+    },
+    'h' => {
+      let gpioh = &peripheral_ptr.GPIOH;
+      gpioh.moder.read().bits()
+    },
+    _   => panic!("P{}{} is not an available GPIO Pin! | return_pinmode()", pin.0.to_uppercase(), pin.1)
+  };
+
+  let mut af = match pin.0 {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      if pin.1 > 7 {gpioa.afrh.read().bits()}
+      else {gpioa.afrl.read().bits()}
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      if pin.1 > 7 {gpiob.afrh.read().bits()}
+      else {gpiob.afrl.read().bits()}
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      if pin.1 > 7 {gpioc.afrh.read().bits()}
+      else {gpioc.afrl.read().bits()}
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      if pin.1 > 7 {gpiod.afrh.read().bits()}
+      else {gpiod.afrl.read().bits()}
+    },
+    'h' => {
+      let gpioh = &peripheral_ptr.GPIOH;
+      if pin.1 > 7 {gpioh.afrh.read().bits()}
+      else {gpioh.afrl.read().bits()}
+    },
+    _   => panic!("P{}{} is not an available GPIO Pin! | return_pinmode()", pin.0.to_uppercase(), pin.1)
+  };
+
+  bits = (bits & (3 << (2 * pin.1))) >> pin.1;
+  
+  if pin.1 > 7 {af = (af & (15 << (4 * (pin.1 - 8)))) >> (4 * (pin.1 - 8))}
+  else {af = (af & (15 << (4 * pin.1))) >> (4 * pin.1)}
+
+  match bits {
+    0 => return GpioMode::Input,
+    1 => return GpioMode::Output,
+    2 => return GpioMode::AlternateFunction(af),
+    3 => return GpioMode::Analog,
+    _ => panic!("Not a possible GPIO mode! | return_pinmode()")
+  };
 }
 
 
