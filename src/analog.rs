@@ -1,6 +1,6 @@
 //! This module contains everything that is related to the analog IO functionality.
 
-use crate::include::pins::*;
+use crate::include::{ADC_PINS, ADC_CORES, ADC_CHANNELS};
 use crate::gpio::{GpioMode, return_pinmode};
 use crate::include::{GpioError, ProgError};
 
@@ -328,14 +328,10 @@ pub fn analog_wave_freq(freq: u32) {
 
 // Private Functions ==============================================================================
 fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), GpioError> {
-  const PINS: [(char, u8); 16] = [A0, A1, A2, A3, A4, A5, A6, A7, B0, B1, C0, C1, C2, C3, C4, C5];
-  const CORES: [u8; 16]        = [1,  1,  1,  1,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1];
-  const CHANNELS: [u8; 16]     = [0,  1,  2,  3,  1,  2,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15];
-
-  if PINS.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
+  if ADC_PINS.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
   else {
-    let core = CORES[PINS.iter().position(|&i| i == pin).unwrap()];
-    let channel = CHANNELS[PINS.iter().position(|&i| i == pin).unwrap()];
+    let core = ADC_CORES[ADC_PINS.iter().position(|&i| i == pin).unwrap()];
+    let channel = ADC_CHANNELS[ADC_PINS.iter().position(|&i| i == pin).unwrap()];
 
     if dac == false && core == 0 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
     else if adc == false && core != 0 {return Err(GpioError::Prog(ProgError::InvalidArguments));}

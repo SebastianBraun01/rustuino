@@ -1,6 +1,6 @@
 //! This module contains everything that is related to timer based functions.
 
-use crate::include::pins::*;
+use crate::include::{PWM_PINS, PWM_TIMERS, PWM_CCCHS};
 use crate::gpio::{pin_mode, GpioMode, return_pinmode};
 use crate::include::{GpioError, ProgError};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
@@ -188,14 +188,10 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
 
 // Private PWM Functions ==========================================================================
 fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
-  const PINS: [(char, u8); 31] = [A0, A1, A2, A3, A5, A8, A9, A10, A11, A15, B0, B1, B2, B3, B8, B9, B10, B11, B13, B14, B15, A6, A7, B4, B5, B6, B7, C6, C7, C8, C9];
-  const TIMERS: [u8; 31] = [2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 3, 3, 3, 3, 4, 4, 3, 3, 3, 3];
-  const CCCHS: [u8; 31] = [1, 2, 3, 4, 1, 1, 2, 3, 4, 1, 2, 3, 4, 2, 1, 2, 3, 4, 1, 2, 3, 1, 2, 1, 2, 1, 2, 1, 2, 3, 4];
-
-  if PINS.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
+  if PWM_PINS.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
   else {
-    let timer = TIMERS[PINS.iter().position(|&i| i == pin).unwrap()];
-    let ccch = CCCHS[PINS.iter().position(|&i| i == pin).unwrap()];
+    let timer = PWM_TIMERS[PWM_PINS.iter().position(|&i| i == pin).unwrap()];
+    let ccch = PWM_CCCHS[PWM_PINS.iter().position(|&i| i == pin).unwrap()];
     let af = match timer {
       1 => 1,
       2 => 1,
