@@ -187,7 +187,7 @@ pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
       if value == true {gpioh.bsrr.write(|w| unsafe {w.bits(1 << pin.1)});}
       else {gpioh.bsrr.write(|w| unsafe {w.bits(1 << (pin.1 + 16))});}
     },
-    _   => panic!("P{}{} is not an available GPIO Pin! | pin_mode()", pin.0.to_uppercase(), pin.1)
+    _   => panic!("P{}{} is not an available GPIO Pin! | digital_write()", pin.0.to_uppercase(), pin.1)
   };
 
   return Ok(());
@@ -244,7 +244,7 @@ pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
         return Err(GpioError::WrongMode);
       }
     },
-    _   => panic!("P{}{} is not an available GPIO Pin! | pin_mode()", pin.0.to_uppercase(), pin.1)
+    _   => panic!("P{}{} is not an available GPIO Pin! | digital_read()", pin.0.to_uppercase(), pin.1)
   };
 
   if bits & (1 << pin.1) == (1 << pin.1) {return Ok(true);}
@@ -297,7 +297,7 @@ pub fn set_bias(pin: (char, u8), bias: GpioBias) -> Result<(), GpioError> {
         GpioBias::Pulldown => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))})
       };
     },
-    _   => panic!("P{}{} is not an available GPIO Pin! | pin_mode()", pin.0.to_uppercase(), pin.1)
+    _   => panic!("P{}{} is not an available GPIO Pin! | set_bias()", pin.0.to_uppercase(), pin.1)
   };
 
   return Ok(());
@@ -354,7 +354,7 @@ pub fn set_speed(pin: (char, u8), speed: GpioSpeed) -> Result<(), GpioError> {
         GpioSpeed::High => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.1)))})
       };
     },
-    _   => panic!("P{}{} is not an available GPIO Pin! | pin_mode()", pin.0.to_uppercase(), pin.1)
+    _   => panic!("P{}{} is not an available GPIO Pin! | set_speed()", pin.0.to_uppercase(), pin.1)
   };
 
   return Ok(());
@@ -391,7 +391,7 @@ pub fn open_drain(pin: (char, u8), op: bool) -> Result<(), GpioError> {
       if op == true {gpioh.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.1))});}
       else {gpioh.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.1))});}
     },
-    _   => panic!("P{}{} is not an available GPIO Pin! | pin_mode()", pin.0.to_uppercase(), pin.1)
+    _   => panic!("P{}{} is not an available GPIO Pin! | open_drain()", pin.0.to_uppercase(), pin.1)
   };
 
   return Ok(());
@@ -423,7 +423,7 @@ pub fn return_pinmode(pin: (char, u8)) -> Result<GpioMode, GpioError> {
       let gpioh = &peripheral_ptr.GPIOH;
       gpioh.moder.read().bits()
     },
-    _   => panic!("P{}{} is not an available GPIO Pin! | pin_mode()", pin.0.to_uppercase(), pin.1)
+    _   => panic!("P{}{} is not an available GPIO Pin! | return_pinmode()", pin.0.to_uppercase(), pin.1)
   };
 
   let mut af = match pin.0 {
@@ -452,7 +452,7 @@ pub fn return_pinmode(pin: (char, u8)) -> Result<GpioMode, GpioError> {
       if pin.1 > 7 {gpioh.afrh.read().bits()}
       else {gpioh.afrl.read().bits()}
     },
-    _   => panic!("P{}{} is not an available GPIO Pin! | pin_mode()", pin.0.to_uppercase(), pin.1)
+    _   => panic!("P{}{} is not an available GPIO Pin! | return_pinmode()", pin.0.to_uppercase(), pin.1)
   };
 
   bits = (bits & (3 << (2 * pin.1))) >> pin.1;
