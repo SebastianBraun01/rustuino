@@ -1,10 +1,13 @@
 //! This module contains everything that is related to timer based functions.
 
-use crate::include::{stm_peripherals, GpioError, ProgError, PWM_PINS, PWM_TIMERS, PWM_CCCHS};
+use crate::include::{stm_peripherals, GpioError, ProgError, PWM_PINS, TIMERS, CCCHS};
 use crate::gpio::{pin_mode, GpioMode, return_pinmode};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 use cortex_m::interrupt::{Mutex, free};
 use core::cell::Cell;
+
+static DELAY_COUNTER: Mutex<Cell<(u32, u32)>> = Mutex::new(Cell::new((0, 0)));
+static TIME_COUNTER: Mutex<Cell<usize>> = Mutex::new(Cell::new(0));
 
 
 // Public PWM Functions ===========================================================================
@@ -32,10 +35,7 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
         2 => tim1.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
         3 => tim1.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
         4 => tim1.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
-        _ => {
-          rtt_target::rprintln!("Channel{} is not a valid CC channel! | setup_pwm()", ccch);
-          return Err(GpioError::ConfigurationError);
-        }
+        _ => panic!("Channel{} is not a valid CC channel! | setup_pwm()", ccch)
       };
       tim1.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
       tim1.cr1.modify(|_, w| w.cen().enabled());
@@ -52,10 +52,7 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
         2 => tim2.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
         3 => tim2.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
         4 => tim2.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
-        _ => {
-          rtt_target::rprintln!("Channel{} is not a valid CC channel! | setup_pwm()", ccch);
-          return Err(GpioError::ConfigurationError);
-        }
+        _ => panic!("Channel{} is not a valid CC channel! | setup_pwm()", ccch)
       };
       tim2.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
       tim2.cr1.modify(|_, w| w.cen().enabled());
@@ -72,10 +69,7 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
         2 => tim3.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
         3 => tim3.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
         4 => tim3.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
-        _ => {
-          rtt_target::rprintln!("Channel{} is not a valid CC channel! | setup_pwm()", ccch);
-          return Err(GpioError::ConfigurationError);
-        }
+        _ => panic!("Channel{} is not a valid CC channel! | setup_pwm()", ccch)
       };
       tim3.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
       tim3.cr1.modify(|_, w| w.cen().enabled());
@@ -92,18 +86,12 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
         2 => tim4.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
         3 => tim4.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
         4 => tim4.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
-        _ => {
-          rtt_target::rprintln!("Channel{} is not a valid CC channel! | setup_pwm()", ccch);
-          return Err(GpioError::ConfigurationError);
-        }
+        _ => panic!("Channel{} is not a valid CC channel! | setup_pwm()", ccch)
       };
       tim4.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
       tim4.cr1.modify(|_, w| w.cen().enabled());
     },
-    _  => {
-      rtt_target::rprintln!("Timer{} is not a valid timer! | setup_pwm()", timer);
-      return Err(GpioError::ConfigurationError);
-    }
+    _  => panic!("Timer{} is not a valid timer! | setup_pwm()", timer)
   };
 
   return Ok(());
@@ -130,10 +118,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
         2 => tim1.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim1.ccr3.write(|w| w.ccr().bits(value.into())),
         4 => tim1.ccr4.write(|w| w.ccr().bits(value.into())),
-        _ => {
-          rtt_target::rprintln!("Channel{} is not a valid CC channel! | pwm_write()", ccch);
-          return Err(GpioError::ConfigurationError);
-        }
+        _ => panic!("Channel{} is not a valid CC channel! | pwm_write()", ccch)
       };
     },
     2 => {
@@ -143,10 +128,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
         2 => tim2.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim2.ccr3.write(|w| w.ccr().bits(value.into())),
         4 => tim2.ccr4.write(|w| w.ccr().bits(value.into())),
-        _ => {
-          rtt_target::rprintln!("Channel{} is not a valid CC channel! | pwm_write()", ccch);
-          return Err(GpioError::ConfigurationError);
-        }
+        _ => panic!("Channel{} is not a valid CC channel! | pwm_write()", ccch)
       };
     },
     3 => {
@@ -156,10 +138,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
         2 => tim3.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim3.ccr3.write(|w| w.ccr().bits(value.into())),
         4 => tim3.ccr4.write(|w| w.ccr().bits(value.into())),
-        _ => {
-          rtt_target::rprintln!("Channel{} is not a valid CC channel! | pwm_write()", ccch);
-          return Err(GpioError::ConfigurationError);
-        }
+        _ => panic!("Channel{} is not a valid CC channel! | pwm_write()", ccch)
       };
     },
     4 => {
@@ -169,16 +148,10 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
         2 => tim4.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim4.ccr3.write(|w| w.ccr().bits(value.into())),
         4 => tim4.ccr4.write(|w| w.ccr().bits(value.into())),
-        _ => {
-          rtt_target::rprintln!("Channel{} is not a valid CC channel! | pwm_write()", ccch);
-          return Err(GpioError::ConfigurationError);
-        }
+        _ => panic!("Channel{} is not a valid CC channel! | pwm_write()", ccch)
       };
     },
-    _ => {
-      rtt_target::rprintln!("Timer{} is not a valid timer! | pwm_write()", timer);
-      return Err(GpioError::ConfigurationError);
-    }
+    _ => panic!("Timer{} is not a valid timer! | pwm_write()", timer)
   };
 
   return Ok(());
@@ -189,17 +162,14 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
 fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
   if PWM_PINS.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
   else {
-    let timer = PWM_TIMERS[PWM_PINS.iter().position(|&i| i == pin).unwrap()];
-    let ccch = PWM_CCCHS[PWM_PINS.iter().position(|&i| i == pin).unwrap()];
+    let timer = TIMERS[PWM_PINS.iter().position(|&i| i == pin).unwrap()];
+    let ccch = CCCHS[PWM_PINS.iter().position(|&i| i == pin).unwrap()];
     let af = match timer {
       1 => 1,
       2 => 1,
       3 => 2,
       4 => 2,
-      _  => {
-        rtt_target::rprintln!("Timer{} is not a valid timer! | check_pwm()", timer);
-        return Err(GpioError::ConfigurationError);
-      }
+      _  => panic!("Timer{} is not a valid timer! | check_pwm()", timer)
     };
 
     return Ok((timer, ccch, af));
@@ -207,10 +177,7 @@ fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
 }
 
 
-// Standalone time functions ======================================================================
-static DELAY_COUNTER: Mutex<Cell<(u32, u32)>> = Mutex::new(Cell::new((0, 0)));
-static TIME_COUNTER: Mutex<Cell<usize>> = Mutex::new(Cell::new(0));
-
+// Public Time Functions ==========================================================================
 /// Lets the microcontroller wait for the specified time in milliseconds. In this time no other instructions can be run.
 ///
 /// # Example

@@ -1,6 +1,6 @@
 //! This module contains everything that is related to the analog IO functionality.
 
-use crate::include::{stm_peripherals, GpioError, ProgError, ADC_PINS, ADC_CORES, ADC_CHANNELS};
+use crate::include::{stm_peripherals, GpioError, ProgError, ADC_PINS, ADCS, CHANNELS};
 use crate::gpio::{GpioMode, return_pinmode};
 
 
@@ -71,10 +71,7 @@ pub fn enable_channel(pin: (char, u8)) -> Result<(), GpioError> {
         adc3.cr2.modify(|_, w| w.adon().enabled());
       }
     },
-    _ => {
-      rtt_target::rprintln!("ADC{} is not a valid ADC peripheral! | enable_channel()", core);
-      return Err(GpioError::ConfigurationError);
-    }
+    _ => panic!("ADC{} is not a valid ADC peripheral! | enable_channel()", core)
   };
 
   return Ok(());
@@ -109,10 +106,7 @@ pub fn adc_resolution(pin: (char, u8), res: u8) -> Result<(), GpioError> {
           let adc3 = &peripheral_ptr.ADC3;
           adc3.cr1.modify(|_, w| w.res().bits(enc_res));
         },
-        _ => {
-          rtt_target::rprintln!("ADC{} is not a valid ADC peripheral! | adc_resolution()", target.0);
-          return Err(GpioError::ConfigurationError);
-        }
+        _ => panic!("ADC{} is not a valid ADC peripheral! | adc_resolution()", target.0)
       };
     },
     Err(error) => return Err(error)
@@ -138,8 +132,8 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
     1 => {
       let adc1 = &peripheral_ptr.ADC1;
       if adc1.cr2.read().adon().is_disabled() == true {
-        rtt_target::rprintln!("ADC{} not configured! | analog_read()", target.0);
-        return Err(GpioError::Prog(ProgError::NotConfigured));
+        rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
+        return Err(GpioError::WrongMode);
       }
       adc1.sqr3.modify(|_, w| unsafe {w.sq1().bits(target.1)});
       adc1.cr2.write(|w| w.swstart().start());
@@ -149,9 +143,10 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
     2 => {
       let adc2 = &peripheral_ptr.ADC2;
       if adc2.cr2.read().adon().is_disabled() == true {
-        rtt_target::rprintln!("ADC{} not configured! | analog_read()", target.0);
-        return Err(GpioError::Prog(ProgError::NotConfigured));
-      }      adc2.sqr3.modify(|_, w| unsafe {w.sq1().bits(target.1)});
+        rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
+        return Err(GpioError::WrongMode);
+      }
+      adc2.sqr3.modify(|_, w| unsafe {w.sq1().bits(target.1)});
       adc2.cr2.write(|w| w.swstart().start());
       while adc2.sr.read().eoc().is_not_complete() == true {}
       adc2.dr.read().data().bits()
@@ -159,17 +154,15 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
     3 => {
       let adc3 = &peripheral_ptr.ADC3;
       if adc3.cr2.read().adon().is_disabled() == true {
-        rtt_target::rprintln!("ADC{} not configured! | analog_read()", target.0);
-        return Err(GpioError::Prog(ProgError::NotConfigured));
-      }      adc3.sqr3.modify(|_, w| unsafe {w.sq1().bits(target.1)});
+        rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
+        return Err(GpioError::WrongMode);
+      }
+      adc3.sqr3.modify(|_, w| unsafe {w.sq1().bits(target.1)});
       adc3.cr2.write(|w| w.swstart().start());
       while adc3.sr.read().eoc().is_not_complete() == true {}
       adc3.dr.read().data().bits()
     },
-    _ => {
-      rtt_target::rprintln!("ADC{} is not a valid ADC peripheral! | analog_read()", target.0);
-      return Err(GpioError::ConfigurationError);
-    }
+    _ => panic!("ADC{} is not a valid ADC peripheral! | analog_read()", target.0)
   };
 
   return Ok(buffer);
@@ -322,8 +315,8 @@ pub fn analog_wave_freq(freq: u32) {
 fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), GpioError> {
   if ADC_PINS.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
   else {
-    let core = ADC_CORES[ADC_PINS.iter().position(|&i| i == pin).unwrap()];
-    let channel = ADC_CHANNELS[ADC_PINS.iter().position(|&i| i == pin).unwrap()];
+    let core = ADCS[ADC_PINS.iter().position(|&i| i == pin).unwrap()];
+    let channel = CHANNELS[ADC_PINS.iter().position(|&i| i == pin).unwrap()];
 
     if dac == false && core == 0 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
     else if adc == false && core != 0 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
