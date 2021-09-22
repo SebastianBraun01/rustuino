@@ -1,15 +1,13 @@
 //! This module contains everything that is related to timer based functions.
 
-use crate::include::{PWM_PINS, PWM_TIMERS, PWM_CCCHS};
+use crate::include::{stm_peripherals, GpioError, ProgError, PWM_PINS, PWM_TIMERS, PWM_CCCHS};
 use crate::gpio::{pin_mode, GpioMode, return_pinmode};
-use crate::include::{GpioError, ProgError};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 
 
 // Public PWM Functions ===========================================================================
 pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
 
   let (timer, ccch, af) = match check_pwm(pin) {
@@ -110,8 +108,7 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
 }
 
 pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
 
   let (timer, ccch, af) = match check_pwm(pin) {
     Ok(target) => target,
@@ -229,8 +226,7 @@ static mut TIME_COUNTER: usize = 0;
 /// }
 /// ```
 pub fn delay(ms: u32) {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
   let tim6 = &peripheral_ptr.TIM6;
 
@@ -280,8 +276,7 @@ pub fn delay(ms: u32) {
 /// }
 /// ```
 pub fn start_time() {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
   let tim7 = &peripheral_ptr.TIM7;
 
@@ -322,8 +317,7 @@ pub fn start_time() {
 /// }
 /// ```
 pub fn millis() -> usize {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
   let tim7 = &peripheral_ptr.TIM6;
 
   let buffer: usize;
@@ -351,4 +345,3 @@ fn TIM6_DAC() {
 fn TIM7() {
   unsafe {TIME_COUNTER += 1;}
 }
-

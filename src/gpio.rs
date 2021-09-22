@@ -1,7 +1,7 @@
 //! This module contains everything that is related to the digital IO functionality.
 
 use crate::analog::enable_channel;
-use crate::include::{GpioError, ProgError};
+use crate::include::{stm_peripherals, GpioError, ProgError};
 
 // Represents available GPIO modes.
 #[derive(PartialEq, Eq)]
@@ -34,8 +34,7 @@ pub enum GpioBias {
 
 // Public Functions ===============================================================================
 pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
 
   if let Err(error) = check_pin(pin) {return Err(error);}
@@ -141,8 +140,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
 }
 
 pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
 
   if let Err(error) = check_pin(pin) {return Err(error);}
 
@@ -202,8 +200,7 @@ pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
 }
 
 pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
 
   if let Err(error) = check_pin(pin) {return Err(error);}
 
@@ -264,8 +261,7 @@ pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
 }
 
 pub fn set_bias(pin: (char, u8), bias: GpioBias) -> Result<(), GpioError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
 
   if let Err(error) = check_pin(pin) {return Err(error);}
 
@@ -320,8 +316,7 @@ pub fn set_bias(pin: (char, u8), bias: GpioBias) -> Result<(), GpioError> {
 }
 
 pub fn set_speed(pin: (char, u8), speed: GpioSpeed) -> Result<(), GpioError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
 
   if let Err(error) = check_pin(pin) {return Err(error);}
 
@@ -381,8 +376,7 @@ pub fn set_speed(pin: (char, u8), speed: GpioSpeed) -> Result<(), GpioError> {
 }
 
 pub fn open_drain(pin: (char, u8), op: bool) -> Result<(), GpioError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
 
   if let Err(error) = check_pin(pin) {return Err(error);}
 
@@ -422,8 +416,7 @@ pub fn open_drain(pin: (char, u8), op: bool) -> Result<(), GpioError> {
 }
 
 pub fn return_pinmode(pin: (char, u8)) -> Result<GpioMode, GpioError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let peripheral_ptr = stm_peripherals();
 
   let mut bits = match pin.0 {
     'a' => {
