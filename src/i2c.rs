@@ -35,6 +35,10 @@ impl<const N: usize> I2C<N> {
     match core {
       1 => {
         let i2c1 = &peripheral_ptr.I2C1;
+        if rcc.apb1enr.read().i2c1en().is_enabled() == true {
+          rtt_target::rprintln!("I2C{} is already configured! | I2C::new()", core);
+          return Err(I2cError::ConfigurationError);
+        }
         rcc.apb1enr.modify(|_, w| w.i2c1en().enabled());
         i2c1.cr2.modify(|_, w| unsafe {w.freq().bits(BUS_FREQ as u8)});
         i2c1.ccr.modify(|_, w| unsafe {w.ccr().bits(ccr_t as u16)});
@@ -47,6 +51,10 @@ impl<const N: usize> I2C<N> {
       },
       2 => {
         let i2c2 = &peripheral_ptr.I2C2;
+        if rcc.apb1enr.read().i2c2en().is_enabled() == true {
+          rtt_target::rprintln!("I2C{} is already configured! | I2C::new()", core);
+          return Err(I2cError::ConfigurationError);
+        }
         rcc.apb1enr.modify(|_, w| w.i2c2en().enabled());
         i2c2.cr2.modify(|_, w| unsafe {w.freq().bits(BUS_FREQ as u8)});
         i2c2.ccr.modify(|_, w| unsafe {w.ccr().bits(ccr_t as u16)});
@@ -59,6 +67,10 @@ impl<const N: usize> I2C<N> {
       },
       3 => {
         let i2c3 = &peripheral_ptr.I2C3;
+        if rcc.apb1enr.read().i2c3en().is_enabled() == true {
+          rtt_target::rprintln!("I2C{} is already configured! | I2C::new()", core);
+          return Err(I2cError::ConfigurationError);
+        }
         rcc.apb1enr.modify(|_, w| w.i2c3en().enabled());
         i2c3.cr2.modify(|_, w| unsafe {w.freq().bits(BUS_FREQ as u8)});
         i2c3.ccr.modify(|_, w| unsafe {w.ccr().bits(ccr_t as u16)});
@@ -79,6 +91,42 @@ impl<const N: usize> I2C<N> {
       tx_addr: 0,
       transmitting: false
     });
+  }
+
+  pub fn end(self) {
+    let peripheral_ptr = stm_peripherals();
+    let rcc = &peripheral_ptr.RCC;
+
+    match self.core {
+      1 => {
+        let i2c1 = &peripheral_ptr.I2C1;
+        rcc.apb1enr.modify(|_, w| w.i2c1en().disabled());
+        i2c1.cr1.reset();
+        i2c1.cr2.reset();
+        i2c1.ccr.reset();
+        i2c1.trise.reset();
+        i2c1.oar1.reset(); 
+      },
+      2 => {
+        let i2c2 = &peripheral_ptr.I2C2;
+        rcc.apb1enr.modify(|_, w| w.i2c2en().disabled());
+        i2c2.cr1.reset();
+        i2c2.cr2.reset();
+        i2c2.ccr.reset();
+        i2c2.trise.reset();
+        i2c2.oar1.reset(); 
+      },
+      3 => {
+        let i2c3 = &peripheral_ptr.I2C3;
+        rcc.apb1enr.modify(|_, w| w.i2c3en().disabled());
+        i2c3.cr1.reset();
+        i2c3.cr2.reset();
+        i2c3.ccr.reset();
+        i2c3.trise.reset();
+        i2c3.oar1.reset(); 
+      },
+      _ => panic!("I2C{} is not a valid core! | I2C::new()", self.core)
+    };
   }
 
   pub fn begin_transmission(&mut self, addr: u8) {
