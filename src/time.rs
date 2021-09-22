@@ -3,6 +3,8 @@
 use crate::include::{stm_peripherals, GpioError, ProgError, PWM_PINS, PWM_TIMERS, PWM_CCCHS};
 use crate::gpio::{pin_mode, GpioMode, return_pinmode};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
+use cortex_m::interrupt::{Mutex, free};
+use core::cell::Cell;
 
 
 // Public PWM Functions ===========================================================================
@@ -206,8 +208,8 @@ fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
 
 
 // Standalone time functions ======================================================================
-static mut DELAY_COUNTER: (bool, u32) = (false, 0);
-static mut TIME_COUNTER: usize = 0;
+static DELAY_COUNTER: Mutex<Cell<(u32, u32)>> = Mutex::new(Cell::new((0, 0)));
+static TIME_COUNTER: Mutex<Cell<usize>> = Mutex::new(Cell::new(0));
 
 /// Lets the microcontroller wait for the specified time in milliseconds. In this time no other instructions can be run.
 ///
@@ -241,18 +243,11 @@ pub fn delay(ms: u32) {
     tim6.psc.write(|w| w.psc().bits(16));
     tim6.arr.write(|w| w.arr().bits(1000));
     tim6.egr.write(|w| w.ug().update());
-    tim6.cr1.modify(|_, w| w.cen().enabled());
-  }
-  else {tim6.cr1.modify(|_, w| w.cen().enabled());}
-
-  unsafe {
-    DELAY_COUNTER.1 = 0;
-    DELAY_COUNTER.0 = true;
-    while DELAY_COUNTER.1 < ms {}
-    DELAY_COUNTER.0 = false;
   }
 
-  tim6.cr1.modify(|_, w| w.cen().disabled());
+  free(|cs| DELAY_COUNTER.borrow(cs).set((ms, 0)));
+  tim6.cr1.modify(|_, w| w.cen().enabled());
+  while tim6.cr1.read().cen().bit_is_set() == true {}
 }
 
 /// Starts a timer that will continuously count the time in milliseconds.
@@ -323,7 +318,7 @@ pub fn millis() -> usize {
   let buffer: usize;
 
   tim7.cr1.modify(|_, w| w.cen().disabled());
-  unsafe {buffer = TIME_COUNTER;}
+  buffer = free(|cs| TIME_COUNTER.borrow(cs).get());
   tim7.cr1.modify(|_, w| w.cen().enabled());
 
   return buffer;
@@ -334,14 +329,23 @@ pub fn millis() -> usize {
 #[allow(non_snake_case)]
 #[interrupt]
 fn TIM6_DAC() {
-  unsafe {
-    if DELAY_COUNTER.0 == true {DELAY_COUNTER.1 += 1;}
-    rtt_target::rprintln!("Delay-counter: {}", DELAY_COUNTER.1);
-  }
+  free(|cs| {
+    let mut buffer = DELAY_COUNTER.borrow(cs).get();
+    buffer.1 += 1;
+    if buffer.0 >= buffer.1 {
+      let tim6 = stm_peripherals().TIM6;
+      tim6.cr1.modify(|_, w| w.cen().disabled());
+    }
+    DELAY_COUNTER.borrow(cs).set(buffer);
+  });
 }
 
 #[allow(non_snake_case)]
 #[interrupt]
 fn TIM7() {
-  unsafe {TIME_COUNTER += 1;}
+  free(|cs| {
+    let mut buffer = TIME_COUNTER.borrow(cs).get();
+    buffer += 1;
+    TIME_COUNTER.borrow(cs).set(buffer);
+  });
 }
