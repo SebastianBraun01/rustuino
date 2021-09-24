@@ -1,4 +1,4 @@
-use crate::include::{stm_peripherals, I2cError, ProgError, SCL_PINS, SDA_PINS, I2C_CORES};
+use crate::include::{stm_peripherals, I2cError, ProgError, I2C_MAP};
 use crate::gpio::{pin_mode, set_bias, GpioMode::AlternateFunction, GpioBias::Pullup};
 use heapless::Vec;
 
@@ -20,7 +20,7 @@ impl<const N: usize> I2C<N> {
   
     let (ccr_t, rise_t) = calc_i2c_freq(I2C_FREQ);
 
-    if SCL_PINS.iter().zip(SDA_PINS.iter()).zip(I2C_CORES.iter()).any(|i| i == ((&scl_pin, &sda_pin), &core)) == false {
+    if I2C_MAP.scl_pins.iter().zip(I2C_MAP.sda_pins.iter()).zip(I2C_MAP.cores.iter()).any(|i| i == ((&scl_pin, &sda_pin), &core)) == false {
       return Err(I2cError::Prog(ProgError::InvalidArguments));
     }
   

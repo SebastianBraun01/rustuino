@@ -1,6 +1,6 @@
 //! This module contains everything that is related to timer based functions.
 
-use crate::include::{stm_peripherals, GpioError, ProgError, PWM_PINS, TIMERS, CCCHS};
+use crate::include::{stm_peripherals, GpioError, ProgError, PWM_MAP};
 use crate::gpio::{pin_mode, GpioMode::AlternateFunction, return_pinmode};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 use cortex_m::interrupt::{Mutex, free};
@@ -159,10 +159,10 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
 
 // Private PWM Functions ==========================================================================
 fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
-  if PWM_PINS.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
+  if PWM_MAP.pins.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
   else {
-    let timer = TIMERS[PWM_PINS.iter().position(|&i| i == pin).unwrap()];
-    let ccch = CCCHS[PWM_PINS.iter().position(|&i| i == pin).unwrap()];
+    let timer = PWM_MAP.timers[PWM_MAP.pins.iter().position(|&i| i == pin).unwrap()];
+    let ccch = PWM_MAP.ccchs[PWM_MAP.pins.iter().position(|&i| i == pin).unwrap()];
     let af = match timer {
       1 => 1,
       2 => 1,

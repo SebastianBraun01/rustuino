@@ -1,6 +1,6 @@
 //! This module contains everything that is related to the analog IO functionality.
 
-use crate::include::{stm_peripherals, GpioError, ProgError, ADC_PINS, ADCS, CHANNELS};
+use crate::include::{stm_peripherals, GpioError, ProgError, ADC_MAP};
 use crate::gpio::{GpioMode::Analog, return_pinmode};
 
 
@@ -313,10 +313,10 @@ pub fn analog_wave_freq(freq: u32) {
 
 // Private Functions ==============================================================================
 fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), GpioError> {
-  if ADC_PINS.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
+  if ADC_MAP.pins.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
   else {
-    let core = ADCS[ADC_PINS.iter().position(|&i| i == pin).unwrap()];
-    let channel = CHANNELS[ADC_PINS.iter().position(|&i| i == pin).unwrap()];
+    let core = ADC_MAP.adcs[ADC_MAP.pins.iter().position(|&i| i == pin).unwrap()];
+    let channel = ADC_MAP.channels[ADC_MAP.pins.iter().position(|&i| i == pin).unwrap()];
 
     if dac == false && core == 0 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
     else if adc == false && core != 0 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
