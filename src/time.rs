@@ -1,13 +1,12 @@
 //! This module contains everything that is related to timer based functions.
 
 use crate::include::{stm_peripherals, GpioError, ProgError, PWM_PINS, TIMERS, CCCHS};
-use crate::gpio::{pin_mode, GpioMode, return_pinmode};
+use crate::gpio::{pin_mode, GpioMode::AlternateFunction, return_pinmode};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 use cortex_m::interrupt::{Mutex, free};
-use core::cell::Cell;
+use core::cell::RefCell;
 
-static DELAY_COUNTER: Mutex<Cell<(u32, u32)>> = Mutex::new(Cell::new((0, 0)));
-static TIME_COUNTER: Mutex<Cell<usize>> = Mutex::new(Cell::new(0));
+static TIME_COUNTER: Mutex<RefCell<usize>> = Mutex::new(RefCell::new(0));
 
 
 // Public PWM Functions ===========================================================================
@@ -20,7 +19,7 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
     Err(error) => return Err(error)
   };
 
-  if let Err(error) = pin_mode(pin, GpioMode::AlternateFunction(af.into())) {return Err(error);}
+  if let Err(error) = pin_mode(pin, AlternateFunction(af.into())) {return Err(error);}
 
   match timer {
     1 => {
@@ -105,7 +104,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
-  if return_pinmode(pin) != Ok(GpioMode::AlternateFunction(af.into())) {
+  if return_pinmode(pin) != Ok(AlternateFunction(af.into())) {
     rtt_target::rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
     return Err(GpioError::WrongMode);
   }
@@ -194,25 +193,24 @@ fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
 ///   delay(1000);
 /// }
 /// ```
-pub fn delay(ms: u32) {
+pub fn delay(ms: u16) {
   let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
   let tim6 = &peripheral_ptr.TIM6;
 
   if rcc.apb1enr.read().tim6en().is_disabled() == true {
     rcc.apb1enr.modify(|_, w| w.tim6en().enabled());
-    tim6.cr1.modify(|_, w| w.arpe().enabled());
-
-    tim6.dier.modify(|_, w| w.uie().enabled());
-    unsafe {NVIC::unmask(Interrupt::TIM6_DAC);}
+    tim6.cr1.modify(|_, w| {
+      w.arpe().enabled();
+      w.opm().set_bit()
+    });
 
     // 16MHz -> 1MHz : 1000 = 1kHz -> 1ms
-    tim6.psc.write(|w| w.psc().bits(16));
-    tim6.arr.write(|w| w.arr().bits(1000));
-    tim6.egr.write(|w| w.ug().update());
+    tim6.psc.write(|w| w.psc().bits(16000));
   }
 
-  free(|cs| DELAY_COUNTER.borrow(cs).set((ms, 0)));
+  tim6.arr.write(|w| w.arr().bits(ms));
+  tim6.egr.write(|w| w.ug().update());
   tim6.cr1.modify(|_, w| w.cen().enabled());
   while tim6.cr1.read().cen().bit_is_set() == true {}
 }
@@ -285,7 +283,7 @@ pub fn millis() -> usize {
   let buffer: usize;
 
   tim7.cr1.modify(|_, w| w.cen().disabled());
-  buffer = free(|cs| TIME_COUNTER.borrow(cs).get());
+  buffer = free(|cs| *TIME_COUNTER.borrow(cs).borrow());
   tim7.cr1.modify(|_, w| w.cen().enabled());
 
   return buffer;
@@ -295,24 +293,6 @@ pub fn millis() -> usize {
 // Interrupts =====================================================================================
 #[allow(non_snake_case)]
 #[interrupt]
-fn TIM6_DAC() {
-  free(|cs| {
-    let mut buffer = DELAY_COUNTER.borrow(cs).get();
-    buffer.1 += 1;
-    if buffer.0 >= buffer.1 {
-      let tim6 = stm_peripherals().TIM6;
-      tim6.cr1.modify(|_, w| w.cen().disabled());
-    }
-    DELAY_COUNTER.borrow(cs).set(buffer);
-  });
-}
-
-#[allow(non_snake_case)]
-#[interrupt]
 fn TIM7() {
-  free(|cs| {
-    let mut buffer = TIME_COUNTER.borrow(cs).get();
-    buffer += 1;
-    TIME_COUNTER.borrow(cs).set(buffer);
-  });
+  free(|cs| TIME_COUNTER.borrow(cs).replace_with(|&mut i| i + 1));
 }
