@@ -1,5 +1,5 @@
 use crate::include::{stm_peripherals, I2cError, ProgError, SCL_PINS, SDA_PINS, I2C_CORES};
-use crate::gpio::{pin_mode, set_bias, GpioMode, GpioBias};
+use crate::gpio::{pin_mode, set_bias, GpioMode::AlternateFunction, GpioBias::Pullup};
 use heapless::Vec;
 
 const BUS_FREQ: u32 = 16000000;
@@ -24,12 +24,12 @@ impl<const N: usize> I2C<N> {
       return Err(I2cError::Prog(ProgError::InvalidArguments));
     }
   
-    if let Err(_) = pin_mode(scl_pin, GpioMode::AlternateFunction(4)) {return Err(I2cError::ConfigurationError);}
-    if let Err(_) = pin_mode(sda_pin, GpioMode::AlternateFunction(4)) {return Err(I2cError::ConfigurationError);}
+    if let Err(_) = pin_mode(scl_pin, AlternateFunction(4)) {return Err(I2cError::ConfigurationError);}
+    if let Err(_) = pin_mode(sda_pin, AlternateFunction(4)) {return Err(I2cError::ConfigurationError);}
 
     if pullup == true {
-      if let Err(_) = set_bias(scl_pin, GpioBias::Pullup) {return Err(I2cError::ConfigurationError);}
-      if let Err(_) = set_bias(sda_pin, GpioBias::Pullup) {return Err(I2cError::ConfigurationError);}
+      if let Err(_) = set_bias(scl_pin, Pullup) {return Err(I2cError::ConfigurationError);}
+      if let Err(_) = set_bias(sda_pin, Pullup) {return Err(I2cError::ConfigurationError);}
     }
     
     match core {
