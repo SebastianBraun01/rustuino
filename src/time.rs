@@ -159,7 +159,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
 
 // Private PWM Functions ==========================================================================
 fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
-  if PWM_MAP.pins.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
+  if PWM_MAP.pins.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidConfiguration));}
   else {
     let timer = PWM_MAP.timers[PWM_MAP.pins.iter().position(|&i| i == pin).unwrap()];
     let ccch = PWM_MAP.ccchs[PWM_MAP.pins.iter().position(|&i| i == pin).unwrap()];

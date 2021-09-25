@@ -87,7 +87,7 @@ pub fn adc_resolution(pin: (char, u8), res: u8) -> Result<(), GpioError> {
     12 => 0,
     _ => {
       rtt_target::rprintln!("{} is not a available ADC resolution! | adc_resolution()", res);
-      return Err(GpioError::Prog(ProgError::InvalidArguments));
+      return Err(GpioError::Prog(ProgError::InvalidConfiguration));
     }
   };
 
@@ -313,13 +313,13 @@ pub fn analog_wave_freq(freq: u32) {
 
 // Private Functions ==============================================================================
 fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), GpioError> {
-  if ADC_MAP.pins.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidArguments));}
+  if ADC_MAP.pins.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidConfiguration));}
   else {
     let core = ADC_MAP.adcs[ADC_MAP.pins.iter().position(|&i| i == pin).unwrap()];
     let channel = ADC_MAP.channels[ADC_MAP.pins.iter().position(|&i| i == pin).unwrap()];
 
-    if dac == false && core == 0 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
-    else if adc == false && core != 0 {return Err(GpioError::Prog(ProgError::InvalidArguments));}
+    if dac == false && core == 0 {return Err(GpioError::Prog(ProgError::InvalidConfiguration));}
+    else if adc == false && core != 0 {return Err(GpioError::Prog(ProgError::InvalidConfiguration));}
     else {return Ok((core, channel));}
   }
 }
