@@ -1,6 +1,7 @@
 //! This module contains everything that is related to the digital IO functionality.
 
 use crate::analog::enable_channel;
+use crate::time::setup_pwm;
 use crate::include::{stm_peripherals, GpioError, ProgError};
 
 // Represents available GPIO modes.
@@ -9,7 +10,8 @@ pub enum GpioMode {
   Input,
   Output,
   AlternateFunction(u32),
-  Analog
+  Analog,
+  PWM
 }
 
 /// Represents the options to configure the GPIO speed of a pin.
@@ -56,6 +58,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
           gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
           if let Err(error) = enable_channel(pin) {return Err(error);}
         }
+        GpioMode::PWM => setup_pwm(pin).unwrap()
       };
     },
     'b' => {
@@ -74,6 +77,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
           gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
           if let Err(error) = enable_channel(pin) {return Err(error);}
         }
+        GpioMode::PWM => setup_pwm(pin).unwrap()
       };
     },
     'c' => {
@@ -92,6 +96,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
           gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
           if let Err(error) = enable_channel(pin) {return Err(error);}
         }
+        GpioMode::PWM => setup_pwm(pin).unwrap()
       };
     },
     'd' => {
@@ -110,6 +115,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
           gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
           if let Err(error) = enable_channel(pin) {return Err(error);}
         }
+        GpioMode::PWM => setup_pwm(pin).unwrap()
       };
     },
     'h' => {
@@ -128,6 +134,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
           gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
           if let Err(error) = enable_channel(pin) {return Err(error);}
         }
+        GpioMode::PWM => setup_pwm(pin).unwrap()
       };
     },
     _   => panic!("P{}{} is not an available GPIO Pin! | pin_mode()", pin.0.to_uppercase(), pin.1)
