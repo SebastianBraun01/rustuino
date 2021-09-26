@@ -48,7 +48,7 @@ pub struct SPI {
 }
 
 impl SPI {
-  pub fn new(core: u8, sck: (char, u8), miso: (char, u8), mosi: (char, u8)) -> Result<SPI, SpiError> {
+  pub fn new(core: u8, sck: (char, u8), miso: (char, u8), mosi: (char, u8)) -> Result<Self, SpiError> {
     let peripheral_ptr = stm_peripherals();
     let rcc = &peripheral_ptr.RCC;
 
@@ -110,7 +110,7 @@ impl SPI {
       _ => panic!("SPI{} is not a valid core! | SPI::new()", core)
     };
 
-    return Ok(SPI {
+    return Ok(Self {
       core,
       mode: SpiMode::FULL_DUPLEX,
       com_pins: [sck, miso, mosi],

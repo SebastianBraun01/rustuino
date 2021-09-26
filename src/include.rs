@@ -71,10 +71,20 @@ pub mod pins {
   ];
 }
 
-use pins::*;
+
+// Register structs ===============================================================================
+pub fn core_peripherals() -> cortex_m::Peripherals {
+  unsafe {return cortex_m::Peripherals::steal();}
+}
+
+pub fn stm_peripherals() -> stm32f4::stm32f446::Peripherals {
+  unsafe {return stm32f4::stm32f446::Peripherals::steal();}
+}
 
 
 // Pin maps =======================================================================================
+use pins::*;
+
 pub struct ADCMap {
   pub pins: [(char, u8); 16],
   pub adcs: [u8; 16],
@@ -146,14 +156,6 @@ pub const SPI_DATA: SPIData = SPIData {
   s2_mosi: [B15, C3],
   s3_mosi: [B5, C12]
 };
-
-pub fn core_peripherals() -> cortex_m::Peripherals {
-  unsafe {return cortex_m::Peripherals::steal();}
-}
-
-pub fn stm_peripherals() -> stm32f4::stm32f446::Peripherals {
-  unsafe {return stm32f4::stm32f446::Peripherals::steal();}
-}
 
 
 // Embedded Errors ================================================================================

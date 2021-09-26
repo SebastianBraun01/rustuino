@@ -14,7 +14,7 @@ pub struct I2C<const N: usize> {
 }
 
 impl<const N: usize> I2C<N> {
-  pub fn new(core: u8, scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool, addr: u8) -> Result<I2C<N>, I2cError> {
+  pub fn new(core: u8, scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool, addr: u8) -> Result<Self, I2cError> {
     let peripheral_ptr = stm_peripherals();
     let rcc = &peripheral_ptr.RCC;
   
@@ -84,7 +84,7 @@ impl<const N: usize> I2C<N> {
       _ => panic!("I2C{} is not a valid core! | I2C::new()", core)
     };
 
-    return Ok(I2C {
+    return Ok(Self {
       core,
       tx_buffer: Vec::new(),
       rx_buffer: Vec::new(),
