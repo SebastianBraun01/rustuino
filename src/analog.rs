@@ -123,10 +123,13 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
     Err(error) => return Err(error)
   };
 
-  if let Ok(Analog) = return_pinmode(pin) {
-    rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
-    return Err(GpioError::WrongMode);
-  }
+  match return_pinmode(pin) {
+    Ok(Analog) => (),
+    _ => {
+      rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
+      return Err(GpioError::WrongMode);
+    }
+  };
 
   let buffer = match target.0 {
     1 => {
@@ -183,10 +186,13 @@ pub fn analog_write(pin: (char, u8), value: u16) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
-  if let Ok(Analog) = return_pinmode(pin) {
-    rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write()", pin.0.to_uppercase(), pin.1);
-    return Err(GpioError::WrongMode);
-  }
+  match return_pinmode(pin) {
+    Ok(Analog) => (),
+    _ => {
+      rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write()", pin.0.to_uppercase(), pin.1);
+      return Err(GpioError::WrongMode);
+    }
+  };
 
   if target.1 == 1 {
     if dac.cr.read().wave1().is_disabled() == false {
@@ -227,10 +233,13 @@ pub fn analog_write_noise(pin: (char, u8), level: u8) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
-  if let Ok(Analog) = return_pinmode(pin) {
-    rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_noise()", pin.0.to_uppercase(), pin.1);
-    return Err(GpioError::WrongMode);
-  }
+  match return_pinmode(pin) {
+    Ok(Analog) => (),
+    _ => {
+      rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_noise()", pin.0.to_uppercase(), pin.1);
+      return Err(GpioError::WrongMode);
+    }
+  };
 
   if target.1 == 1 {
     dac.cr.modify(|_, w| {
@@ -269,10 +278,13 @@ pub fn analog_write_triangle(pin: (char, u8), level: u8) -> Result<(), GpioError
     Err(error) => return Err(error)
   };
 
-  if let Ok(Analog) = return_pinmode(pin) {
-    rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_triangle()", pin.0.to_uppercase(), pin.1);
-    return Err(GpioError::WrongMode);
-  }
+  match return_pinmode(pin) {
+    Ok(Analog) => (),
+    _ => {
+      rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_triangle()", pin.0.to_uppercase(), pin.1);
+      return Err(GpioError::WrongMode);
+    }
+  };
 
   if target.1 == 1 {
     dac.cr.modify(|_, w| {

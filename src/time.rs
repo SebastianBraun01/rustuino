@@ -104,12 +104,18 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
-  if let Ok(AlternateFunction(af_pin)) = return_pinmode(pin) {
-    if af as u32 != af_pin {
+  match return_pinmode(pin) {
+    Ok(AlternateFunction(af_pin)) => {
+      if af as u32 != af_pin {
+        rtt_target::rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
+        return Err(GpioError::WrongMode);
+      }
+    }
+    _ => {
       rtt_target::rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
       return Err(GpioError::WrongMode);
     }
-  }
+  };
 
   match timer {
     1 => {
