@@ -34,7 +34,7 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
         2 => tim1.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
         3 => tim1.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
         4 => tim1.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
-        _ => panic!("Channel{} is not a valid CC channel! | setup_pwm()", ccch)
+        _ => unreachable!()
       };
       tim1.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
       tim1.cr1.modify(|_, w| w.cen().enabled());
@@ -51,7 +51,7 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
         2 => tim2.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
         3 => tim2.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
         4 => tim2.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
-        _ => panic!("Channel{} is not a valid CC channel! | setup_pwm()", ccch)
+        _ => unreachable!()
       };
       tim2.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
       tim2.cr1.modify(|_, w| w.cen().enabled());
@@ -68,7 +68,7 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
         2 => tim3.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
         3 => tim3.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
         4 => tim3.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
-        _ => panic!("Channel{} is not a valid CC channel! | setup_pwm()", ccch)
+        _ => unreachable!()
       };
       tim3.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
       tim3.cr1.modify(|_, w| w.cen().enabled());
@@ -85,12 +85,12 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
         2 => tim4.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
         3 => tim4.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
         4 => tim4.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
-        _ => panic!("Channel{} is not a valid CC channel! | setup_pwm()", ccch)
+        _ => unreachable!()
       };
       tim4.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
       tim4.cr1.modify(|_, w| w.cen().enabled());
     },
-    _  => panic!("Timer{} is not a valid timer! | setup_pwm()", timer)
+    _  => unreachable!()
   };
 
   return Ok(());
@@ -104,9 +104,11 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
-  if return_pinmode(pin) != Ok(AlternateFunction(af.into())) {
-    rtt_target::rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
-    return Err(GpioError::WrongMode);
+  if let Ok(AlternateFunction(af_pin)) = return_pinmode(pin) {
+    if af as u32 != af_pin {
+      rtt_target::rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
+      return Err(GpioError::WrongMode);
+    }
   }
 
   match timer {
@@ -117,7 +119,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
         2 => tim1.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim1.ccr3.write(|w| w.ccr().bits(value.into())),
         4 => tim1.ccr4.write(|w| w.ccr().bits(value.into())),
-        _ => panic!("Channel{} is not a valid CC channel! | pwm_write()", ccch)
+        _ => unreachable!()
       };
     },
     2 => {
@@ -127,7 +129,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
         2 => tim2.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim2.ccr3.write(|w| w.ccr().bits(value.into())),
         4 => tim2.ccr4.write(|w| w.ccr().bits(value.into())),
-        _ => panic!("Channel{} is not a valid CC channel! | pwm_write()", ccch)
+        _ => unreachable!()
       };
     },
     3 => {
@@ -137,7 +139,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
         2 => tim3.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim3.ccr3.write(|w| w.ccr().bits(value.into())),
         4 => tim3.ccr4.write(|w| w.ccr().bits(value.into())),
-        _ => panic!("Channel{} is not a valid CC channel! | pwm_write()", ccch)
+        _ => unreachable!()
       };
     },
     4 => {
@@ -147,10 +149,10 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
         2 => tim4.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim4.ccr3.write(|w| w.ccr().bits(value.into())),
         4 => tim4.ccr4.write(|w| w.ccr().bits(value.into())),
-        _ => panic!("Channel{} is not a valid CC channel! | pwm_write()", ccch)
+        _ => unreachable!()
       };
     },
-    _ => panic!("Timer{} is not a valid timer! | pwm_write()", timer)
+    _ => unreachable!()
   };
 
   return Ok(());
@@ -168,7 +170,7 @@ fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
       2 => 1,
       3 => 2,
       4 => 2,
-      _  => panic!("Timer{} is not a valid timer! | check_pwm()", timer)
+      _  => unreachable!()
     };
 
     return Ok((timer, ccch, af));

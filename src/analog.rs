@@ -71,7 +71,7 @@ pub fn enable_channel(pin: (char, u8)) -> Result<(), GpioError> {
         adc3.cr2.modify(|_, w| w.adon().enabled());
       }
     },
-    _ => panic!("ADC{} is not a valid ADC peripheral! | enable_channel()", core)
+    _ => unreachable!()
   };
 
   return Ok(());
@@ -106,7 +106,7 @@ pub fn adc_resolution(pin: (char, u8), res: u8) -> Result<(), GpioError> {
           let adc3 = &peripheral_ptr.ADC3;
           adc3.cr1.modify(|_, w| w.res().bits(enc_res));
         },
-        _ => panic!("ADC{} is not a valid ADC peripheral! | adc_resolution()", target.0)
+        _ => unreachable!()
       };
     },
     Err(error) => return Err(error)
@@ -123,7 +123,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
     Err(error) => return Err(error)
   };
 
-  if return_pinmode(pin) != Ok(Analog) {
+  if let Ok(Analog) = return_pinmode(pin) {
     rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
     return Err(GpioError::WrongMode);
   }
@@ -162,7 +162,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
       while adc3.sr.read().eoc().is_not_complete() == true {}
       adc3.dr.read().data().bits()
     },
-    _ => panic!("ADC{} is not a valid ADC peripheral! | analog_read()", target.0)
+    _ => unreachable!()
   };
 
   return Ok(buffer);
@@ -183,7 +183,7 @@ pub fn analog_write(pin: (char, u8), value: u16) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
-  if return_pinmode(pin) != Ok(Analog) {
+  if let Ok(Analog) = return_pinmode(pin) {
     rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write()", pin.0.to_uppercase(), pin.1);
     return Err(GpioError::WrongMode);
   }
@@ -227,7 +227,7 @@ pub fn analog_write_noise(pin: (char, u8), level: u8) -> Result<(), GpioError> {
     Err(error) => return Err(error)
   };
 
-  if return_pinmode(pin) != Ok(Analog) {
+  if let Ok(Analog) = return_pinmode(pin) {
     rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_noise()", pin.0.to_uppercase(), pin.1);
     return Err(GpioError::WrongMode);
   }
@@ -269,7 +269,7 @@ pub fn analog_write_triangle(pin: (char, u8), level: u8) -> Result<(), GpioError
     Err(error) => return Err(error)
   };
 
-  if return_pinmode(pin) != Ok(Analog) {
+  if let Ok(Analog) = return_pinmode(pin) {
     rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_triangle()", pin.0.to_uppercase(), pin.1);
     return Err(GpioError::WrongMode);
   }
