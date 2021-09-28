@@ -46,7 +46,7 @@ pub struct SPI {
 }
 
 impl SPI {
-  pub fn new(core: u8, sck: (char, u8), miso: (char, u8), mosi: (char, u8)) -> Result<Self, SpiError> {
+  pub fn new(core: u8, sck: (char, u8), miso: (char, u8), mosi: (char, u8)) -> Result<Self, ProgError> {
     let peripheral_ptr = stm_peripherals();
     let rcc = &peripheral_ptr.RCC;
 
@@ -55,16 +55,16 @@ impl SPI {
       Err(error) => return Err(error)
     };
 
-    if let Err(_) = pin_mode(sck, AlternateFunction(af.into())) {return Err(SpiError::Prog(ProgError::Internal));}
-    if let Err(_) = pin_mode(miso, AlternateFunction(af.into())) {return Err(SpiError::Prog(ProgError::Internal));}
-    if let Err(_) = pin_mode(mosi, AlternateFunction(af.into())) {return Err(SpiError::Prog(ProgError::Internal));}
+    if let Err(_) = pin_mode(sck, AlternateFunction(af.into())) {return Err(ProgError::Internal);}
+    if let Err(_) = pin_mode(miso, AlternateFunction(af.into())) {return Err(ProgError::Internal);}
+    if let Err(_) = pin_mode(mosi, AlternateFunction(af.into())) {return Err(ProgError::Internal);}
 
     match core {
       1 => {
         let spi1 = &peripheral_ptr.SPI1;
         if rcc.apb2enr.read().spi1en().is_enabled() {
           rprintln!("SPI{} is already configured! | SPI::new()", core);
-          return Err(SpiError::Prog(ProgError::PermissionDenied));
+          return Err(ProgError::AlreadyConfigured);
         }
         rcc.apb2enr.modify(|_, w| w.spi1en().enabled());
         spi1.cr2.modify(|_, w| w.ssoe().enabled());
@@ -79,7 +79,7 @@ impl SPI {
         let spi2 = &peripheral_ptr.SPI2;
         if rcc.apb1enr.read().spi2en().is_enabled() == true {
           rprintln!("SPI{} is already configured! | SPI::new()", core);
-          return Err(SpiError::Prog(ProgError::PermissionDenied));
+          return Err(ProgError::AlreadyConfigured);
         }
         rcc.apb1enr.modify(|_, w| w.spi2en().enabled());
         spi2.cr2.modify(|_, w| w.ssoe().enabled());
@@ -94,7 +94,7 @@ impl SPI {
         let spi3 = &peripheral_ptr.SPI3;
         if rcc.apb1enr.read().spi3en().is_enabled() == true {
           rprintln!("SPI{} is already configured! | SPI::new()", core);
-          return Err(SpiError::Prog(ProgError::PermissionDenied));
+          return Err(ProgError::AlreadyConfigured);
         }
         rcc.apb1enr.modify(|_, w| w.spi3en().enabled());
         spi3.cr2.modify(|_, w| w.ssoe().enabled());
@@ -327,23 +327,23 @@ impl SPI {
     return Ok(());
   }
 
-  pub fn add_slave(&mut self, pin: (char, u8), id: u8) -> Result<(), SpiError> {
+  pub fn add_slave(&mut self, pin: (char, u8), id: u8) -> Result<(), ProgError> {
     if self.com_pins.contains(&pin) == true {
       rprintln!("P{}{} is not available as an NSS pin! | .add_slave()", pin.0.to_uppercase(), pin.1);
-      return Err(SpiError::Prog(ProgError::PermissionDenied));
+      return Err(ProgError::InvalidConfiguration);
     }
     else if self.nss.contains_key(&id) == true {
       rprintln!("ID {} already registered for an NSS pin! | .add_slave()", id);
-      return Err(SpiError::Prog(ProgError::PermissionDenied));
+      return Err(ProgError::InvalidConfiguration);
     }
     else if self.nss.values().any(|&i| i == pin) == true {
       rprintln!("P{}{} already registered as an NSS pin! | .add_slave()", pin.0.to_uppercase(), pin.1);
-      return Err(SpiError::Prog(ProgError::PermissionDenied));
+      return Err(ProgError::InvalidConfiguration);
     }
 
     if self.nss.insert(id, pin).is_err() {
       rprintln!("Cannot register more than 5 NSS pins! | .add_slave()");
-      return Err(SpiError::Prog(ProgError::PermissionDenied));
+      return Err(ProgError::InvalidConfiguration);
     }
 
     pin_mode(pin, Output).expect("Could not configre pin as an NSS pin! | .add_slave()");
@@ -474,33 +474,33 @@ impl SPI {
 
 
 // Private Functions ==============================================================================
-fn check_spi(core: u8, sck: (char, u8), miso: (char, u8), mosi: (char, u8)) -> Result<u8, SpiError> {
+fn check_spi(core: u8, sck: (char, u8), miso: (char, u8), mosi: (char, u8)) -> Result<u8, ProgError> {
   // SPI1 -> AF5
   // SPI2 -> AF5
   // SPI3 -> AF6
 
   match core {
     1 => {
-      if SPI_DATA.s1_sck.contains(&sck) == false {return Err(SpiError::Prog(ProgError::InvalidConfiguration));}
-      else if SPI_DATA.s1_miso.contains(&miso) == false {return Err(SpiError::Prog(ProgError::InvalidConfiguration));}
-      else if SPI_DATA.s1_mosi.contains(&mosi) == false {return Err(SpiError::Prog(ProgError::InvalidConfiguration));}
+      if SPI_DATA.s1_sck.contains(&sck) == false {return Err(ProgError::InvalidConfiguration);}
+      else if SPI_DATA.s1_miso.contains(&miso) == false {return Err(ProgError::InvalidConfiguration);}
+      else if SPI_DATA.s1_mosi.contains(&mosi) == false {return Err(ProgError::InvalidConfiguration);}
       else {return Ok(5);}
     },
     2 => {
-      if SPI_DATA.s2_sck.contains(&sck) == false {return Err(SpiError::Prog(ProgError::InvalidConfiguration));}
-      else if SPI_DATA.s2_miso.contains(&miso) == false {return Err(SpiError::Prog(ProgError::InvalidConfiguration));}
-      else if SPI_DATA.s2_mosi.contains(&mosi) == false {return Err(SpiError::Prog(ProgError::InvalidConfiguration));}
+      if SPI_DATA.s2_sck.contains(&sck) == false {return Err(ProgError::InvalidConfiguration);}
+      else if SPI_DATA.s2_miso.contains(&miso) == false {return Err(ProgError::InvalidConfiguration);}
+      else if SPI_DATA.s2_mosi.contains(&mosi) == false {return Err(ProgError::InvalidConfiguration);}
       else {return Ok(5);}
     },
     3 => {
-      if SPI_DATA.s3_sck.contains(&sck) == false {return Err(SpiError::Prog(ProgError::InvalidConfiguration));}
-      else if SPI_DATA.s3_miso.contains(&miso) == false {return Err(SpiError::Prog(ProgError::InvalidConfiguration));}
-      else if SPI_DATA.s3_mosi.contains(&mosi) == false {return Err(SpiError::Prog(ProgError::InvalidConfiguration));}
+      if SPI_DATA.s3_sck.contains(&sck) == false {return Err(ProgError::InvalidConfiguration);}
+      else if SPI_DATA.s3_miso.contains(&miso) == false {return Err(ProgError::InvalidConfiguration);}
+      else if SPI_DATA.s3_mosi.contains(&mosi) == false {return Err(ProgError::InvalidConfiguration);}
       else {return Ok(6);}
     },
     _ => {
       rprintln!("SPI{} is not a valid core! | check_spi()", core);
-      return Err(SpiError::Prog(ProgError::InvalidConfiguration));
+      return Err(ProgError::InvalidConfiguration);
     }
   };
 }
@@ -508,8 +508,7 @@ fn check_spi(core: u8, sck: (char, u8), miso: (char, u8), mosi: (char, u8)) -> R
 fn scan_spi_error(sr: u16) -> Result<(), SpiError> {
   let status = sr & 0b0000000101110000;
 
-  if status &       0b0000000100000000 > 0 {return Err(SpiError::FrameFormat);}
-  else if status &  0b0000000001000000 > 0 {return Err(SpiError::Overrun);}
+  if status &  0b0000000001000000 > 0 {return Err(SpiError::Overrun);}
   else if status &  0b0000000000100000 > 0 {return Err(SpiError::ModeFault);}
   else if status &  0b0000000000010000 > 0 {return Err(SpiError::CRCError);}
   else {return Ok(());}

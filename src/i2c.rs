@@ -15,22 +15,22 @@ pub struct I2C<const N: usize> {
 }
 
 impl<const N: usize> I2C<N> {
-  pub fn new(core: u8, scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool, addr: u8) -> Result<Self, I2cError> {
+  pub fn new(core: u8, scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool, addr: u8) -> Result<Self, ProgError> {
     let peripheral_ptr = stm_peripherals();
     let rcc = &peripheral_ptr.RCC;
   
     let (ccr_t, rise_t) = calc_i2c_freq(I2C_FREQ);
 
     if I2C_MAP.scl_pins.iter().zip(I2C_MAP.sda_pins.iter()).zip(I2C_MAP.cores.iter()).any(|i| i == ((&scl_pin, &sda_pin), &core)) == false {
-      return Err(I2cError::Prog(ProgError::InvalidConfiguration));
+      return Err(ProgError::InvalidConfiguration);
     }
   
-    if let Err(_) = pin_mode(scl_pin, AlternateFunction(4)) {return Err(I2cError::Prog(ProgError::Internal));}
-    if let Err(_) = pin_mode(sda_pin, AlternateFunction(4)) {return Err(I2cError::Prog(ProgError::Internal));}
+    if let Err(_) = pin_mode(scl_pin, AlternateFunction(4)) {return Err(ProgError::Internal);}
+    if let Err(_) = pin_mode(sda_pin, AlternateFunction(4)) {return Err(ProgError::Internal);}
 
     if pullup == true {
-      if let Err(_) = set_bias(scl_pin, Pullup) {return Err(I2cError::Prog(ProgError::Internal));}
-      if let Err(_) = set_bias(sda_pin, Pullup) {return Err(I2cError::Prog(ProgError::Internal));}
+      if let Err(_) = set_bias(scl_pin, Pullup) {return Err(ProgError::Internal);}
+      if let Err(_) = set_bias(sda_pin, Pullup) {return Err(ProgError::Internal);}
     }
     
     match core {
@@ -38,7 +38,7 @@ impl<const N: usize> I2C<N> {
         let i2c1 = &peripheral_ptr.I2C1;
         if rcc.apb1enr.read().i2c1en().is_enabled() == true {
           rprintln!("I2C{} is already configured! | I2C::new()", core);
-          return Err(I2cError::Prog(ProgError::PermissionDenied));
+          return Err(ProgError::AlreadyConfigured);
         }
         rcc.apb1enr.modify(|_, w| w.i2c1en().enabled());
         i2c1.cr2.modify(|_, w| unsafe {w.freq().bits(BUS_FREQ as u8)});
@@ -54,7 +54,7 @@ impl<const N: usize> I2C<N> {
         let i2c2 = &peripheral_ptr.I2C2;
         if rcc.apb1enr.read().i2c2en().is_enabled() == true {
           rprintln!("I2C{} is already configured! | I2C::new()", core);
-          return Err(I2cError::Prog(ProgError::PermissionDenied));
+          return Err(ProgError::AlreadyConfigured);
         }
         rcc.apb1enr.modify(|_, w| w.i2c2en().enabled());
         i2c2.cr2.modify(|_, w| unsafe {w.freq().bits(BUS_FREQ as u8)});
@@ -70,7 +70,7 @@ impl<const N: usize> I2C<N> {
         let i2c3 = &peripheral_ptr.I2C3;
         if rcc.apb1enr.read().i2c3en().is_enabled() == true {
           rprintln!("I2C{} is already configured! | I2C::new()", core);
-          return Err(I2cError::Prog(ProgError::PermissionDenied));
+          return Err(ProgError::AlreadyConfigured);
         }
         rcc.apb1enr.modify(|_, w| w.i2c3en().enabled());
         i2c3.cr2.modify(|_, w| unsafe {w.freq().bits(BUS_FREQ as u8)});
@@ -477,7 +477,7 @@ fn calc_i2c_freq(freq: u32) -> (u32, u32) {
 fn scan_i2c_error(sr: u16) -> Result<(), I2cError> {
   let status = sr & 0b0000111100000000;
 
-  if status & 0b0000100000000000 > 0 {return Err(I2cError::Overrun);}
+  if status & 0b0000100000000000 > 0 {return Err(I2cError::OverrunUnderrun);}
   else if status & 0b0000010000000000 > 0 {return Err(I2cError::NACK);}
   else if status & 0b0000001000000000 > 0 {return Err(I2cError::ArbitrationLoss);}
   else if status & 0b0000000100000000 > 0 {return Err(I2cError::Bus);}

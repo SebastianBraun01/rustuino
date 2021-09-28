@@ -170,21 +170,17 @@ pub const SPI_DATA: SPIData = SPIData {
 pub enum ProgError {
   /// Unspecified internal driver error
   Internal,
-  /// Connection lost, e.g. device adapter was unplugged
-  Disconnected,
   /// Ran out of memory while trying to allocate required buffers
   OutOfMemory,
   /// Operation timed out, please retry
   TimedOut,
-  /// Peripheral is sleeping or in standby
-  Asleep,
-  /// Peripheral is powered down
-  PowerDown,
   /// The peripheral cannot work with the specified settings
   InvalidConfiguration,
-  /// Could not open connection to peripheral
-  CouldNotOpen,
-  /// No sufficient permissions to connect to peripheral
+  /// Tried to use peripheral without configuring it properly
+  NotConfigured,
+  /// Tried to setup a peripheral that is already configured
+  AlreadyConfigured,
+  /// Invalid action
   PermissionDenied
 }
 
@@ -245,16 +241,10 @@ pub enum I2cError {
   /// A bus operation received a NACK, e.g. due to the addressed device not being available on
   /// the bus or device not being ready to process any requests at the moment
   NACK,
-  /// The peripheral receive buffer was overrun
-  Overrun,
-  /// The peripheral send buffer ran out of data
-  Underrun,
-  /// SMBus Error checking byte mismatch
-  PacketErrorChecking,
-  /// SMBus Timeout error
-  Timeout,
-  /// SMBus Alert received
-  Alert,
+  /// The peripheral receive buffer was overrun or ran out of data
+  OverrunUnderrun,
+  /// Parity check failed.
+  Parity,
   /// Implementation specific error (shared across all peripheral specific error kinds)
   Prog(ProgError)
 }
@@ -272,8 +262,6 @@ pub enum SpiError {
   ModeFault,
   /// CRC does not match the received data
   CRCError,
-  /// Received data does not conform to the peripheral configuration
-  FrameFormat,
   /// Implementation specific error (shared across all peripheral specific error kinds)
   Prog(ProgError)
 }
