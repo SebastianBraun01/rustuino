@@ -3,6 +3,7 @@
 use crate::analog::enable_channel;
 use crate::time::setup_pwm;
 use crate::include::{stm_peripherals, GpioError, ProgError};
+use rtt_target::rprintln;
 
 // Represents available GPIO modes.
 pub enum GpioMode {
@@ -49,7 +50,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
         GpioMode::Output => gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
         GpioMode::AlternateFunction(af) => {
           if af > 15 {
-            rtt_target::rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
+            rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
             return Err(GpioError::Prog(ProgError::InvalidConfiguration));
           }
           gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
@@ -71,7 +72,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
         GpioMode::Output => gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
         GpioMode::AlternateFunction(af) => {
           if af > 15 {
-            rtt_target::rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
+            rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
             return Err(GpioError::Prog(ProgError::InvalidConfiguration));
           }
           gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
@@ -93,7 +94,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
         GpioMode::Output => gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
         GpioMode::AlternateFunction(af) => {
           if af > 15 {
-            rtt_target::rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
+            rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
             return Err(GpioError::Prog(ProgError::InvalidConfiguration));
           }
           gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
@@ -115,7 +116,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
         GpioMode::Output => gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
         GpioMode::AlternateFunction(af) => {
           if af > 15 {
-            rtt_target::rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
+            rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
             return Err(GpioError::Prog(ProgError::InvalidConfiguration));
           }
           gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
@@ -137,7 +138,7 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), GpioError> {
         GpioMode::Output => gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
         GpioMode::AlternateFunction(af) => {
           if af > 15 {
-            rtt_target::rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
+            rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
             return Err(GpioError::Prog(ProgError::InvalidConfiguration));
           }
           gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
@@ -166,7 +167,7 @@ pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
     'a' => {
       let gpioa = &peripheral_ptr.GPIOA;
       if gpioa.moder.read().bits() & (3 << (2 * pin.1)) != (1 << (2 * pin.1)) {
-        rtt_target::rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
       if value == true {gpioa.bsrr.write(|w| unsafe {w.bits(1 << pin.1)});}
@@ -175,7 +176,7 @@ pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
     'b' => {
       let gpiob = &peripheral_ptr.GPIOB;
       if gpiob.moder.read().bits() & (3 << (2 * pin.1)) != (1 << (2 * pin.1)) {
-        rtt_target::rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
       if value == true {gpiob.bsrr.write(|w| unsafe {w.bits(1 << pin.1)});}
@@ -184,7 +185,7 @@ pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
     'c' => {
       let gpioc = &peripheral_ptr.GPIOC;
       if gpioc.moder.read().bits() & (3 << (2 * pin.1)) != (1 << (2 * pin.1)) {
-        rtt_target::rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
       if value == true {gpioc.bsrr.write(|w| unsafe {w.bits(1 << pin.1)});}
@@ -193,7 +194,7 @@ pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
     'd' => {
       let gpiod = &peripheral_ptr.GPIOD;
       if gpiod.moder.read().bits() & (3 << (2 * pin.1)) != (1 << (2 * pin.1)) {
-        rtt_target::rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
       if value == true {gpiod.bsrr.write(|w| unsafe {w.bits(1 << pin.1)});}
@@ -202,7 +203,7 @@ pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
     'h' => {
       let gpioh = &peripheral_ptr.GPIOH;
       if gpioh.moder.read().bits() & (3 << (2 * pin.1)) != (1 << (2 * pin.1)) {
-        rtt_target::rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
       if value == true {gpioh.bsrr.write(|w| unsafe {w.bits(1 << pin.1)});}
@@ -225,7 +226,7 @@ pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
       if gpioa.moder.read().bits() & (3 << (2 * pin.1)) == 0 {gpioa.idr.read().bits()}
       else if gpioa.moder.read().bits() & (3 << (2 * pin.1)) == (1 << (2 * pin.1)) {gpioa.odr.read().bits()}
       else {
-        rtt_target::rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
     },
@@ -234,7 +235,7 @@ pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
       if gpiob.moder.read().bits() & (3 << (2 * pin.1)) == 0 {gpiob.idr.read().bits()}
       else if gpiob.moder.read().bits() & (3 << (2 * pin.1)) == (1 << (2 * pin.1)) {gpiob.odr.read().bits()}
       else {
-        rtt_target::rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
     },
@@ -243,7 +244,7 @@ pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
       if gpioc.moder.read().bits() & (3 << (2 * pin.1)) == 0 {gpioc.idr.read().bits()}
       else if gpioc.moder.read().bits() & (3 << (2 * pin.1)) == (1 << (2 * pin.1)) {gpioc.odr.read().bits()}
       else {
-        rtt_target::rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
     },
@@ -252,7 +253,7 @@ pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
       if gpiod.moder.read().bits() & (3 << (2 * pin.1)) == 0 {gpiod.idr.read().bits()}
       else if gpiod.moder.read().bits() & (3 << (2 * pin.1)) == (1 << (2 * pin.1)) {gpiod.odr.read().bits()}
       else {
-        rtt_target::rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
     },
@@ -261,7 +262,7 @@ pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
       if gpioh.moder.read().bits() & (3 << (2 * pin.1)) == 0 {gpioh.idr.read().bits()}
       else if gpioh.moder.read().bits() & (3 << (2 * pin.1)) == (1 << (2 * pin.1)) {gpioh.odr.read().bits()}
       else {
-        rtt_target::rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
     },
@@ -494,7 +495,7 @@ pub fn return_pinmode(pin: (char, u8)) -> Result<GpioMode, GpioError> {
 // Private Functions ==============================================================================
 fn check_pin(pin: (char, u8)) -> Result<(), GpioError> {
   if pin.1 > 15 || (pin.1 != 2 && pin.0 == 'd') || ((pin.1 != 0 && pin.0 == 'h') && (pin.1 != 1 && pin.0 == 'h')) {
-    rtt_target::rprintln!("P{}{} is not an available GPIO Pin!", pin.0.to_uppercase(), pin.1);
+    rprintln!("P{}{} is not an available GPIO Pin!", pin.0.to_uppercase(), pin.1);
     return Err(GpioError::Prog(ProgError::InvalidConfiguration));
   }
   else {return Ok(());}

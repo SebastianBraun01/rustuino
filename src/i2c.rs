@@ -1,6 +1,7 @@
 use crate::include::{stm_peripherals, I2cError, ProgError, I2C_MAP};
 use crate::gpio::{pin_mode, set_bias, GpioMode::AlternateFunction, GpioBias::Pullup};
 use heapless::Vec;
+use rtt_target::rprintln;
 
 const BUS_FREQ: u32 = 16000000;
 const I2C_FREQ: u32 = 100000;
@@ -36,7 +37,7 @@ impl<const N: usize> I2C<N> {
       1 => {
         let i2c1 = &peripheral_ptr.I2C1;
         if rcc.apb1enr.read().i2c1en().is_enabled() == true {
-          rtt_target::rprintln!("I2C{} is already configured! | I2C::new()", core);
+          rprintln!("I2C{} is already configured! | I2C::new()", core);
           return Err(I2cError::Prog(ProgError::PermissionDenied));
         }
         rcc.apb1enr.modify(|_, w| w.i2c1en().enabled());
@@ -52,7 +53,7 @@ impl<const N: usize> I2C<N> {
       2 => {
         let i2c2 = &peripheral_ptr.I2C2;
         if rcc.apb1enr.read().i2c2en().is_enabled() == true {
-          rtt_target::rprintln!("I2C{} is already configured! | I2C::new()", core);
+          rprintln!("I2C{} is already configured! | I2C::new()", core);
           return Err(I2cError::Prog(ProgError::PermissionDenied));
         }
         rcc.apb1enr.modify(|_, w| w.i2c2en().enabled());
@@ -68,7 +69,7 @@ impl<const N: usize> I2C<N> {
       3 => {
         let i2c3 = &peripheral_ptr.I2C3;
         if rcc.apb1enr.read().i2c3en().is_enabled() == true {
-          rtt_target::rprintln!("I2C{} is already configured! | I2C::new()", core);
+          rprintln!("I2C{} is already configured! | I2C::new()", core);
           return Err(I2cError::Prog(ProgError::PermissionDenied));
         }
         rcc.apb1enr.modify(|_, w| w.i2c3en().enabled());
@@ -212,7 +213,7 @@ impl<const N: usize> I2C<N> {
     let _sr: u32;
 
     if nbytes == 0 || nbytes as usize > N {
-      rtt_target::rprintln!("Cannot store number of bytes! ({}) | .request_bytes()", nbytes);
+      rprintln!("Cannot store number of bytes! ({}) | .request_bytes()", nbytes);
       return Err(I2cError::Prog(ProgError::InvalidConfiguration));
     }
 

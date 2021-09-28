@@ -5,6 +5,7 @@ use crate::gpio::{pin_mode, GpioMode::AlternateFunction, return_pinmode};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 use cortex_m::interrupt::{Mutex, free};
 use core::cell::RefCell;
+use rtt_target::rprintln;
 
 static TIME_COUNTER: Mutex<RefCell<usize>> = Mutex::new(RefCell::new(0));
 
@@ -107,12 +108,12 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
   match return_pinmode(pin) {
     Ok(AlternateFunction(af_pin)) => {
       if af as u32 != af_pin {
-        rtt_target::rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
     }
     _ => {
-      rtt_target::rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
+      rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
       return Err(GpioError::WrongMode);
     }
   };
@@ -249,7 +250,7 @@ pub fn start_time() {
   let tim7 = &peripheral_ptr.TIM7;
 
   if rcc.apb1enr.read().tim7en().is_enabled() == true {
-    rtt_target::rprintln!("Millis Timer already configured! | start_time()");
+    rprintln!("Millis Timer already configured! | start_time()");
     return;
   }
 

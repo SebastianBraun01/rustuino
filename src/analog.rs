@@ -2,6 +2,7 @@
 
 use crate::include::{stm_peripherals, GpioError, ProgError, ADC_MAP};
 use crate::gpio::{GpioMode::Analog, return_pinmode};
+use rtt_target::rprintln;
 
 
 // Public Functions ===============================================================================
@@ -13,7 +14,7 @@ pub fn enable_channel(pin: (char, u8)) -> Result<(), GpioError> {
   let (core, channel) = match check_channel(pin, true, true) {
     Ok(values) => values,
     Err(error) => {
-      rtt_target::rprintln!("P{}{} is not available for analog functions! | enable_channel()", pin.0.to_uppercase(), pin.1);
+      rprintln!("P{}{} is not available for analog functions! | enable_channel()", pin.0.to_uppercase(), pin.1);
       return Err(error);
     }
   };
@@ -86,7 +87,7 @@ pub fn adc_resolution(pin: (char, u8), res: u8) -> Result<(), GpioError> {
     10 => 1,
     12 => 0,
     _ => {
-      rtt_target::rprintln!("{} is not a available ADC resolution! | adc_resolution()", res);
+      rprintln!("{} is not a available ADC resolution! | adc_resolution()", res);
       return Err(GpioError::Prog(ProgError::InvalidConfiguration));
     }
   };
@@ -126,7 +127,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
   match return_pinmode(pin) {
     Ok(Analog) => (),
     _ => {
-      rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
+      rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
       return Err(GpioError::WrongMode);
     }
   };
@@ -135,7 +136,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
     1 => {
       let adc1 = &peripheral_ptr.ADC1;
       if adc1.cr2.read().adon().is_disabled() == true {
-        rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
       adc1.sqr3.modify(|_, w| unsafe {w.sq1().bits(target.1)});
@@ -146,7 +147,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
     2 => {
       let adc2 = &peripheral_ptr.ADC2;
       if adc2.cr2.read().adon().is_disabled() == true {
-        rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
       adc2.sqr3.modify(|_, w| unsafe {w.sq1().bits(target.1)});
@@ -157,7 +158,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
     3 => {
       let adc3 = &peripheral_ptr.ADC3;
       if adc3.cr2.read().adon().is_disabled() == true {
-        rtt_target::rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
+        rprintln!("P{}{} is not configured as analog! | analog_read()", pin.0.to_uppercase(), pin.1);
         return Err(GpioError::WrongMode);
       }
       adc3.sqr3.modify(|_, w| unsafe {w.sq1().bits(target.1)});
@@ -176,7 +177,7 @@ pub fn analog_write(pin: (char, u8), value: u16) -> Result<(), GpioError> {
   let dac = &peripheral_ptr.DAC;
 
   let val = if value > 4095 {
-    rtt_target::rprintln!("Analog value outside of bounds! | analog_write()");
+    rprintln!("Analog value outside of bounds! | analog_write()");
     4095
   }
   else {value};
@@ -189,7 +190,7 @@ pub fn analog_write(pin: (char, u8), value: u16) -> Result<(), GpioError> {
   match return_pinmode(pin) {
     Ok(Analog) => (),
     _ => {
-      rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write()", pin.0.to_uppercase(), pin.1);
+      rprintln!("P{}{} is not configured as analog! | analog_write()", pin.0.to_uppercase(), pin.1);
       return Err(GpioError::WrongMode);
     }
   };
@@ -223,7 +224,7 @@ pub fn analog_write_noise(pin: (char, u8), level: u8) -> Result<(), GpioError> {
   let dac = &peripheral_ptr.DAC;
 
   let lvl = if level > 15 {
-    rtt_target::rprintln!("DAC level value outside of bounds! | analog_write_noise()");
+    rprintln!("DAC level value outside of bounds! | analog_write_noise()");
     15
   }
   else {level};
@@ -236,7 +237,7 @@ pub fn analog_write_noise(pin: (char, u8), level: u8) -> Result<(), GpioError> {
   match return_pinmode(pin) {
     Ok(Analog) => (),
     _ => {
-      rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_noise()", pin.0.to_uppercase(), pin.1);
+      rprintln!("P{}{} is not configured as analog! | analog_write_noise()", pin.0.to_uppercase(), pin.1);
       return Err(GpioError::WrongMode);
     }
   };
@@ -268,7 +269,7 @@ pub fn analog_write_triangle(pin: (char, u8), level: u8) -> Result<(), GpioError
   let dac = &peripheral_ptr.DAC;
 
   let lvl = if level > 15 {
-    rtt_target::rprintln!("DAC level value outside of bounds! | analog_write_triangle()");
+    rprintln!("DAC level value outside of bounds! | analog_write_triangle()");
     15
   }
   else {level};
@@ -281,7 +282,7 @@ pub fn analog_write_triangle(pin: (char, u8), level: u8) -> Result<(), GpioError
   match return_pinmode(pin) {
     Ok(Analog) => (),
     _ => {
-      rtt_target::rprintln!("P{}{} is not configured as analog! | analog_write_triangle()", pin.0.to_uppercase(), pin.1);
+      rprintln!("P{}{} is not configured as analog! | analog_write_triangle()", pin.0.to_uppercase(), pin.1);
       return Err(GpioError::WrongMode);
     }
   };
@@ -314,7 +315,7 @@ pub fn analog_wave_freq(freq: u32) {
 
   // Max. 16MHz -> arr = 16000000 / freq
   let val = if freq > 16000000 {
-    rtt_target::rprintln!("Outside limits of internal clock! | analog_wave_freq()");
+    rprintln!("Outside limits of internal clock! | analog_wave_freq()");
     1
   }
   else {16000000 / freq};
