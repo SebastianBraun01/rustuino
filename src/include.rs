@@ -109,13 +109,13 @@ pub const PWM_MAP: PWMMap = PWMMap {
   ccchs:  [1,  2,  3,   4,   1,  2,  3,  4,  1,   4,  2,  3,   4,   1,  2,  3,  4,  1,  2,  1,  2,  3,  4,  1,  2,  3,  4]
 };
 
-pub struct USARTMap {
+pub struct UARTMap {
   pub tx_pins: [(char, u8); 16],
   pub rx_pins: [(char, u8); 16],
   pub cores: [u8; 16]
 }
 
-pub const USART_MAP: USARTMap = USARTMap {
+pub const UART_MAP: UARTMap = UARTMap {
   tx_pins: [A9,  A9, B6,  B6, B10, B10, B10, C10, C10, C10, A0, A0,  C10, C10, C12, C6],
   rx_pins: [A10, B7, A10, B7, B11, C5,  C11, B11, C5,  C11, A1, C11, A1,  C11, D2,  C7],
   cores:   [1,   1,  1,   1,  3,   3,   3,   3,   3,   3,   4,  4,   4,   4,   5,   6]

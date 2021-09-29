@@ -1,892 +1,548 @@
-use crate::include::{UART_MAP, UART_CONF};
+//! This module contains everything that is used for UART communication.
+
+use crate::include::{stm_peripherals, SerialError, ProgError, UART_MAP};
+use crate::gpio::{GpioMode::AlternateFunction, pin_mode};
 use stm32f4::stm32f446::{NVIC, Interrupt};
-use heapless::String;
+use rtt_target::rprintln;
 
-pub struct UartCore {
-  pub rx: (char, u8),
-  pub tx: (char, u8),
-  pub core: u8,
-  pub rx_int: bool,
-  pub tx_int: bool
+// 8 = bits, 4 = stops, 2,1 = parity
+pub const UART_8N1: u8 = 0;
+pub const UART_8N2: u8 = 4;
+pub const UART_8E1: u8 = 1;
+pub const UART_8E2: u8 = 5;
+pub const UART_8O1: u8 = 2;
+pub const UART_8O2: u8 = 6;
+pub const UART_9N1: u8 = 8;
+pub const UART_9N2: u8 = 12;
+pub const UART_9E1: u8 = 9;
+pub const UART_9E2: u8 = 13;
+pub const UART_9O1: u8 = 10;
+pub const UART_9O2: u8 = 14;
+
+pub struct UART {
+  core: u8
 }
 
-
-// Initialisation function ========================================================================
-pub fn uart_init(rx_pin: (char, u8), tx_pin: (char, u8), baud: u32) -> Option<UartCore> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  let rcc = &peripheral_ptr.RCC;
-
-  let core: u8;
-
-  if UART_MAP.rx_pins.contains(&rx_pin) && UART_MAP.tx_pins.contains(&tx_pin) {
-    let index = UART_MAP.rx_pins.iter().zip(UART_MAP.tx_pins.iter()).position(|i| i == (&rx_pin, &tx_pin)).unwrap();
-    core = UART_MAP.core[index];
-    unsafe {UART_CONF[core as usize - 1] = true;}
-  }
-  else {
-    rtt_target::rprintln!("These pins are not available for UART communication! | uart_init(...)");
-    return None;
-  }
-
-  uart_setup_gpio(rx_pin.0, rx_pin.1, core);
-  uart_setup_gpio(tx_pin.0, tx_pin.1, core);
-
-  match core {
-    1 => {
-      let usart1 = &peripheral_ptr.USART1;
-      rcc.apb2enr.modify(|_, w| w.usart1en().enabled());
-      set_baud(core, baud);
-      usart1.cr1.modify(|_, w| {
-        w.te().enabled();
-        w.re().enabled();
-        w.ue().enabled()
-      });
-    },
-    3 => {
-      let usart3 = &peripheral_ptr.USART3;
-      rcc.apb1enr.modify(|_, w| w.usart3en().enabled());
-      set_baud(core, baud);
-      usart3.cr1.modify(|_, w| {
-        w.te().enabled();
-        w.re().enabled();
-        w.ue().enabled()
-      });
-    },
-    4 => {
-      let uart4 = &peripheral_ptr.UART4;
-      rcc.apb1enr.modify(|_, w| w.uart4en().enabled());
-      set_baud(core, baud);
-      uart4.cr1.modify(|_, w| {
-        w.te().enabled();
-        w.re().enabled();
-        w.ue().enabled()
-      });
-    },
-    5 => {
-      let uart5 = &peripheral_ptr.UART5;
-      rcc.apb1enr.modify(|_, w| w.uart5en().enabled());
-      set_baud(core, baud);
-      uart5.cr1.modify(|_, w| {
-        w.te().enabled();
-        w.re().enabled();
-        w.ue().enabled()
-      });
-    },
-    6 => {
-      let usart6 = &peripheral_ptr.USART6;
-      rcc.apb2enr.modify(|_, w| w.usart6en().enabled());
-      set_baud(core, baud);
-      usart6.cr1.modify(|_, w| {
-        w.te().enabled();
-        w.re().enabled();
-        w.ue().enabled()
-      });
-    },
-    _ => {
-      rtt_target::rprintln!("U(S)ART{} is not a valid U(S)ART peripheral! | uart_init(...)", core);
-      return None;
+impl UART {
+  pub fn new(core: u8, tx_pin: (char, u8), rx_pin: (char, u8), baud: u32, conf: u8) -> Result<Self, ProgError> {
+    let peripheral_ptr = stm_peripherals();
+    let rcc = &peripheral_ptr.RCC;
+    
+    if UART_MAP.tx_pins.iter().zip(UART_MAP.rx_pins.iter())
+    .zip(UART_MAP.cores.iter()).any(|i| i == ((&tx_pin, &rx_pin), &core)) == false {
+      rprintln!("These pins are not available for UART communication! | UART::new()");
+      return Err(ProgError::InvalidConfiguration);
     }
-  };
-
-  return Some(UartCore {
-    rx: rx_pin,
-    tx: tx_pin,
-    core,
-    rx_int: false,
-    tx_int: false
-  });
-}
-
-
-// Function implementations =======================================================================
-impl UartCore {
-  pub fn rxint_enable(&mut self) {
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  
-    match self.core {
+    
+    let af = if core == 1 || core == 2 || core == 3 {7}
+    else {8};
+    
+    if let Err(_) = pin_mode(tx_pin, AlternateFunction(af)) {return Err(ProgError::Internal);}
+    if let Err(_) = pin_mode(rx_pin, AlternateFunction(af)) {return Err(ProgError::Internal);}
+    
+    match core {
       1 => {
-        let usart1 = &peripheral_ptr.USART1;
-        unsafe {NVIC::unmask(Interrupt::USART1);}
-        usart1.cr1.modify(|_, w| w.rxneie().enabled());
+        let uart1 = &peripheral_ptr.USART1;
+        if rcc.apb2enr.read().usart1en().is_enabled() == true {
+          rprintln!("U(S)ART{} is already configured! | UART::new()", core);
+          return Err(ProgError::InvalidConfiguration);
+        }
+        rcc.apb2enr.modify(|_, w| w.usart1en().enabled());
+        set_baud(core, baud);
+        if conf & 8 > 0 {uart1.cr1.modify(|_, w| w.m().m9());}
+        if conf & 4 > 0 {uart1.cr2.modify(|_, w| w.stop().stop2());}
+        if conf & 3 == 1 {uart1.cr1.modify(|_, w| w.pce().enabled());}
+        else if conf & 3 == 2 {uart1.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
+        uart1.cr1.modify(|_, w| {
+          w.te().enabled();
+          w.re().enabled();
+          w.ue().enabled()
+        });
       },
       2 => {
-        let usart2 = &peripheral_ptr.USART2;
-        unsafe {NVIC::unmask(Interrupt::USART2);}
-        usart2.cr1.modify(|_, w| w.rxneie().enabled());
+        let uart2 = &peripheral_ptr.USART2;
+        if rcc.apb1enr.read().usart2en().is_enabled() == true {
+          rprintln!("U(S)ART{} is already configured! | UART::new()", core);
+          return Err(ProgError::InvalidConfiguration);
+        }
+        rcc.apb1enr.modify(|_, w| w.usart2en().enabled());
+        set_baud(core, baud);
+        if conf & 8 > 0 {uart2.cr1.modify(|_, w| w.m().m9());}
+        if conf & 4 > 0 {uart2.cr2.modify(|_, w| w.stop().stop2());}
+        if conf & 3 == 1 {uart2.cr1.modify(|_, w| w.pce().enabled());}
+        else if conf & 3 == 2 {uart2.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
+        uart2.cr1.modify(|_, w| {
+          w.te().enabled();
+          w.re().enabled();
+          w.ue().enabled()
+        });
       },
       3 => {
-        let usart3 = &peripheral_ptr.USART3;
-        unsafe {NVIC::unmask(Interrupt::USART3);}
-        usart3.cr1.modify(|_, w| w.rxneie().enabled());
+        let uart3 = &peripheral_ptr.USART3;
+        if rcc.apb1enr.read().usart3en().is_enabled() == true {
+          rprintln!("U(S)ART{} is already configured! | UART::new()", core);
+          return Err(ProgError::InvalidConfiguration);
+        }
+        rcc.apb1enr.modify(|_, w| w.usart3en().enabled());
+        set_baud(core, baud);
+        if conf & 8 > 0 {uart3.cr1.modify(|_, w| w.m().m9());}
+        if conf & 4 > 0 {uart3.cr2.modify(|_, w| w.stop().stop2());}
+        if conf & 3 == 1 {uart3.cr1.modify(|_, w| w.pce().enabled());}
+        else if conf & 3 == 2 {uart3.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
+        uart3.cr1.modify(|_, w| {
+          w.te().enabled();
+          w.re().enabled();
+          w.ue().enabled()
+        });
       },
       4 => {
         let uart4 = &peripheral_ptr.UART4;
-        unsafe {NVIC::unmask(Interrupt::UART4);}
-        uart4.cr1.modify(|_, w| w.rxneie().enabled());
+        if rcc.apb1enr.read().uart4en().is_enabled() == true {
+          rprintln!("U(S)ART{} is already configured! | UART::new()", core);
+          return Err(ProgError::InvalidConfiguration);
+        }
+        rcc.apb1enr.modify(|_, w| w.uart4en().enabled());
+        set_baud(core, baud);
+        if conf & 8 > 0 {uart4.cr1.modify(|_, w| w.m().m9());}
+        if conf & 4 > 0 {uart4.cr2.modify(|_, w| w.stop().stop2());}
+        if conf & 3 == 1 {uart4.cr1.modify(|_, w| w.pce().enabled());}
+        else if conf & 3 == 2 {uart4.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
+        uart4.cr1.modify(|_, w| {
+          w.te().enabled();
+          w.re().enabled();
+          w.ue().enabled()
+        });
       },
       5 => {
         let uart5 = &peripheral_ptr.UART5;
-        unsafe {NVIC::unmask(Interrupt::UART5);}
-        uart5.cr1.modify(|_, w| w.rxneie().enabled());
+        if rcc.apb1enr.read().uart5en().is_enabled() == true {
+          rprintln!("U(S)ART{} is already configured! | UART::new()", core);
+          return Err(ProgError::InvalidConfiguration);
+        }
+        rcc.apb1enr.modify(|_, w| w.uart5en().enabled());
+        set_baud(core, baud);
+        if conf & 8 > 0 {uart5.cr1.modify(|_, w| w.m().m9());}
+        if conf & 4 > 0 {uart5.cr2.modify(|_, w| w.stop().stop2());}
+        if conf & 3 == 1 {uart5.cr1.modify(|_, w| w.pce().enabled());}
+        else if conf & 3 == 2 {uart5.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
+        uart5.cr1.modify(|_, w| {
+          w.te().enabled();
+          w.re().enabled();
+          w.ue().enabled()
+        });
       },
       6 => {
-        let usart6 = &peripheral_ptr.USART6;
-        unsafe {NVIC::unmask(Interrupt::USART6);}
-        usart6.cr1.modify(|_, w| w.rxneie().enabled());
+        let uart6 = &peripheral_ptr.USART6;
+        if rcc.apb2enr.read().usart6en().is_enabled() == true {
+          rprintln!("U(S)ART{} is already configured! | UART::new()", core);
+          return Err(ProgError::InvalidConfiguration);
+        }
+        rcc.apb2enr.modify(|_, w| w.usart6en().enabled());
+        set_baud(core, baud);
+        if conf & 8 > 0 {uart6.cr1.modify(|_, w| w.m().m9());}
+        if conf & 4 > 0 {uart6.cr2.modify(|_, w| w.stop().stop2());}
+        if conf & 3 == 1 {uart6.cr1.modify(|_, w| w.pce().enabled());}
+        else if conf & 3 == 2 {uart6.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
+        uart6.cr1.modify(|_, w| {
+          w.te().enabled();
+          w.re().enabled();
+          w.ue().enabled()
+        });
       },
-      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .rx_interrupt(...)", self.core)
+      _ => {
+        rprintln!("U(S)ART{} is not a valid U(S)ART peripheral! | UART::new()", core);
+        return Err(ProgError::InvalidConfiguration);
+      }
     };
 
-    self.rx_int = true;
+    return Ok(Self {
+      core
+    });
   }
 
-  pub fn rxint_disable(&mut self) {
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  
+  pub fn end(self) {
+    let peripheral_ptr = stm_peripherals();
+    let rcc = &peripheral_ptr.RCC;
+
     match self.core {
       1 => {
-        let usart1 = &peripheral_ptr.USART1;
+        let uart1 = &peripheral_ptr.USART1;
+        rcc.apb2enr.modify(|_, w| w.usart1en().disabled());
+        uart1.cr1.reset();
+        uart1.cr2.reset();
         NVIC::mask(Interrupt::USART1);
-        usart1.cr1.modify(|_, w| w.rxneie().disabled());
       },
       2 => {
-        let usart2 = &peripheral_ptr.USART2;
+        let uart2 = &peripheral_ptr.USART2;
+        rcc.apb1enr.modify(|_, w| w.usart2en().disabled());
+        uart2.cr1.reset();
+        uart2.cr2.reset();
         NVIC::mask(Interrupt::USART2);
-        usart2.cr1.modify(|_, w| w.rxneie().disabled());
       },
       3 => {
-        let usart3 = &peripheral_ptr.USART3;
+        let uart3 = &peripheral_ptr.USART3;
+        rcc.apb1enr.modify(|_, w| w.usart3en().disabled());
+        uart3.cr1.reset();
+        uart3.cr2.reset();
         NVIC::mask(Interrupt::USART3);
-        usart3.cr1.modify(|_, w| w.rxneie().disabled());
       },
       4 => {
         let uart4 = &peripheral_ptr.UART4;
+        rcc.apb1enr.modify(|_, w| w.uart4en().disabled());
+        uart4.cr1.reset();
+        uart4.cr2.reset();
         NVIC::mask(Interrupt::UART4);
-        uart4.cr1.modify(|_, w| w.rxneie().disabled());
       },
       5 => {
         let uart5 = &peripheral_ptr.UART5;
+        rcc.apb1enr.modify(|_, w| w.uart5en().disabled());
+        uart5.cr1.reset();
+        uart5.cr2.reset();
         NVIC::mask(Interrupt::UART5);
-        uart5.cr1.modify(|_, w| w.rxneie().disabled());
       },
       6 => {
-        let usart6 = &peripheral_ptr.USART6;
+        let uart6 = &peripheral_ptr.USART6;
+        rcc.apb2enr.modify(|_, w| w.usart6en().disabled());
+        uart6.cr1.reset();
+        uart6.cr2.reset();
         NVIC::mask(Interrupt::USART6);
-        usart6.cr1.modify(|_, w| w.rxneie().disabled());
       },
-      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .rx_interrupt(...)", self.core)
+      _ => unreachable!()
     };
-
-    self.rx_int = false;
   }
 
-  pub fn txint_enable(&mut self) {
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  
+  pub fn print(&self, data: &str) -> Result<(), SerialError> {
+    let peripheral_ptr = stm_peripherals();
+    
+    let bytes = data.as_bytes();
+    
     match self.core {
       1 => {
-        let usart1 = &peripheral_ptr.USART1;
-        unsafe {NVIC::unmask(Interrupt::USART1);}
-        usart1.cr1.modify(|_, w| w.tcie().enabled());
+        let uart1 = &peripheral_ptr.USART1;
+        for byte in bytes {
+          while uart1.sr.read().txe().bit_is_clear() == true {
+            if let Err(error) = check_uart_errors(uart1.sr.read().bits()) {return Err(error);}
+          }
+          uart1.dr.write(|w| w.dr().bits(byte.clone().into()));
+        }
       },
       2 => {
-        let usart2 = &peripheral_ptr.USART2;
-        unsafe {NVIC::unmask(Interrupt::USART2);}
-        usart2.cr1.modify(|_, w| w.tcie().enabled());
+        let uart2 = &peripheral_ptr.USART2;
+        for byte in bytes {
+          while uart2.sr.read().txe().bit_is_clear() == true {
+            if let Err(error) = check_uart_errors(uart2.sr.read().bits()) {return Err(error);}
+          }
+          uart2.dr.write(|w| w.dr().bits(byte.clone().into()));
+        }
       },
       3 => {
-        let usart3 = &peripheral_ptr.USART3;
-        unsafe {NVIC::unmask(Interrupt::USART3);}
-        usart3.cr1.modify(|_, w| w.tcie().enabled());
+        let uart3 = &peripheral_ptr.USART3;
+        for byte in bytes {
+          while uart3.sr.read().txe().bit_is_clear() == true {
+            if let Err(error) = check_uart_errors(uart3.sr.read().bits()) {return Err(error);}
+          }
+          uart3.dr.write(|w| w.dr().bits(byte.clone().into()));
+        }
       },
       4 => {
         let uart4 = &peripheral_ptr.UART4;
-        unsafe {NVIC::unmask(Interrupt::UART4);}
-        uart4.cr1.modify(|_, w| w.tcie().enabled());
+        for byte in bytes {
+          while uart4.sr.read().txe().bit_is_clear() == true {
+            if let Err(error) = check_uart_errors(uart4.sr.read().bits()) {return Err(error);}
+          }
+          uart4.dr.write(|w| w.dr().bits(byte.clone().into()));
+        }
       },
       5 => {
         let uart5 = &peripheral_ptr.UART5;
-        unsafe {NVIC::unmask(Interrupt::UART5);}
-        uart5.cr1.modify(|_, w| w.tcie().enabled());
+        for byte in bytes {
+          while uart5.sr.read().txe().bit_is_clear() == true {
+            if let Err(error) = check_uart_errors(uart5.sr.read().bits()) {return Err(error);}
+          }
+          uart5.dr.write(|w| w.dr().bits(byte.clone().into()));
+        }
       },
       6 => {
-        let usart6 = &peripheral_ptr.USART6;
-        unsafe {NVIC::unmask(Interrupt::USART6);}
-        usart6.cr1.modify(|_, w| w.tcie().enabled());
+        let uart6 = &peripheral_ptr.USART6;
+        for byte in bytes {
+          while uart6.sr.read().txe().bit_is_clear() == true {
+            if let Err(error) = check_uart_errors(uart6.sr.read().bits()) {return Err(error);}
+          }
+          uart6.dr.write(|w| w.dr().bits(byte.clone().into()));
+        }
       },
-      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .tx_interrupt(...)", self.core)
+      _ => unreachable!()
     };
 
-    self.tx_int = true;
+    return Ok(());
   }
 
-  pub fn txint_disable(&mut self) {
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  
-    match self.core {
-      1 => {
-        let usart1 = &peripheral_ptr.USART1;
-        NVIC::mask(Interrupt::USART1);
-        usart1.cr1.modify(|_, w| w.tcie().disabled());
-      },
-      2 => {
-        let usart2 = &peripheral_ptr.USART2;
-        NVIC::mask(Interrupt::USART2);
-        usart2.cr1.modify(|_, w| w.tcie().disabled());
-      },
-      3 => {
-        let usart3 = &peripheral_ptr.USART3;
-        NVIC::mask(Interrupt::USART3);
-        usart3.cr1.modify(|_, w| w.tcie().disabled());
-      },
-      4 => {
-        let uart4 = &peripheral_ptr.UART4;
-        NVIC::mask(Interrupt::UART4);
-        uart4.cr1.modify(|_, w| w.tcie().disabled());
-      },
-      5 => {
-        let uart5 = &peripheral_ptr.UART5;
-        NVIC::mask(Interrupt::UART5);
-        uart5.cr1.modify(|_, w| w.tcie().disabled());
-      },
-      6 => {
-        let usart6 = &peripheral_ptr.USART6;
-        NVIC::mask(Interrupt::USART6);
-        usart6.cr1.modify(|_, w| w.tcie().disabled());
-      },
-      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .tx_interrupt(...)", self.core)
-    };
+  pub fn println(&self, data: &str) -> Result<(), SerialError> {
+    if let Err(error) = self.print(data) {return Err(error);}
+    if let Err(error) = self.print("\r\n") {return Err(error);}
 
-    self.tx_int = false;
+    return Ok(());
   }
 
-  pub fn change_baud(&self, baud: u32) {
-    set_baud(self.core, baud);
-  }
-
-  pub fn send_char(&self, c: char) {
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  pub fn write(&self, data: u8) -> Result<(), SerialError> {
+    let peripheral_ptr = stm_peripherals();
 
     match self.core {
       1 => {
-        let usart1 = &peripheral_ptr.USART1;
-        if c.is_ascii() == true {
-          while usart1.sr.read().txe().bit_is_clear() == true {}
-          usart1.dr.write(|w| w.dr().bits(c as u16));
-          while usart1.sr.read().txe().bit_is_clear() == true {}
+        let uart1 = &peripheral_ptr.USART1;
+        while uart1.sr.read().txe().bit_is_clear() == true {
+          if let Err(error) = check_uart_errors(uart1.sr.read().bits()) {return Err(error);}
         }
-        else {
-          rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-
-          while usart1.sr.read().txe().bit_is_clear() == true {}
-          usart1.dr.write(|w| w.dr().bits('?' as u16));
-          while usart1.sr.read().txe().bit_is_clear() == true {}
-        }
+        uart1.dr.write(|w| w.dr().bits(data.into()));
       },
       2 => {
-        let usart2 = &peripheral_ptr.USART2;
-        if c.is_ascii() == true {
-          while usart2.sr.read().txe().bit_is_clear() == true {}
-          usart2.dr.write(|w| w.dr().bits(c as u16));
-          while usart2.sr.read().txe().bit_is_clear() == true {}
+        let uart2 = &peripheral_ptr.USART2;
+        while uart2.sr.read().txe().bit_is_clear() == true {
+          if let Err(error) = check_uart_errors(uart2.sr.read().bits()) {return Err(error);}
         }
-        else {
-          rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-
-          while usart2.sr.read().txe().bit_is_clear() == true {}
-          usart2.dr.write(|w| w.dr().bits('?' as u16));
-          while usart2.sr.read().txe().bit_is_clear() == true {}
-        }
+        uart2.dr.write(|w| w.dr().bits(data.into()));
       },
       3 => {
-        let usart3 = &peripheral_ptr.USART3;
-        if c.is_ascii() == true {
-          while usart3.sr.read().txe().bit_is_clear() == true {}
-          usart3.dr.write(|w| w.dr().bits(c as u16));
-          while usart3.sr.read().txe().bit_is_clear() == true {}
+        let uart3 = &peripheral_ptr.USART3;
+        while uart3.sr.read().txe().bit_is_clear() == true {
+          if let Err(error) = check_uart_errors(uart3.sr.read().bits()) {return Err(error);}
         }
-        else {
-          rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-
-          while usart3.sr.read().txe().bit_is_clear() == true {}
-          usart3.dr.write(|w| w.dr().bits('?' as u16));
-          while usart3.sr.read().txe().bit_is_clear() == true {}
-        }
-      },
-      4 => {let uart4 = &peripheral_ptr.UART4;
-        if c.is_ascii() == true {
-          while uart4.sr.read().txe().bit_is_clear() == true {}
-          uart4.dr.write(|w| w.dr().bits(c as u16));
-          while uart4.sr.read().txe().bit_is_clear() == true {}
-        }
-        else {
-          rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-
-          while uart4.sr.read().txe().bit_is_clear() == true {}
-          uart4.dr.write(|w| w.dr().bits('?' as u16));
-          while uart4.sr.read().txe().bit_is_clear() == true {}
-        }},
-      5 => {
-        let uart5 = &peripheral_ptr.UART5;
-        if c.is_ascii() == true {
-          while uart5.sr.read().txe().bit_is_clear() == true {}
-          uart5.dr.write(|w| w.dr().bits(c as u16));
-          while uart5.sr.read().txe().bit_is_clear() == true {}
-        }
-        else {
-          rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-
-          while uart5.sr.read().txe().bit_is_clear() == true {}
-          uart5.dr.write(|w| w.dr().bits('?' as u16));
-          while uart5.sr.read().txe().bit_is_clear() == true {}
-        }
-      },
-      6 => {
-        let usart6 = &peripheral_ptr.USART6;
-        if c.is_ascii() == true {
-          while usart6.sr.read().txe().bit_is_clear() == true {}
-          usart6.dr.write(|w| w.dr().bits(c as u16));
-          while usart6.sr.read().txe().bit_is_clear() == true {}
-        }
-        else {
-          rtt_target::rprintln!("{} is not an ASCII character! | .send_char(...)", c);
-
-          while usart6.sr.read().txe().bit_is_clear() == true {}
-          usart6.dr.write(|w| w.dr().bits('?' as u16));
-          while usart6.sr.read().txe().bit_is_clear() == true {}
-        }
-      },
-      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .send_char(...)", self.core)
-    };
-  }
-
-  pub fn send_string(&self, s: &str) {
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-
-    for c in s.chars() {
-      match self.core {
-        1 => {
-          let usart1 = &peripheral_ptr.USART1;
-          if c.is_ascii() == true {
-            while usart1.sr.read().txe().bit_is_clear() == true {}
-            usart1.dr.write(|w| w.dr().bits(c as u16));
-            while usart1.sr.read().txe().bit_is_clear() == true {}
-          }
-          else {
-            rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-
-            while usart1.sr.read().txe().bit_is_clear() == true {}
-            usart1.dr.write(|w| w.dr().bits('?' as u16));
-            while usart1.sr.read().txe().bit_is_clear() == true {}
-          }
-        },
-        2 => {
-          let usart2 = &peripheral_ptr.USART2;
-          if c.is_ascii() == true {
-            while usart2.sr.read().txe().bit_is_clear() == true {}
-            usart2.dr.write(|w| w.dr().bits(c as u16));
-            while usart2.sr.read().txe().bit_is_clear() == true {}
-          }
-          else {
-            rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-
-            while usart2.sr.read().txe().bit_is_clear() == true {}
-            usart2.dr.write(|w| w.dr().bits('?' as u16));
-            while usart2.sr.read().txe().bit_is_clear() == true {}
-          }
-        },
-        3 => {
-          let usart3 = &peripheral_ptr.USART3;
-          if c.is_ascii() == true {
-            while usart3.sr.read().txe().bit_is_clear() == true {}
-            usart3.dr.write(|w| w.dr().bits(c as u16));
-            while usart3.sr.read().txe().bit_is_clear() == true {}
-          }
-          else {
-            rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-
-            while usart3.sr.read().txe().bit_is_clear() == true {}
-            usart3.dr.write(|w| w.dr().bits('?' as u16));
-            while usart3.sr.read().txe().bit_is_clear() == true {}
-          }
-        },
-        4 => {let uart4 = &peripheral_ptr.UART4;
-          if c.is_ascii() == true {
-            while uart4.sr.read().txe().bit_is_clear() == true {}
-            uart4.dr.write(|w| w.dr().bits(c as u16));
-            while uart4.sr.read().txe().bit_is_clear() == true {}
-          }
-          else {
-            rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-
-            while uart4.sr.read().txe().bit_is_clear() == true {}
-            uart4.dr.write(|w| w.dr().bits('?' as u16));
-            while uart4.sr.read().txe().bit_is_clear() == true {}
-          }},
-        5 => {
-          let uart5 = &peripheral_ptr.UART5;
-          if c.is_ascii() == true {
-            while uart5.sr.read().txe().bit_is_clear() == true {}
-            uart5.dr.write(|w| w.dr().bits(c as u16));
-            while uart5.sr.read().txe().bit_is_clear() == true {}
-          }
-          else {
-            rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-
-            while uart5.sr.read().txe().bit_is_clear() == true {}
-            uart5.dr.write(|w| w.dr().bits('?' as u16));
-            while uart5.sr.read().txe().bit_is_clear() == true {}
-          }
-        },
-        6 => {
-          let usart6 = &peripheral_ptr.USART6;
-          if c.is_ascii() == true {
-            while usart6.sr.read().txe().bit_is_clear() == true {}
-            usart6.dr.write(|w| w.dr().bits(c as u16));
-            while usart6.sr.read().txe().bit_is_clear() == true {}
-          }
-          else {
-            rtt_target::rprintln!("{} is not an ASCII character! | .send_string(...)", c);
-
-            while usart6.sr.read().txe().bit_is_clear() == true {}
-            usart6.dr.write(|w| w.dr().bits('?' as u16));
-            while usart6.sr.read().txe().bit_is_clear() == true {}
-          }
-        },
-        _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .send_string(...)", self.core)
-      };
-    }
-  }
-
-  pub fn get_char(&self) -> char {
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-
-    let buffer = match self.core {
-      1 => {
-        let usart1 = &peripheral_ptr.USART1;
-        while usart1.sr.read().rxne().bit_is_clear() == true {}
-        usart1.dr.read().dr().bits() as u8
-      },
-      2 => {
-        let usart2 = &peripheral_ptr.USART2;
-        while usart2.sr.read().rxne().bit_is_clear() == true {}
-        usart2.dr.read().dr().bits() as u8
-      },
-      3 => {
-        let usart3 = &peripheral_ptr.USART3;
-        while usart3.sr.read().rxne().bit_is_clear() == true {}
-        usart3.dr.read().dr().bits() as u8
+        uart3.dr.write(|w| w.dr().bits(data.into()));
       },
       4 => {
         let uart4 = &peripheral_ptr.UART4;
-        while uart4.sr.read().rxne().bit_is_clear() == true {}
-        uart4.dr.read().dr().bits() as u8
+        while uart4.sr.read().txe().bit_is_clear() == true {
+          if let Err(error) = check_uart_errors(uart4.sr.read().bits()) {return Err(error);}
+        }
+        uart4.dr.write(|w| w.dr().bits(data.into()));
       },
       5 => {
         let uart5 = &peripheral_ptr.UART5;
-        while uart5.sr.read().rxne().bit_is_clear() == true {}
-        uart5.dr.read().dr().bits() as u8
+        while uart5.sr.read().txe().bit_is_clear() == true {
+          if let Err(error) = check_uart_errors(uart5.sr.read().bits()) {return Err(error);}
+        }
+        uart5.dr.write(|w| w.dr().bits(data.into()));
       },
       6 => {
-        let usart6 = &peripheral_ptr.USART6;
-        while usart6.sr.read().rxne().bit_is_clear() == true {}
-        usart6.dr.read().dr().bits() as u8
+        let uart6 = &peripheral_ptr.USART6;
+        while uart6.sr.read().txe().bit_is_clear() == true {
+          if let Err(error) = check_uart_errors(uart6.sr.read().bits()) {return Err(error);}
+        }
+        uart6.dr.write(|w| w.dr().bits(data.into()));
       },
-      _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .get_char()", self.core)
+      _ => unreachable!()
     };
 
-    return buffer as char;
+    return Ok(());
   }
 
-  pub fn get_string<const N: usize>(&self, stopper: char) -> Result<String<N>, String<20>> {
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-    let mut buffer: u8;
-    let mut string_buffer: String<N> = String::new();
+  pub fn read_char(&self) -> Option<char> {
+    let peripheral_ptr = stm_peripherals();
 
-    if stopper.is_ascii() == false {
-      rtt_target::rprintln!("Stop char {} is not an ASCII character! | .get_string(...)", stopper);
-      return Err(String::from("Stop char is not an ASCII character!"));
-    }
+    let buffer: u8;
+    
+    match self.core {
+      1 => {
+        let uart1 = &peripheral_ptr.USART1;
+        while uart1.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart1.sr.read().bits()) {return None;}
+        }
+        buffer = uart1.dr.read().dr().bits() as u8;
+      },
+      2 => {
+        let uart2 = &peripheral_ptr.USART2;
+        while uart2.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart2.sr.read().bits()) {return None;}
+        }
+        buffer = uart2.dr.read().dr().bits() as u8;
+      },
+      3 => {
+        let uart3 = &peripheral_ptr.USART3;
+        while uart3.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart3.sr.read().bits()) {return None;}
+        }
+        buffer = uart3.dr.read().dr().bits() as u8;
+      },
+      4 => {
+        let uart4 = &peripheral_ptr.UART4;
+        while uart4.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart4.sr.read().bits()) {return None;}
+        }
+        buffer = uart4.dr.read().dr().bits() as u8;
+      },
+      5 => {
+        let uart5 = &peripheral_ptr.UART5;
+        while uart5.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart5.sr.read().bits()) {return None;}
+        }
+        buffer = uart5.dr.read().dr().bits() as u8;
+      },
+      6 => {
+        let uart6 = &peripheral_ptr.USART6;
+        while uart6.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart6.sr.read().bits()) {return None;}
+        }
+        buffer = uart6.dr.read().dr().bits() as u8;
+      },
+      _ => unreachable!()
+    };
 
-    loop {
-      buffer = match self.core {
-        1 => {
-          let usart1 = &peripheral_ptr.USART1;
-          while usart1.sr.read().rxne().bit_is_clear() == true {}
-          usart1.dr.read().dr().bits() as u8
-        },
-        2 => {
-          let usart2 = &peripheral_ptr.USART2;
-          while usart2.sr.read().rxne().bit_is_clear() == true {}
-          usart2.dr.read().dr().bits() as u8
-        },
-        3 => {
-          let usart3 = &peripheral_ptr.USART3;
-          while usart3.sr.read().rxne().bit_is_clear() == true {}
-          usart3.dr.read().dr().bits() as u8
-        },
-        4 => {
-          let uart4 = &peripheral_ptr.UART4;
-          while uart4.sr.read().rxne().bit_is_clear() == true {}
-          uart4.dr.read().dr().bits() as u8
-        },
-        5 => {
-          let uart5 = &peripheral_ptr.UART5;
-          while uart5.sr.read().rxne().bit_is_clear() == true {}
-          uart5.dr.read().dr().bits() as u8
-        },
-        6 => {
-          let usart6 = &peripheral_ptr.USART6;
-          while usart6.sr.read().rxne().bit_is_clear() == true {}
-          usart6.dr.read().dr().bits() as u8
-        },
-        _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | .get_string(...)", self.core)
-      };
+    return Some(buffer as char);
+  }
 
-      if buffer == stopper as u8 {return Ok(string_buffer);}
-      string_buffer.push(buffer as char).expect("Could not write to String Object! | .get_string(...)");
-    }
+  pub fn read_byte(&self) -> Option<u8> {
+    let peripheral_ptr = stm_peripherals();
+
+    let buffer: u8;
+    
+    match self.core {
+      1 => {
+        let uart1 = &peripheral_ptr.USART1;
+        while uart1.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart1.sr.read().bits()) {return None;}
+        }
+        buffer = uart1.dr.read().dr().bits() as u8;
+      },
+      2 => {
+        let uart2 = &peripheral_ptr.USART2;
+        while uart2.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart2.sr.read().bits()) {return None;}
+        }
+        buffer = uart2.dr.read().dr().bits() as u8;
+      },
+      3 => {
+        let uart3 = &peripheral_ptr.USART3;
+        while uart3.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart3.sr.read().bits()) {return None;}
+        }
+        buffer = uart3.dr.read().dr().bits() as u8;
+      },
+      4 => {
+        let uart4 = &peripheral_ptr.UART4;
+        while uart4.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart4.sr.read().bits()) {return None;}
+        }
+        buffer = uart4.dr.read().dr().bits() as u8;
+      },
+      5 => {
+        let uart5 = &peripheral_ptr.UART5;
+        while uart5.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart5.sr.read().bits()) {return None;}
+        }
+        buffer = uart5.dr.read().dr().bits() as u8;
+      },
+      6 => {
+        let uart6 = &peripheral_ptr.USART6;
+        while uart6.sr.read().rxne().bit_is_clear() == true {
+          if let Err(_) = check_uart_errors(uart6.sr.read().bits()) {return None;}
+        }
+        buffer = uart6.dr.read().dr().bits() as u8;
+      },
+      _ => unreachable!()
+    };
+
+    return Some(buffer);
   }
 }
+  
+  
+// Private Functions ==============================================================================
+fn check_uart_errors(sr: u32) -> Result<(), SerialError> {
+  let bits = sr & 0xF;
 
+  if bits & 0x8 > 1 {return Err(SerialError::Overrun);}
+  else if bits & 0x4 > 1 {return Err(SerialError::Noise);}
+  else if bits & 0x2 > 1 {return Err(SerialError::FrameFormat);}
+  else if bits & 0x1 > 1 {return Err(SerialError::Parity);}
 
-// Helper functions ===============================================================================
-fn uart_setup_gpio(block: char, pin: u8, core: u8) {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  let rcc = &peripheral_ptr.RCC;
-
-  match block {
-    'a' => {
-      let gpioa = &peripheral_ptr.GPIOA;
-      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
-      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if core < 4 {
-        if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
-        else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
-      }
-      else {
-        if pin > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
-        else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
-      }
-    },
-    'b' => {
-      let gpiob = &peripheral_ptr.GPIOB;
-      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
-      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if core < 4 {
-        if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
-        else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
-      }
-      else {
-        if pin > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
-        else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
-      }
-    },
-    'c' => {
-      let gpioc = &peripheral_ptr.GPIOC;
-      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
-      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if core < 4 {
-        if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
-        else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
-      }
-      else {
-        if pin > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
-        else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
-      }
-    },
-    'd' => {
-      let gpiod = &peripheral_ptr.GPIOD;
-      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
-      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if core < 4 {
-        if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
-        else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
-      }
-      else {
-        if pin > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
-        else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
-      }
-    },
-    'e' => {
-      let gpioe = &peripheral_ptr.GPIOE;
-      rcc.ahb1enr.modify(|_, w| w.gpioeen().enabled());
-      gpioe.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if core < 4 {
-        if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
-        else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
-      }
-      else {
-        if pin > 7 {gpioe.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
-        else {gpioe.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
-      }
-    },
-    'g' => {
-      let gpiog = &peripheral_ptr.GPIOG;
-      rcc.ahb1enr.modify(|_, w| w.gpiogen().enabled());
-      gpiog.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin)) | (2 << (2 * pin)))});
-      if core < 4 {
-        if pin > 7 {gpiog.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * (pin - 8))))});}
-        else {gpiog.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (7 << (4 * pin)))});}
-      }
-      else {
-        if pin > 7 {gpiog.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * (pin - 8))))});}
-        else {gpiog.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (8 << (4 * pin)))});}
-      }
-    },
-    _   => panic!("P{}{} is not available for UART transmissions! | uart_setup_gpio(...)", block.to_uppercase(), pin)
-  };
+  return Ok(());
 }
 
 fn set_baud(core: u8, baud: u32) {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-
+  let peripheral_ptr = stm_peripherals();
+  
   // (Mantisse, Fractal)
-  let usartdiv: (f64, f64) = libm::modf(16000000.0 / (16.0 * baud as f64));
+  let uartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));
 
   match core {
     1 => {
-      let usart1 = &peripheral_ptr.USART1;
-      usart1.brr.modify(|_, w| {
-        w.div_mantissa().bits(usartdiv.1 as u16);
-        w.div_fraction().bits((usartdiv.0 * 16.0) as u8)
+      let uart1 = &peripheral_ptr.USART1;
+      uart1.brr.modify(|_, w| {
+        w.div_mantissa().bits(uartdiv.1 as u16);
+        w.div_fraction().bits((uartdiv.0 * 16.0) as u8)
       });
     },
     2 => {
-      let usart2 = &peripheral_ptr.USART2;
-      usart2.brr.modify(|_, w| {
-        w.div_mantissa().bits(usartdiv.1 as u16);
-        w.div_fraction().bits((usartdiv.0 * 16.0) as u8)
+      let uart2 = &peripheral_ptr.USART2;
+      uart2.brr.modify(|_, w| {
+        w.div_mantissa().bits(uartdiv.1 as u16);
+        w.div_fraction().bits((uartdiv.0 * 16.0) as u8)
       });
     },
     3 => {
-      let usart3 = &peripheral_ptr.USART3;
-      usart3.brr.modify(|_, w| {
-        w.div_mantissa().bits(usartdiv.1 as u16);
-        w.div_fraction().bits((usartdiv.0 * 16.0) as u8)
+      let uart3 = &peripheral_ptr.USART3;
+      uart3.brr.modify(|_, w| {
+        w.div_mantissa().bits(uartdiv.1 as u16);
+        w.div_fraction().bits((uartdiv.0 * 16.0) as u8)
       });
     },
     4 => {
       let uart4 = &peripheral_ptr.UART4;
       uart4.brr.modify(|_, w| {
-        w.div_mantissa().bits(usartdiv.1 as u16);
-        w.div_fraction().bits((usartdiv.0 * 16.0) as u8)
+        w.div_mantissa().bits(uartdiv.1 as u16);
+        w.div_fraction().bits((uartdiv.0 * 16.0) as u8)
       });
     },
     5 => {
       let uart5 = &peripheral_ptr.UART5;
       uart5.brr.modify(|_, w| {
-        w.div_mantissa().bits(usartdiv.1 as u16);
-        w.div_fraction().bits((usartdiv.0 * 16.0) as u8)
+        w.div_mantissa().bits(uartdiv.1 as u16);
+        w.div_fraction().bits((uartdiv.0 * 16.0) as u8)
       });
     },
     6 => {
-      let usart6 = &peripheral_ptr.USART6;
-      usart6.brr.modify(|_, w| {
-        w.div_mantissa().bits(usartdiv.1 as u16);
-        w.div_fraction().bits((usartdiv.0 * 16.0) as u8)
+      let uart6 = &peripheral_ptr.USART6;
+      uart6.brr.modify(|_, w| {
+        w.div_mantissa().bits(uartdiv.1 as u16);
+        w.div_fraction().bits((uartdiv.0 * 16.0) as u8)
       });
     },
-    _ => panic!("U(S)ART{} is not a valid U(S)ART peripheral! | set_baud(...)", core)
+    _ => unreachable!()
   }
 }
 
 
-// UART Serial connection =========================================================================
-pub mod serial {
-  use libm::*;
-  use super::super::include::UART_CONF;
+pub fn modf(x: f64) -> (f64, f64) {
+  let rv2: f64;
+  let mut u = x.to_bits();
+  let mask: u64;
+  let e = ((u >> 52 & 0x7ff) as i32) - 0x3ff;
 
-  pub fn init(baud: u32, rxint: bool, txint: bool) {
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-    let rcc = &peripheral_ptr.RCC;
-    let usart2 = &peripheral_ptr.USART2;
-    let gpioa = &peripheral_ptr.GPIOA;
-
-    // (Mantisse, Fractal)
-    let usartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));
-
-    unsafe {
-      if UART_CONF[1] == true {
-        rtt_target::rprintln!("Serial connection already configured! | ::init(...)");
-        usart2.cr1.modify(|_, w| w.ue().disabled());
+  // no fractional part
+  if e >= 52 {
+      rv2 = x;
+      if e == 0x400 && (u << 12) != 0 {
+          /* nan */
+          return (x, rv2);
       }
-    }
-
-    rcc.apb1enr.modify(|_, w| w.usart2en().enabled());
-
-    usart2.brr.write(|w| {
-      w.div_mantissa().bits(usartdiv.1 as u16);
-      w.div_fraction().bits((usartdiv.0 * 16.0) as u8)
-    });
-
-    if rxint == true {usart2.cr1.modify(|_, w| w.rxneie().enabled());}
-    if txint == true {usart2.cr1.modify(|_, w| w.tcie().enabled());}
-
-    usart2.cr1.modify(|_, w| {
-      w.re().enabled();
-      w.te().enabled();
-      w.ue().enabled()
-    });
-
-    unsafe {UART_CONF[1] = true;}
-
-    rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
-    gpioa.moder.modify(|_, w| w.moder2().alternate());
-    gpioa.moder.modify(|_, w| w.moder3().alternate());
-    gpioa.afrl.modify(|_, w| w.afrl2().af7());
-    gpioa.afrl.modify(|_, w| w.afrl3().af7());
+      u &= 1 << 63;
+      return (f64::from_bits(u), rv2);
   }
 
-  pub fn send_char_usb(c: char) {
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-    let usart2 = &peripheral_ptr.USART2;
-
-    unsafe {
-      if UART_CONF[1] == false {
-        panic!("UART USB core ist not configured! | ::send_char_usb(...)");
-      }
-    }
-
-    if c.is_ascii() == true {
-      while usart2.sr.read().txe().bit_is_clear() == true {}
-      usart2.dr.write(|w| w.dr().bits(c as u16));
-      while usart2.sr.read().txe().bit_is_clear() == true {}
-    }
-    else {
-      rtt_target::rprintln!("{} is not an ASCII character! | ::send_char_usb(...)", c);
-
-      while usart2.sr.read().txe().bit_is_clear()  == true {}
-      usart2.dr.write(|w| w.dr().bits('?' as u16));
-      while usart2.sr.read().txe().bit_is_clear()  == true {}
-    }
+  // no integral part
+  if e < 0 {
+      u &= 1 << 63;
+      rv2 = f64::from_bits(u);
+      return (x, rv2);
   }
 
-  pub fn recieve_char_usb() -> char {
-    let peripheral_ptr;
-    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-    let usart2 = &peripheral_ptr.USART2;
-    let buffer: u8;
-
-    unsafe {
-      if UART_CONF[1] == false {
-        panic!("UART USB core ist not configured! | ::recieve_char_usb()");
-      }
-    }
-
-    while usart2.sr.read().rxne().bit_is_clear() == true {}
-    buffer = usart2.dr.read().dr().bits() as u8;
-
-    return buffer as char;
+  mask = ((!0) >> 12) >> e;
+  if (u & mask) == 0 {
+      rv2 = x;
+      u &= 1 << 63;
+      return (f64::from_bits(u), rv2);
   }
-
-
-  // Macro declerations ===========================================================================
-  #[macro_export]
-  macro_rules! sprint {
-    ($fmt:expr) => {
-      let mut txt_buff: String<50> = String::new();
-      if ::core::fmt::write(&mut txt_buff, format_args!($fmt)).is_err() {
-        rprintln!("Could not construct serial string! | sprit!(...)");
-        txt_buff = String::from("~\r\n")
-      };
-
-      for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::uart::serial::send_char_usb(c);}
-        else {$crate::uart::serial::send_char_usb('?');}
-      }
-    };
-
-    ($fmt:expr, $($args:tt)*) => {
-      let mut txt_buff: String<50> = String::new();
-      if ::core::fmt::write(&mut txt_buff, format_args!($fmt, $($args)*)).is_err() {
-        rprintln!("Could not construct serial string! | sprit!(...)");
-        txt_buff = String::from("~\r\n")
-      };
-
-      for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::uart::serial::send_char_usb(c);}
-        else {$crate::uart::serial::send_char_usb('?');}
-      }
-    };
-  }
-
-  #[macro_export]
-  macro_rules! sprintln {
-    ($fmt:expr) => {
-      let mut txt_buff: String<50> = String::new();
-      if ::core::fmt::write(&mut txt_buff, format_args!($fmt)).is_err() {
-        rprintln!("Could not construct serial string! | spritln!(...)");
-        txt_buff = String::from("~")
-      };
-
-      for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::uart::serial::send_char_usb(c);}
-        else {$crate::uart::serial::send_char_usb('?');}
-      }
-
-      $crate::uart::serial::send_char_usb('\r');
-      $crate::uart::serial::send_char_usb('\n');
-    };
-
-    ($fmt:expr, $($args:tt)*) => {
-      let mut txt_buff: String<50> = String::new();
-      if ::core::fmt::write(&mut txt_buff, format_args!($fmt, $($args)*)).is_err() {
-        rprintln!("Could not construct serial string! | spritln!(...)");
-        txt_buff = String::from("~")
-      };
-
-      for c in txt_buff.chars() {
-        if c.is_ascii() == true {$crate::uart::serial::send_char_usb(c);}
-        else {$crate::uart::serial::send_char_usb('?');}
-      }
-
-      $crate::uart::serial::send_char_usb('\r');
-      $crate::uart::serial::send_char_usb('\n');
-    };
-  }
-
-  #[macro_export]
-  macro_rules! sread {
-    () => {{
-      let c_buff: char = $crate::uart::serial::recieve_char_usb();
-      c_buff
-    }};
-
-    ($c:expr) => {{
-      let found: bool;
-
-      if $crate::uart::serial::recieve_char_usb() == $c {found = true;}
-      else {found = false;}
-
-      found
-    }};
-  }
-
-  #[macro_export]
-  macro_rules! sreads {
-    ($stop:expr) => {{
-      let mut str: String<50> = String::new();
-      let mut buff: char;
-      loop {
-        buff = $crate::uart::serial::recieve_char_usb();
-        if buff == $stop as char {break;}
-        str.push(buff).expect("String buffer overflow! | sreads!(...)");
-      }
-      str
-    }};
-  }
+  u &= !mask;
+  rv2 = f64::from_bits(u);
+  return (x - rv2, rv2);
 }
