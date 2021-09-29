@@ -13,8 +13,6 @@ pub use gpio::*;
 pub use analog::{adc_resolution, analog_read, analog_write, analog_write_noise, analog_write_triangle, analog_wave_freq};
 pub use time::{pwm_write, delay, start_time, millis};
 
-pub use uart::serial;
-
 
 // Submodule includes =============================================================================
 pub mod include;
@@ -28,10 +26,12 @@ pub mod spi;
 
 // Panic handler ==================================================================================
 use core::panic::PanicInfo;
+use core::sync::atomic::{compiler_fence, Ordering};
 
 #[inline(never)]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
+  cortex_m::interrupt::disable();
   rtt_target::rprintln!("{}", info);
-  loop {core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);}
+  loop {compiler_fence(Ordering::SeqCst);}
 }
