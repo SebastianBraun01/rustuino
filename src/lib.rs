@@ -4,7 +4,6 @@
 pub use cortex_m_rt::{entry, exception};
 pub use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 
-pub use libm;
 pub use heapless::{Vec, String};
 pub use rtt_target::{rtt_init_print, rprint, rprintln};
 
