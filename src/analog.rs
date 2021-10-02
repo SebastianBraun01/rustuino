@@ -6,7 +6,7 @@ use rtt_target::rprintln;
 
 
 // Public Functions ===============================================================================
-pub fn enable_channel(pin: (char, u8)) -> Result<(), GpioError> {
+pub fn enable_channel(pin: (char, u8)) -> Result<(), ProgError> {
   let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
   let adcc = &peripheral_ptr.ADC_COMMON;
@@ -78,7 +78,7 @@ pub fn enable_channel(pin: (char, u8)) -> Result<(), GpioError> {
   return Ok(());
 }
 
-pub fn adc_resolution(pin: (char, u8), res: u8) -> Result<(), GpioError> {
+pub fn adc_resolution(pin: (char, u8), res: u8) -> Result<(), ProgError> {
   let peripheral_ptr = stm_peripherals();
 
   let enc_res = match res {
@@ -88,7 +88,7 @@ pub fn adc_resolution(pin: (char, u8), res: u8) -> Result<(), GpioError> {
     12 => 0,
     _ => {
       rprintln!("{} is not a available ADC resolution! | adc_resolution()", res);
-      return Err(GpioError::Prog(ProgError::InvalidConfiguration));
+      return Err(ProgError::InvalidConfiguration);
     }
   };
 
@@ -121,7 +121,7 @@ pub fn analog_read(pin: (char, u8)) -> Result<u16, GpioError> {
 
   let target = match check_channel(pin, true, false) {
     Ok(p) => p,
-    Err(error) => return Err(error)
+    Err(error) => return Err(GpioError::Prog(error))
   };
 
   match return_pinmode(pin) {
@@ -184,7 +184,7 @@ pub fn analog_write(pin: (char, u8), value: u16) -> Result<(), GpioError> {
 
   let target = match check_channel(pin, false, true) {
     Ok(p) => p,
-    Err(error) => return Err(error)
+    Err(error) => return Err(GpioError::Prog(error))
   };
 
   match return_pinmode(pin) {
@@ -231,7 +231,7 @@ pub fn analog_write_noise(pin: (char, u8), level: u8) -> Result<(), GpioError> {
 
   let target = match check_channel(pin, false, true) {
     Ok(p) => p,
-    Err(error) => return Err(error)
+    Err(error) => return Err(GpioError::Prog(error))
   };
 
   match return_pinmode(pin) {
@@ -276,7 +276,7 @@ pub fn analog_write_triangle(pin: (char, u8), level: u8) -> Result<(), GpioError
 
   let target = match check_channel(pin, false, true) {
     Ok(p) => p,
-    Err(error) => return Err(error)
+    Err(error) => return Err(GpioError::Prog(error))
   };
 
   match return_pinmode(pin) {
@@ -325,14 +325,14 @@ pub fn analog_wave_freq(freq: u32) {
 
 
 // Private Functions ==============================================================================
-fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), GpioError> {
-  if ADC_MAP.pins.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidConfiguration));}
+fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), ProgError> {
+  if ADC_MAP.pins.contains(&pin) == false {return Err(ProgError::InvalidConfiguration);}
   else {
     let core = ADC_MAP.adcs[ADC_MAP.pins.iter().position(|&i| i == pin).unwrap()];
     let channel = ADC_MAP.channels[ADC_MAP.pins.iter().position(|&i| i == pin).unwrap()];
 
-    if dac == false && core == 0 {return Err(GpioError::Prog(ProgError::InvalidConfiguration));}
-    else if adc == false && core != 0 {return Err(GpioError::Prog(ProgError::InvalidConfiguration));}
+    if dac == false && core == 0 {return Err(ProgError::InvalidConfiguration);}
+    else if adc == false && core != 0 {return Err(ProgError::InvalidConfiguration);}
     else {return Ok((core, channel));}
   }
 }

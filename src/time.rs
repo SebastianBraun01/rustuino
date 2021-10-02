@@ -11,7 +11,7 @@ static TIME_COUNTER: Mutex<RefCell<usize>> = Mutex::new(RefCell::new(0));
 
 
 // Public PWM Functions ===========================================================================
-pub fn setup_pwm(pin: (char, u8)) -> Result<(), GpioError>{
+pub fn setup_pwm(pin: (char, u8)) -> Result<(), ProgError>{
   let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
 
@@ -102,7 +102,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
 
   let (timer, ccch, af) = match check_pwm(pin) {
     Ok(target) => target,
-    Err(error) => return Err(error)
+    Err(error) => return Err(GpioError::Prog(error))
   };
 
   match return_pinmode(pin) {
@@ -167,8 +167,8 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
 
 
 // Private PWM Functions ==========================================================================
-fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), GpioError> {
-  if PWM_MAP.pins.contains(&pin) == false {return Err(GpioError::Prog(ProgError::InvalidConfiguration));}
+fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError> {
+  if PWM_MAP.pins.contains(&pin) == false {return Err(ProgError::InvalidConfiguration);}
   else {
     let timer = PWM_MAP.timers[PWM_MAP.pins.iter().position(|&i| i == pin).unwrap()];
     let ccch = PWM_MAP.ccchs[PWM_MAP.pins.iter().position(|&i| i == pin).unwrap()];
