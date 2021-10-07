@@ -1,7 +1,7 @@
 //! This module contains everything that is used for UART communication.
 
 use crate::include::{stm_peripherals, SerialError, ProgError, UART_MAP, pins::PIN_CONF};
-use crate::gpio::{Pin, AlternateFunction, pinmode_alternate_function_force};
+use crate::gpio::pinmode_alternate_function;
 use stm32f4::stm32f446::{NVIC, Interrupt};
 use rtt_target::rprintln;
 
@@ -20,16 +20,13 @@ pub const UART_9O1: u8 = 10;
 pub const UART_9O2: u8 = 14;
 
 pub struct UART {
-  core: u8,
-  tx_pin: Pin<AlternateFunction>,
-  rx_pin: Pin<AlternateFunction>
+  core: u8
 }
 
 impl UART {
   pub fn new(core: u8, tx_pin: (char, u8), rx_pin: (char, u8), baud: u32, conf: u8) -> Result<Self, ProgError> {
     let peripheral_ptr = stm_peripherals();
     let rcc = &peripheral_ptr.RCC;
-    let (tx, rx);
 
     let af = if core == 1 || core == 2 || core == 3 {7}
     else {8};
@@ -49,17 +46,10 @@ impl UART {
         PIN_CONF.push(tx_pin).expect("Could not store pin number! | UART::new()");
         PIN_CONF.push(rx_pin).expect("Could not store pin number! | UART::new()");
       }
-
-      tx = match pinmode_alternate_function_force(tx_pin, af) {
-        Ok(pin) => pin,
-        Err(error) => return Err(error)
-      };
-
-      rx = match pinmode_alternate_function_force(rx_pin, af) {
-        Ok(pin) => pin,
-        Err(error) => return Err(error)
-      };
     }
+
+    if let Err(_) = pinmode_alternate_function(tx_pin, af) {return Err(ProgError::Internal);}
+    if let Err(_) = pinmode_alternate_function(rx_pin, af) {return Err(ProgError::Internal);}
     
     match core {
       1 => {
@@ -177,9 +167,7 @@ impl UART {
     };
 
     return Ok(Self {
-      core,
-      tx_pin: tx,
-      rx_pin: rx
+      core
     });
   }
 
