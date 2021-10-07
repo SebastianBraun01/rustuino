@@ -1,7 +1,7 @@
 //! This module contains everything that is related to timer based functions.
 
 use crate::include::{stm_peripherals, GpioError, ProgError, PWM_MAP};
-use crate::gpio::{pin_mode, GpioMode::AlternateFunction, return_pinmode};
+use crate::gpio::{Pin, PWM};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 use cortex_m::interrupt::{Mutex, free};
 use core::cell::RefCell;
@@ -11,7 +11,7 @@ static TIME_COUNTER: Mutex<RefCell<usize>> = Mutex::new(RefCell::new(0));
 
 
 // Public PWM Functions ===========================================================================
-pub fn setup_pwm(pin: (char, u8)) -> Result<(), ProgError>{
+pub fn setup_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError>{
   let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
 
@@ -19,8 +19,6 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), ProgError>{
     Ok(target) => target,
     Err(error) => return Err(error)
   };
-
-  if let Err(error) = pin_mode(pin, AlternateFunction(af.into())) {return Err(error);}
 
   match timer {
     1 => {
@@ -94,34 +92,16 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(), ProgError>{
     _  => unreachable!()
   };
 
-  return Ok(());
+  return Ok((timer, ccch, af));
 }
 
-pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
+pub fn pwm_write(pin: Pin<PWM>, value: u8) -> Result<(), GpioError> {
   let peripheral_ptr = stm_peripherals();
 
-  let (timer, ccch, af) = match check_pwm(pin) {
-    Ok(target) => target,
-    Err(error) => return Err(GpioError::Prog(error))
-  };
-
-  match return_pinmode(pin) {
-    Ok(AlternateFunction(af_pin)) => {
-      if af as u32 != af_pin {
-        rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
-        return Err(GpioError::WrongMode);
-      }
-    }
-    _ => {
-      rprintln!("P{}{} is not configured for pwm output! | pwm_write()", pin.0.to_uppercase(), pin.1);
-      return Err(GpioError::WrongMode);
-    }
-  };
-
-  match timer {
+  match pin.inner.timer {
     1 => {
       let tim1 = &peripheral_ptr.TIM1;
-      match ccch {
+      match pin.inner.ccch {
         1 => tim1.ccr1.write(|w| w.ccr().bits(value.into())),
         2 => tim1.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim1.ccr3.write(|w| w.ccr().bits(value.into())),
@@ -131,7 +111,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
     },
     2 => {
       let tim2 = &peripheral_ptr.TIM2;
-      match ccch {
+      match pin.inner.ccch {
         1 => tim2.ccr1.write(|w| w.ccr().bits(value.into())),
         2 => tim2.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim2.ccr3.write(|w| w.ccr().bits(value.into())),
@@ -141,7 +121,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
     },
     3 => {
       let tim3 = &peripheral_ptr.TIM3;
-      match ccch {
+      match pin.inner.ccch {
         1 => tim3.ccr1.write(|w| w.ccr().bits(value.into())),
         2 => tim3.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim3.ccr3.write(|w| w.ccr().bits(value.into())),
@@ -151,7 +131,7 @@ pub fn pwm_write(pin: (char, u8), value: u8) -> Result<(), GpioError> {
     },
     4 => {
       let tim4 = &peripheral_ptr.TIM4;
-      match ccch {
+      match pin.inner.ccch {
         1 => tim4.ccr1.write(|w| w.ccr().bits(value.into())),
         2 => tim4.ccr2.write(|w| w.ccr().bits(value.into())),
         3 => tim4.ccr3.write(|w| w.ccr().bits(value.into())),
