@@ -860,3 +860,9 @@ fn check_pin(pin: (char, u8)) -> Result<(), ProgError> {
   }
   else {return Ok(());}
 }
+
+impl<T> Drop for Pin<T> {
+  fn drop(&mut self) {
+    unsafe {PIN_CONF.swap_remove(PIN_CONF.iter().position(|&i| i == (self.block, self.number)).unwrap());}
+  }
+}
