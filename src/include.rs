@@ -1,5 +1,9 @@
 /// Pin aliases for function parameters.
 pub mod pins {
+  use heapless::Vec;
+
+  pub static mut PIN_CONF: Vec<(char, u8), 50> = Vec::new();
+
   macro_rules! generate_pins {
     ($([$block:literal, $pin:literal]),+) => {
       use paste::paste;

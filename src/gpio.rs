@@ -2,24 +2,20 @@
 
 use crate::analog::enable_channel;
 use crate::time::setup_pwm;
-use crate::include::{stm_peripherals, GpioError, ProgError};
+use crate::include::{stm_peripherals, ProgError, pins::PIN_CONF};
 use rtt_target::rprintln;
-use heapless::Vec;
 
-// Represents available GPIO modes.
-pub enum GpioMode {
-  Input,
-  Output,
-  AlternateFunction(u32),
-  Analog,
-  PWM
+pub struct Pin<T> {
+  pub block: char,
+  pub number: u8,
+  pub inner: T
 }
 
-// pub struct Pin<T> {
-//   block: char,
-//   pin: u8,
-//   internal: T
-// }
+pub struct Input;
+pub struct Output;
+pub struct AlternateFunction(u32);
+pub struct Analog {pub core: u8, pub channel: u8}
+pub struct PWM {pub timer: u8, pub ccch: u8}
 
 /// Represents the options to configure the GPIO speed of a pin.
 ///
@@ -41,21 +37,199 @@ pub enum GpioBias {
 }
 
 
-
-
 // Public Functions ===============================================================================
-pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), ProgError> {
+pub fn pinmode_input(pin: (char, u8)) -> Result<Pin<Input>, ProgError> {
   let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
 
-  static mut PIN_CONF: Vec<(char, u8), 50> = Vec::new();
+  if let Err(error) = check_pin(pin) {return Err(error);}
+
+  unsafe {
+    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    else {
+      rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
+      return Err(ProgError::AlreadyConfigured);
+    }
+  }
+
+  match pin.0 {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))});
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))});
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))});
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))});
+    },
+    'h' => {
+      let gpioh = &peripheral_ptr.GPIOH;
+      rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+      gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))});
+    },
+    _   => unreachable!()
+  };
+
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: Input
+  });
+}
+
+pub unsafe fn pinmode_input_force(pin: (char, u8)) -> Result<Pin<Input>, ProgError> {
+  let peripheral_ptr = stm_peripherals();
+  let rcc = &peripheral_ptr.RCC;
 
   if let Err(error) = check_pin(pin) {return Err(error);}
-  if let GpioMode::AlternateFunction(af) = mode {
-    if af > 15 {
-      rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
-      return Err(ProgError::InvalidConfiguration);
+
+  match pin.0 {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))});
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))});
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))});
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))});
+    },
+    'h' => {
+      let gpioh = &peripheral_ptr.GPIOH;
+      rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+      gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))});
+    },
+    _   => unreachable!()
+  };
+
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: Input
+  });
+}
+
+pub fn pinmode_output(pin: (char, u8)) -> Result<Pin<Output>, ProgError> {
+  let peripheral_ptr = stm_peripherals();
+  let rcc = &peripheral_ptr.RCC;
+
+  if let Err(error) = check_pin(pin) {return Err(error);}
+
+  unsafe {
+    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    else {
+      rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
+      return Err(ProgError::AlreadyConfigured);
     }
+  }
+
+  match pin.0 {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))});
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))});
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))});
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))});
+    },
+    'h' => {
+      let gpioh = &peripheral_ptr.GPIOH;
+      rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+      gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))});
+    },
+    _   => unreachable!()
+  };
+
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: Output
+  });
+}
+
+pub unsafe fn pinmode_output_force(pin: (char, u8)) -> Result<Pin<Output>, ProgError> {
+  let peripheral_ptr = stm_peripherals();
+  let rcc = &peripheral_ptr.RCC;
+
+  if let Err(error) = check_pin(pin) {return Err(error);}
+
+  match pin.0 {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))});
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))});
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))});
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))});
+    },
+    'h' => {
+      let gpioh = &peripheral_ptr.GPIOH;
+      rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+      gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))});
+    },
+    _   => unreachable!()
+  };
+
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: Output
+  });
+}
+
+pub fn pinmode_alternate_function(pin: (char, u8), af: u32) -> Result<Pin<AlternateFunction>, ProgError> {
+  let peripheral_ptr = stm_peripherals();
+  let rcc = &peripheral_ptr.RCC;
+
+  if let Err(error) = check_pin(pin) {return Err(error);}
+  if af > 15 {
+    rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
+    return Err(ProgError::InvalidConfiguration);
   }
 
   unsafe {
@@ -70,428 +244,611 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), ProgError> {
     'a' => {
       let gpioa = &peripheral_ptr.GPIOA;
       rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
-      match mode {
-        GpioMode::Input => gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioMode::Output => gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioMode::AlternateFunction(af) => {
-          gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
-          if pin.1 > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
-          else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
-        },
-        GpioMode::Analog => {
-          gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-          if let Err(error) = enable_channel(pin) {return Err(error);}
-        }
-        GpioMode::PWM => setup_pwm(pin).unwrap()
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
+      else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
+      else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
+      else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
+      else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
+    },
+    'h' => {
+      let gpioh = &peripheral_ptr.GPIOH;
+      rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+      gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioh.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
+      else {gpioh.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
+    },
+    _   => unreachable!()
+  };
+
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: AlternateFunction(af)
+  });
+}
+
+pub unsafe fn pinmode_alternate_function_force(pin: (char, u8), af: u32) -> Result<Pin<AlternateFunction>, ProgError> {
+  let peripheral_ptr = stm_peripherals();
+  let rcc = &peripheral_ptr.RCC;
+
+  if let Err(error) = check_pin(pin) {return Err(error);}
+  if af > 15 {
+    rprintln!("Only alternate funtion values between 0 and 15 are valid! | pin_mode()");
+    return Err(ProgError::InvalidConfiguration);
+  }
+
+  match pin.0 {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
+      else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
+      else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
+      else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
+      else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
+    },
+    'h' => {
+      let gpioh = &peripheral_ptr.GPIOH;
+      rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+      gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioh.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
+      else {gpioh.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
+    },
+    _   => unreachable!()
+  };
+
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: AlternateFunction(af)
+  });
+}
+
+pub fn pinmode_analog(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
+  let peripheral_ptr = stm_peripherals();
+  let rcc = &peripheral_ptr.RCC;
+
+  let channel_data: (u8, u8);
+
+  if let Err(error) = check_pin(pin) {return Err(error);}
+
+  unsafe {
+    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    else {
+      rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
+      return Err(ProgError::AlreadyConfigured);
+    }
+  }
+
+  match pin.0 {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
       };
     },
     'b' => {
       let gpiob = &peripheral_ptr.GPIOB;
       rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
-      match mode {
-        GpioMode::Input => gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioMode::Output => gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioMode::AlternateFunction(af) => {
-          gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
-          if pin.1 > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
-          else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
-        },
-        GpioMode::Analog => {
-          gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-          if let Err(error) = enable_channel(pin) {return Err(error);}
-        }
-        GpioMode::PWM => setup_pwm(pin).unwrap()
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
       };
     },
     'c' => {
       let gpioc = &peripheral_ptr.GPIOC;
       rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
-      match mode {
-        GpioMode::Input => gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioMode::Output => gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioMode::AlternateFunction(af) => {
-          gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
-          if pin.1 > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
-          else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
-        },
-        GpioMode::Analog => {
-          gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-          if let Err(error) = enable_channel(pin) {return Err(error);}
-        }
-        GpioMode::PWM => setup_pwm(pin).unwrap()
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
       };
     },
     'd' => {
       let gpiod = &peripheral_ptr.GPIOD;
       rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
-      match mode {
-        GpioMode::Input => gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioMode::Output => gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioMode::AlternateFunction(af) => {
-          gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
-          if pin.1 > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
-          else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
-        },
-        GpioMode::Analog => {
-          gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-          if let Err(error) = enable_channel(pin) {return Err(error);}
-        }
-        GpioMode::PWM => setup_pwm(pin).unwrap()
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
       };
     },
     'h' => {
       let gpioh = &peripheral_ptr.GPIOH;
       rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
-      match mode {
-        GpioMode::Input => gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioMode::Output => gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioMode::AlternateFunction(af) => {
-          gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
-          if pin.1 > 7 {gpioh.afrh.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * (pin.1 - 8))))});}
-          else {gpioh.afrl.modify(|r, w| unsafe {w.bits(r.bits() | (af << (4 * pin.1)))});}
-        },
-        GpioMode::Analog => {
-          gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-          if let Err(error) = enable_channel(pin) {return Err(error);}
-        }
-        GpioMode::PWM => setup_pwm(pin).unwrap()
+      gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
       };
     },
     _   => unreachable!()
   };
 
-  return Ok(());
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: Analog {
+      core: channel_data.0,
+      channel: channel_data.1
+    }
+  });
 }
 
-pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
+pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
   let peripheral_ptr = stm_peripherals();
+  let rcc = &peripheral_ptr.RCC;
 
-  if let Err(error) = check_pin(pin) {return Err(GpioError::Prog(error));}
+  let channel_data: (u8, u8);
+
+  if let Err(error) = check_pin(pin) {return Err(error);}
 
   match pin.0 {
     'a' => {
       let gpioa = &peripheral_ptr.GPIOA;
-      if gpioa.moder.read().bits() & (3 << (2 * pin.1)) != (1 << (2 * pin.1)) {
-        rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
-        return Err(GpioError::WrongMode);
-      }
-      if value == true {gpioa.bsrr.write(|w| unsafe {w.bits(1 << pin.1)});}
-      else {gpioa.bsrr.write(|w| unsafe {w.bits(1 << (pin.1 + 16))});}
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
+      };
     },
     'b' => {
       let gpiob = &peripheral_ptr.GPIOB;
-      if gpiob.moder.read().bits() & (3 << (2 * pin.1)) != (1 << (2 * pin.1)) {
-        rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
-        return Err(GpioError::WrongMode);
-      }
-      if value == true {gpiob.bsrr.write(|w| unsafe {w.bits(1 << pin.1)});}
-      else {gpiob.bsrr.write(|w| unsafe {w.bits(1 << (pin.1 + 16))});}
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
+      };
     },
     'c' => {
       let gpioc = &peripheral_ptr.GPIOC;
-      if gpioc.moder.read().bits() & (3 << (2 * pin.1)) != (1 << (2 * pin.1)) {
-        rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
-        return Err(GpioError::WrongMode);
-      }
-      if value == true {gpioc.bsrr.write(|w| unsafe {w.bits(1 << pin.1)});}
-      else {gpioc.bsrr.write(|w| unsafe {w.bits(1 << (pin.1 + 16))});}
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
+      };
     },
     'd' => {
       let gpiod = &peripheral_ptr.GPIOD;
-      if gpiod.moder.read().bits() & (3 << (2 * pin.1)) != (1 << (2 * pin.1)) {
-        rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
-        return Err(GpioError::WrongMode);
-      }
-      if value == true {gpiod.bsrr.write(|w| unsafe {w.bits(1 << pin.1)});}
-      else {gpiod.bsrr.write(|w| unsafe {w.bits(1 << (pin.1 + 16))});}
+      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
+      };
     },
     'h' => {
       let gpioh = &peripheral_ptr.GPIOH;
-      if gpioh.moder.read().bits() & (3 << (2 * pin.1)) != (1 << (2 * pin.1)) {
-        rprintln!("P{}{} is not in output mode! | digital_write()", pin.0.to_uppercase(), pin.1);
-        return Err(GpioError::WrongMode);
-      }
-      if value == true {gpioh.bsrr.write(|w| unsafe {w.bits(1 << pin.1)});}
-      else {gpioh.bsrr.write(|w| unsafe {w.bits(1 << (pin.1 + 16))});}
+      rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+      gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
+      };
     },
     _   => unreachable!()
   };
 
-  return Ok(());
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: Analog {
+      core: channel_data.0,
+      channel: channel_data.1
+    }
+  });
 }
 
-pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
+pub fn pinmode_pwm(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> {
   let peripheral_ptr = stm_peripherals();
+  let rcc = &peripheral_ptr.RCC;
 
-  if let Err(error) = check_pin(pin) {return Err(GpioError::Prog(error));}
+  if let Err(error) = check_pin(pin) {return Err(error);}
 
-  let bits = match pin.0 {
-    'a' => {
-      let gpioa = &peripheral_ptr.GPIOA;
-      if gpioa.moder.read().bits() & (3 << (2 * pin.1)) == 0 {gpioa.idr.read().bits()}
-      else if gpioa.moder.read().bits() & (3 << (2 * pin.1)) == (1 << (2 * pin.1)) {gpioa.odr.read().bits()}
-      else {
-        rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
-        return Err(GpioError::WrongMode);
-      }
-    },
-    'b' => {
-      let gpiob = &peripheral_ptr.GPIOB;
-      if gpiob.moder.read().bits() & (3 << (2 * pin.1)) == 0 {gpiob.idr.read().bits()}
-      else if gpiob.moder.read().bits() & (3 << (2 * pin.1)) == (1 << (2 * pin.1)) {gpiob.odr.read().bits()}
-      else {
-        rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
-        return Err(GpioError::WrongMode);
-      }
-    },
-    'c' => {
-      let gpioc = &peripheral_ptr.GPIOC;
-      if gpioc.moder.read().bits() & (3 << (2 * pin.1)) == 0 {gpioc.idr.read().bits()}
-      else if gpioc.moder.read().bits() & (3 << (2 * pin.1)) == (1 << (2 * pin.1)) {gpioc.odr.read().bits()}
-      else {
-        rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
-        return Err(GpioError::WrongMode);
-      }
-    },
-    'd' => {
-      let gpiod = &peripheral_ptr.GPIOD;
-      if gpiod.moder.read().bits() & (3 << (2 * pin.1)) == 0 {gpiod.idr.read().bits()}
-      else if gpiod.moder.read().bits() & (3 << (2 * pin.1)) == (1 << (2 * pin.1)) {gpiod.odr.read().bits()}
-      else {
-        rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
-        return Err(GpioError::WrongMode);
-      }
-    },
-    'h' => {
-      let gpioh = &peripheral_ptr.GPIOH;
-      if gpioh.moder.read().bits() & (3 << (2 * pin.1)) == 0 {gpioh.idr.read().bits()}
-      else if gpioh.moder.read().bits() & (3 << (2 * pin.1)) == (1 << (2 * pin.1)) {gpioh.odr.read().bits()}
-      else {
-        rprintln!("P{}{} is not in input or output mode! | digital_read()", pin.0.to_uppercase(), pin.1);
-        return Err(GpioError::WrongMode);
-      }
-    },
-    _   => unreachable!()
+  unsafe {
+    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    else {
+      rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
+      return Err(ProgError::AlreadyConfigured);
+    }
+  }
+
+  let returns = match setup_pwm(pin) {
+    Ok(values) => values,
+    Err(error) => return Err(error)
   };
-
-  if bits & (1 << pin.1) == (1 << pin.1) {return Ok(true);}
-  else {return Ok(false);}
-}
-
-pub fn set_bias(pin: (char, u8), bias: GpioBias) -> Result<(), GpioError> {
-  let peripheral_ptr = stm_peripherals();
-
-  if let Err(error) = check_pin(pin) {return Err(GpioError::Prog(error));}
 
   match pin.0 {
     'a' => {
       let gpioa = &peripheral_ptr.GPIOA;
-      match bias {
-        GpioBias::None => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioBias::Pullup => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioBias::Pulldown => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))})
-      };
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * (pin.1 - 8))))});}
+      else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * pin.1)))});}
     },
     'b' => {
       let gpiob = &peripheral_ptr.GPIOB;
-      match bias {
-        GpioBias::None => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioBias::Pullup => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioBias::Pulldown => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))})
-      };
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * (pin.1 - 8))))});}
+      else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * pin.1)))});}
     },
     'c' => {
       let gpioc = &peripheral_ptr.GPIOC;
-      match bias {
-        GpioBias::None => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioBias::Pullup => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioBias::Pulldown => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))})
-      };
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * (pin.1 - 8))))});}
+      else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * pin.1)))});}
     },
     'd' => {
       let gpiod = &peripheral_ptr.GPIOD;
-      match bias {
-        GpioBias::None => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioBias::Pullup => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioBias::Pulldown => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))})
-      };
+      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * (pin.1 - 8))))});}
+      else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * pin.1)))});}
     },
     'h' => {
       let gpioh = &peripheral_ptr.GPIOH;
-      match bias {
-        GpioBias::None => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioBias::Pullup => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioBias::Pulldown => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))})
-      };
+      rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+      gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioh.afrh.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * (pin.1 - 8))))});}
+      else {gpioh.afrl.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * pin.1)))});}
     },
     _   => unreachable!()
   };
 
-  return Ok(());
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: PWM {
+      timer: returns.0,
+      ccch: returns.1
+    }
+  });
 }
 
-pub fn set_speed(pin: (char, u8), speed: GpioSpeed) -> Result<(), GpioError> {
+pub unsafe fn pinmode_pwm_force(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> {
   let peripheral_ptr = stm_peripherals();
+  let rcc = &peripheral_ptr.RCC;
 
-  if let Err(error) = check_pin(pin) {return Err(GpioError::Prog(error));}
+  if let Err(error) = check_pin(pin) {return Err(error);}
+
+  unsafe {
+    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    else {
+      rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
+      return Err(ProgError::AlreadyConfigured);
+    }
+  }
+
+  let returns = match setup_pwm(pin) {
+    Ok(values) => values,
+    Err(error) => return Err(error)
+  };
 
   match pin.0 {
     'a' => {
       let gpioa = &peripheral_ptr.GPIOA;
-      match speed {
-        GpioSpeed::Low => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioSpeed::Medium => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioSpeed::Fast => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))}),
-        GpioSpeed::High => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.1)))})
-      };
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioa.afrh.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * (pin.1 - 8))))});}
+      else {gpioa.afrl.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * pin.1)))});}
     },
     'b' => {
       let gpiob = &peripheral_ptr.GPIOB;
-      match speed {
-        GpioSpeed::Low => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioSpeed::Medium => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioSpeed::Fast => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))}),
-        GpioSpeed::High => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.1)))})
-      };
+      rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
+      gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpiob.afrh.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * (pin.1 - 8))))});}
+      else {gpiob.afrl.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * pin.1)))});}
     },
     'c' => {
       let gpioc = &peripheral_ptr.GPIOC;
-      match speed {
-        GpioSpeed::Low => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioSpeed::Medium => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioSpeed::Fast => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))}),
-        GpioSpeed::High => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.1)))})
-      };
+      rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
+      gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioc.afrh.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * (pin.1 - 8))))});}
+      else {gpioc.afrl.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * pin.1)))});}
     },
     'd' => {
       let gpiod = &peripheral_ptr.GPIOD;
-      match speed {
-        GpioSpeed::Low => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioSpeed::Medium => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioSpeed::Fast => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))}),
-        GpioSpeed::High => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.1)))})
-      };
+      rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
+      gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpiod.afrh.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * (pin.1 - 8))))});}
+      else {gpiod.afrl.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * pin.1)))});}
     },
     'h' => {
       let gpioh = &peripheral_ptr.GPIOH;
-      match speed {
-        GpioSpeed::Low => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)))}),
-        GpioSpeed::Medium => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (1 << (2 * pin.1)))}),
-        GpioSpeed::Fast => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))}),
-        GpioSpeed::High => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * pin.1)))})
-      };
+      rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
+      gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (2 << (2 * pin.1)))});
+      if pin.1 > 7 {gpioh.afrh.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * (pin.1 - 8))))});}
+      else {gpioh.afrl.modify(|r, w| unsafe {w.bits(r.bits() | ((returns.2 as u32) << (4 * pin.1)))});}
     },
     _   => unreachable!()
   };
 
-  return Ok(());
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: PWM {
+      timer: returns.0,
+      ccch: returns.1
+    }
+  });
 }
 
-pub fn open_drain(pin: (char, u8), op: bool) -> Result<(), GpioError> {
+pub fn digital_write(pin: Pin<Output>, value: bool) {
   let peripheral_ptr = stm_peripherals();
 
-  if let Err(error) = check_pin(pin) {return Err(GpioError::Prog(error));}
-
-  match pin.0 {
+  match pin.block {
     'a' => {
       let gpioa = &peripheral_ptr.GPIOA;
-      if op == true {gpioa.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.1))});}
-      else {gpioa.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.1))});}
+      if value == true {gpioa.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
+      else {gpioa.bsrr.write(|w| unsafe {w.bits(1 << (pin.number + 16))});}
     },
     'b' => {
       let gpiob = &peripheral_ptr.GPIOB;
-      if op == true {gpiob.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.1))});}
-      else {gpiob.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.1))});}
+      if value == true {gpiob.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
+      else {gpiob.bsrr.write(|w| unsafe {w.bits(1 << (pin.number + 16))});}
     },
     'c' => {
       let gpioc = &peripheral_ptr.GPIOC;
-      if op == true {gpioc.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.1))});}
-      else {gpioc.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.1))});}
+      if value == true {gpioc.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
+      else {gpioc.bsrr.write(|w| unsafe {w.bits(1 << (pin.number + 16))});}
     },
     'd' => {
       let gpiod = &peripheral_ptr.GPIOD;
-      if op == true {gpiod.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.1))});}
-      else {gpiod.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.1))});}
+      if value == true {gpiod.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
+      else {gpiod.bsrr.write(|w| unsafe {w.bits(1 << (pin.number + 16))});}
     },
     'h' => {
       let gpioh = &peripheral_ptr.GPIOH;
-      if op == true {gpioh.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.1))});}
-      else {gpioh.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.1))});}
+      if value == true {gpioh.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
+      else {gpioh.bsrr.write(|w| unsafe {w.bits(1 << (pin.number + 16))});}
     },
     _   => unreachable!()
   };
-
-  return Ok(());
 }
 
-pub fn return_pinmode(pin: (char, u8)) -> Result<GpioMode, GpioError> {
+pub fn digital_read(pin: Pin<Input>) -> bool {
   let peripheral_ptr = stm_peripherals();
 
-  if let Err(error) = check_pin(pin) {return Err(GpioError::Prog(error));}
-
-  let mut bits = match pin.0 {
+  let bits = match pin.block {
     'a' => {
       let gpioa = &peripheral_ptr.GPIOA;
-      gpioa.moder.read().bits()
+      gpioa.idr.read().bits()
     },
     'b' => {
       let gpiob = &peripheral_ptr.GPIOB;
-      gpiob.moder.read().bits()
+      gpiob.idr.read().bits()
     },
     'c' => {
       let gpioc = &peripheral_ptr.GPIOC;
-      gpioc.moder.read().bits()
+      gpioc.idr.read().bits()
     },
     'd' => {
       let gpiod = &peripheral_ptr.GPIOD;
-      gpiod.moder.read().bits()
+      gpiod.idr.read().bits()
     },
     'h' => {
       let gpioh = &peripheral_ptr.GPIOH;
-      gpioh.moder.read().bits()
+      gpioh.idr.read().bits()
     },
     _   => unreachable!()
   };
 
-  let mut af = match pin.0 {
+  if bits & (1 << pin.number) == (1 << pin.number) {return true;}
+  else {return false;}
+}
+
+pub fn digital_state(pin: Pin<Output>) -> bool {
+  let peripheral_ptr = stm_peripherals();
+
+  let bits = match pin.block {
     'a' => {
       let gpioa = &peripheral_ptr.GPIOA;
-      if pin.1 > 7 {gpioa.afrh.read().bits()}
-      else {gpioa.afrl.read().bits()}
+      gpioa.odr.read().bits()
     },
     'b' => {
       let gpiob = &peripheral_ptr.GPIOB;
-      if pin.1 > 7 {gpiob.afrh.read().bits()}
-      else {gpiob.afrl.read().bits()}
+      gpiob.odr.read().bits()
     },
     'c' => {
       let gpioc = &peripheral_ptr.GPIOC;
-      if pin.1 > 7 {gpioc.afrh.read().bits()}
-      else {gpioc.afrl.read().bits()}
+      gpioc.odr.read().bits()
     },
     'd' => {
       let gpiod = &peripheral_ptr.GPIOD;
-      if pin.1 > 7 {gpiod.afrh.read().bits()}
-      else {gpiod.afrl.read().bits()}
+      gpiod.odr.read().bits()
     },
     'h' => {
       let gpioh = &peripheral_ptr.GPIOH;
-      if pin.1 > 7 {gpioh.afrh.read().bits()}
-      else {gpioh.afrl.read().bits()}
+      gpioh.odr.read().bits()
     },
     _   => unreachable!()
   };
 
-  bits = (bits & (3 << (2 * pin.1))) >> pin.1;
-  
-  if pin.1 > 7 {af = (af & (15 << (4 * (pin.1 - 8)))) >> (4 * (pin.1 - 8))}
-  else {af = (af & (15 << (4 * pin.1))) >> (4 * pin.1)}
+  if bits & (1 << pin.number) == (1 << pin.number) {return true;}
+  else {return false;}
+}
 
-  match bits {
-    0 => return Ok(GpioMode::Input),
-    1 => return Ok(GpioMode::Output),
-    2 => return Ok(GpioMode::AlternateFunction(af)),
-    3 => return Ok(GpioMode::Analog),
+pub fn set_bias<T>(pin: Pin<T>, bias: GpioBias) {
+  let peripheral_ptr = stm_peripherals();
+
+  let num = pin.number;
+
+  match pin.block {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      match bias {
+        GpioBias::None => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)))}),
+        GpioBias::Pullup => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (1 << (2 * num)))}),
+        GpioBias::Pulldown => gpioa.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (2 << (2 * num)))})
+      };
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      match bias {
+        GpioBias::None => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)))}),
+        GpioBias::Pullup => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (1 << (2 * num)))}),
+        GpioBias::Pulldown => gpiob.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (2 << (2 * num)))})
+      };
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      match bias {
+        GpioBias::None => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)))}),
+        GpioBias::Pullup => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (1 << (2 * num)))}),
+        GpioBias::Pulldown => gpioc.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (2 << (2 * num)))})
+      };
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      match bias {
+        GpioBias::None => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)))}),
+        GpioBias::Pullup => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (1 << (2 * num)))}),
+        GpioBias::Pulldown => gpiod.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (2 << (2 * num)))})
+      };
+    },
+    'h' => {
+      let gpioh = &peripheral_ptr.GPIOH;
+      match bias {
+        GpioBias::None => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)))}),
+        GpioBias::Pullup => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (1 << (2 * num)))}),
+        GpioBias::Pulldown => gpioh.pupdr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (2 << (2 * num)))})
+      };
+    },
+    _   => unreachable!()
+  };
+}
+
+pub fn set_speed<T>(pin: Pin<T>, speed: GpioSpeed) {
+  let peripheral_ptr = stm_peripherals();
+
+  let num = pin.number;
+
+  match pin.block {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      match speed {
+        GpioSpeed::Low => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)))}),
+        GpioSpeed::Medium => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (1 << (2 * num)))}),
+        GpioSpeed::Fast => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (2 << (2 * num)))}),
+        GpioSpeed::High => gpioa.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * num)))})
+      };
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      match speed {
+        GpioSpeed::Low => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)))}),
+        GpioSpeed::Medium => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (1 << (2 * num)))}),
+        GpioSpeed::Fast => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (2 << (2 * num)))}),
+        GpioSpeed::High => gpiob.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * num)))})
+      };
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      match speed {
+        GpioSpeed::Low => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)))}),
+        GpioSpeed::Medium => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (1 << (2 * num)))}),
+        GpioSpeed::Fast => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (2 << (2 * num)))}),
+        GpioSpeed::High => gpioc.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * num)))})
+      };
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      match speed {
+        GpioSpeed::Low => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)))}),
+        GpioSpeed::Medium => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (1 << (2 * num)))}),
+        GpioSpeed::Fast => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (2 << (2 * num)))}),
+        GpioSpeed::High => gpiod.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * num)))})
+      };
+    },
+    'h' => {
+      let gpioh = &peripheral_ptr.GPIOH;
+      match speed {
+        GpioSpeed::Low => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)))}),
+        GpioSpeed::Medium => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (1 << (2 * num)))}),
+        GpioSpeed::Fast => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * num)) | (2 << (2 * num)))}),
+        GpioSpeed::High => gpioh.ospeedr.modify(|r, w| unsafe {w.bits(r.bits() | (3 << (2 * num)))})
+      };
+    },
+    _   => unreachable!()
+  };
+}
+
+pub fn open_drain<T>(pin: Pin<T>, op: bool) {
+  let peripheral_ptr = stm_peripherals();
+
+  match pin.block {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      if op == true {gpioa.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
+      else {gpioa.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.number))});}
+    },
+    'b' => {
+      let gpiob = &peripheral_ptr.GPIOB;
+      if op == true {gpiob.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
+      else {gpiob.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.number))});}
+    },
+    'c' => {
+      let gpioc = &peripheral_ptr.GPIOC;
+      if op == true {gpioc.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
+      else {gpioc.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.number))});}
+    },
+    'd' => {
+      let gpiod = &peripheral_ptr.GPIOD;
+      if op == true {gpiod.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
+      else {gpiod.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.number))});}
+    },
+    'h' => {
+      let gpioh = &peripheral_ptr.GPIOH;
+      if op == true {gpioh.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
+      else {gpioh.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.number))});}
+    },
     _   => unreachable!()
   };
 }
