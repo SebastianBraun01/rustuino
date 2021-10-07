@@ -1,7 +1,7 @@
 //! This module contains everything that is used for UART communication.
 
-use crate::include::{stm_peripherals, SerialError, ProgError, UART_MAP};
-use crate::gpio::{GpioMode::AlternateFunction, pin_mode};
+use crate::include::{stm_peripherals, SerialError, ProgError, UART_MAP, pins::PIN_CONF};
+use crate::gpio::{Pin, AlternateFunction, pinmode_alternate_function_force};
 use stm32f4::stm32f446::{NVIC, Interrupt};
 use rtt_target::rprintln;
 
@@ -20,25 +20,46 @@ pub const UART_9O1: u8 = 10;
 pub const UART_9O2: u8 = 14;
 
 pub struct UART {
-  core: u8
+  core: u8,
+  tx_pin: Pin<AlternateFunction>,
+  rx_pin: Pin<AlternateFunction>
 }
 
 impl UART {
   pub fn new(core: u8, tx_pin: (char, u8), rx_pin: (char, u8), baud: u32, conf: u8) -> Result<Self, ProgError> {
     let peripheral_ptr = stm_peripherals();
     let rcc = &peripheral_ptr.RCC;
+    let (tx, rx);
+
+    let af = if core == 1 || core == 2 || core == 3 {7}
+    else {8};
     
     if UART_MAP.tx_pins.iter().zip(UART_MAP.rx_pins.iter())
     .zip(UART_MAP.cores.iter()).any(|i| i == ((&tx_pin, &rx_pin), &core)) == false {
       rprintln!("These pins are not available for UART communication! | UART::new()");
       return Err(ProgError::InvalidConfiguration);
     }
-    
-    let af = if core == 1 || core == 2 || core == 3 {7}
-    else {8};
-    
-    if let Err(_) = pin_mode(tx_pin, AlternateFunction(af)) {return Err(ProgError::Internal);}
-    if let Err(_) = pin_mode(rx_pin, AlternateFunction(af)) {return Err(ProgError::Internal);}
+
+    unsafe {
+      if PIN_CONF.contains(&tx_pin) || PIN_CONF.contains(&rx_pin) {
+        rprintln!("These pins are already configured for another function! | UART::new()");
+        return Err(ProgError::InvalidConfiguration);
+      }
+      else {
+        PIN_CONF.push(tx_pin).expect("Could not store pin number! | UART::new()");
+        PIN_CONF.push(rx_pin).expect("Could not store pin number! | UART::new()");
+      }
+
+      tx = match pinmode_alternate_function_force(tx_pin, af) {
+        Ok(pin) => pin,
+        Err(error) => return Err(error)
+      };
+
+      rx = match pinmode_alternate_function_force(rx_pin, af) {
+        Ok(pin) => pin,
+        Err(error) => return Err(error)
+      };
+    }
     
     match core {
       1 => {
@@ -156,7 +177,9 @@ impl UART {
     };
 
     return Ok(Self {
-      core
+      core,
+      tx_pin: tx,
+      rx_pin: rx
     });
   }
 
