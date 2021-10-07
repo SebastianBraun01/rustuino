@@ -1,5 +1,5 @@
-use crate::include::{stm_peripherals, I2cError, ProgError, I2C_MAP};
-use crate::gpio::{pin_mode, set_bias, GpioMode::AlternateFunction, GpioBias::Pullup};
+use crate::include::{stm_peripherals, I2cError, ProgError, I2C_MAP, pins::PIN_CONF};
+use crate::gpio::{pinmode_alternate_function, open_drain, set_bias, GpioBias::Pullup};
 use heapless::Vec;
 use rtt_target::rprintln;
 
@@ -19,19 +19,44 @@ impl<const N: usize> I2C<N> {
     let peripheral_ptr = stm_peripherals();
     let rcc = &peripheral_ptr.RCC;
   
-    let (ccr_t, rise_t) = calc_i2c_freq(I2C_FREQ);
-
     if I2C_MAP.scl_pins.iter().zip(I2C_MAP.sda_pins.iter()).zip(I2C_MAP.cores.iter()).any(|i| i == ((&scl_pin, &sda_pin), &core)) == false {
+      rprintln!("These pins are not available for I2C communication! | I2C::new()");
       return Err(ProgError::InvalidConfiguration);
     }
-  
-    if let Err(_) = pin_mode(scl_pin, AlternateFunction(4)) {return Err(ProgError::Internal);}
-    if let Err(_) = pin_mode(sda_pin, AlternateFunction(4)) {return Err(ProgError::Internal);}
+
+    unsafe {
+      if PIN_CONF.contains(&scl_pin) || PIN_CONF.contains(&sda_pin) {
+        rprintln!("These pins are already configured for another function! | I2C::new()");
+        return Err(ProgError::InvalidConfiguration);
+      }
+      else {
+        PIN_CONF.push(scl_pin).expect("Could not store pin number! | I2C::new()");
+        PIN_CONF.push(sda_pin).expect("Could not store pin number! | I2C::new()");
+      }
+    }
+
+    let scl = match pinmode_alternate_function(scl_pin, 4) {
+      Ok(value) => {
+        open_drain(&value, true);
+        value
+      },
+      Err(_) => return Err(ProgError::Internal)
+    };
+
+    let sda = match pinmode_alternate_function(sda_pin, 4) {
+      Ok(value) => {
+        open_drain(&value, true);
+        value
+      },
+      Err(_) => return Err(ProgError::Internal)
+    };
 
     if pullup == true {
-      if let Err(_) = set_bias(scl_pin, Pullup) {return Err(ProgError::Internal);}
-      if let Err(_) = set_bias(sda_pin, Pullup) {return Err(ProgError::Internal);}
+      set_bias(&scl, Pullup);
+      set_bias(&sda, Pullup);
     }
+
+    let (ccr_t, rise_t) = calc_i2c_freq(I2C_FREQ);
     
     match core {
       1 => {
