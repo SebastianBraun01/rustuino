@@ -558,12 +558,10 @@ pub unsafe fn pinmode_pwm_force(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> 
 
   if let Err(error) = check_pin(pin) {return Err(error);}
 
-  unsafe {
-    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
-    else {
-      rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
-      return Err(ProgError::AlreadyConfigured);
-    }
+  if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+  else {
+    rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
+    return Err(ProgError::AlreadyConfigured);
   }
 
   let returns = match setup_pwm(pin) {
@@ -620,7 +618,7 @@ pub unsafe fn pinmode_pwm_force(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> 
   });
 }
 
-pub fn digital_write(pin: Pin<Output>, value: bool) {
+pub fn digital_write(pin: &Pin<Output>, value: bool) {
   let peripheral_ptr = stm_peripherals();
 
   match pin.block {
@@ -653,7 +651,7 @@ pub fn digital_write(pin: Pin<Output>, value: bool) {
   };
 }
 
-pub fn digital_read(pin: Pin<Input>) -> bool {
+pub fn digital_read(pin: &Pin<Input>) -> bool {
   let peripheral_ptr = stm_peripherals();
 
   let bits = match pin.block {
@@ -684,7 +682,7 @@ pub fn digital_read(pin: Pin<Input>) -> bool {
   else {return false;}
 }
 
-pub fn digital_state(pin: Pin<Output>) -> bool {
+pub fn digital_state(pin: &Pin<Output>) -> bool {
   let peripheral_ptr = stm_peripherals();
 
   let bits = match pin.block {
@@ -715,7 +713,7 @@ pub fn digital_state(pin: Pin<Output>) -> bool {
   else {return false;}
 }
 
-pub fn set_bias<T>(pin: Pin<T>, bias: GpioBias) {
+pub fn set_bias<T>(pin: &Pin<T>, bias: GpioBias) {
   let peripheral_ptr = stm_peripherals();
 
   let num = pin.number;
@@ -765,7 +763,7 @@ pub fn set_bias<T>(pin: Pin<T>, bias: GpioBias) {
   };
 }
 
-pub fn set_speed<T>(pin: Pin<T>, speed: GpioSpeed) {
+pub fn set_speed<T>(pin: &Pin<T>, speed: GpioSpeed) {
   let peripheral_ptr = stm_peripherals();
 
   let num = pin.number;
@@ -820,7 +818,7 @@ pub fn set_speed<T>(pin: Pin<T>, speed: GpioSpeed) {
   };
 }
 
-pub fn open_drain<T>(pin: Pin<T>, op: bool) {
+pub fn open_drain<T>(pin: &Pin<T>, op: bool) {
   let peripheral_ptr = stm_peripherals();
 
   match pin.block {
