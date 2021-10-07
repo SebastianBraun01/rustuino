@@ -1,5 +1,5 @@
-use crate::include::{stm_peripherals, SpiError, ProgError, SPI_DATA};
-use crate::gpio::{pin_mode, digital_write, GpioMode::AlternateFunction, GpioMode::Output};
+use crate::include::{stm_peripherals, SpiError, ProgError, SPI_DATA, pins::PIN_CONF};
+use crate::gpio::{pinmode_output, pinmode_alternate_function, digital_write, Pin, Output};
 use heapless::FnvIndexMap;
 use rtt_target::rprintln;
 
@@ -39,8 +39,7 @@ pub enum SpiBr {
 pub struct SPI {
   core: u8,
   mode: SpiMode,
-  com_pins: [(char, u8); 3],
-  nss: FnvIndexMap<u8, (char, u8), 5>,
+  nss: FnvIndexMap<u8, Pin<Output>, 5>,
   active: bool,
   id_active: u8
 }
@@ -55,9 +54,21 @@ impl SPI {
       Err(error) => return Err(error)
     };
 
-    if let Err(_) = pin_mode(sck, AlternateFunction(af.into())) {return Err(ProgError::Internal);}
-    if let Err(_) = pin_mode(miso, AlternateFunction(af.into())) {return Err(ProgError::Internal);}
-    if let Err(_) = pin_mode(mosi, AlternateFunction(af.into())) {return Err(ProgError::Internal);}
+    unsafe {
+      if PIN_CONF.contains(&sck) || PIN_CONF.contains(&miso) || PIN_CONF.contains(&mosi) {
+        rprintln!("These pins are already configured for another function! | SPI::new()");
+        return Err(ProgError::InvalidConfiguration);
+      }
+      else {
+        PIN_CONF.push(sck).expect("Could not store pin number! | SPI::new()");
+        PIN_CONF.push(miso).expect("Could not store pin number! | SPI::new()");
+        PIN_CONF.push(mosi).expect("Could not store pin number! | SPI::new()");
+      }
+    }
+
+    if let Err(_) = pinmode_alternate_function(sck, af.into()) {return Err(ProgError::Internal);}
+    if let Err(_) = pinmode_alternate_function(miso, af.into()) {return Err(ProgError::Internal);}
+    if let Err(_) = pinmode_alternate_function(mosi, af.into()) {return Err(ProgError::Internal);}
 
     match core {
       1 => {
@@ -111,7 +122,6 @@ impl SPI {
     return Ok(Self {
       core,
       mode: SpiMode::FULL_DUPLEX,
-      com_pins: [sck, miso, mosi],
       nss: FnvIndexMap::new(),
       active: false,
       id_active: 0
@@ -328,26 +338,24 @@ impl SPI {
   }
 
   pub fn add_slave(&mut self, pin: (char, u8), id: u8) -> Result<(), ProgError> {
-    if self.com_pins.contains(&pin) == true {
-      rprintln!("P{}{} is not available as an NSS pin! | .add_slave()", pin.0.to_uppercase(), pin.1);
-      return Err(ProgError::InvalidConfiguration);
+    unsafe {
+      if PIN_CONF.contains(&pin) {
+        rprintln!("P{}{} is already configured! | .add_slave()", pin.0.to_uppercase(), pin.1);
+        return Err(ProgError::InvalidConfiguration);
+      }
     }
-    else if self.nss.contains_key(&id) == true {
+
+    if self.nss.contains_key(&id) == true {
       rprintln!("ID {} already registered for an NSS pin! | .add_slave()", id);
       return Err(ProgError::InvalidConfiguration);
     }
-    else if self.nss.values().any(|&i| i == pin) == true {
-      rprintln!("P{}{} already registered as an NSS pin! | .add_slave()", pin.0.to_uppercase(), pin.1);
-      return Err(ProgError::InvalidConfiguration);
-    }
 
-    if self.nss.insert(id, pin).is_err() {
+    if self.nss.insert(id, pinmode_output(pin).unwrap()).is_err() {
       rprintln!("Cannot register more than 5 NSS pins! | .add_slave()");
       return Err(ProgError::InvalidConfiguration);
     }
 
-    pin_mode(pin, Output).expect("Could not configre pin as an NSS pin! | .add_slave()");
-    digital_write(pin, true).expect("Could not set pin value! | .add_slave()");
+    digital_write(self.nss.get(&id).unwrap(), true);
 
     return Ok(());
   }
@@ -363,7 +371,7 @@ impl SPI {
       return Err(SpiError::Prog(ProgError::InvalidConfiguration));
     }
 
-    digital_write(self.nss.get(&id).unwrap().clone(), false).expect("Could not set pin value! | .begin_transaction()");
+    digital_write(self.nss.get(&id).unwrap(), false);
     self.active = true;
     self.id_active = id;
 
@@ -465,8 +473,7 @@ impl SPI {
   }
 
   pub fn end_transaction(&mut self) {
-    digital_write(self.nss.get(&self.id_active).unwrap().clone(), true)
-    .expect("Could not set pin value! | .begin_transaction()");
+    digital_write(self.nss.get(&self.id_active).unwrap(), true);
 
     self.active = false;
   }
