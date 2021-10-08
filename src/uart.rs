@@ -1,6 +1,6 @@
 //! This module contains everything that is used for UART communication.
 
-use crate::include::{stm_peripherals, SerialError, ProgError, UART_MAP, PIN_CONF};
+use crate::include::{SerialError, ProgError, UART_MAP, PIN_CONF};
 use crate::gpio::{pinmode_alternate_function, Pin, AlternateFunction};
 use stm32f4::stm32f446::{NVIC, Interrupt};
 use rtt_target::rprintln;
@@ -31,7 +31,8 @@ pub struct UART {
 
 impl UART {
   pub fn new(core: u8, tx_pin: (char, u8), rx_pin: (char, u8), baud: u32, conf: u8) -> Result<Self, ProgError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let rcc = &peripheral_ptr.RCC;
 
     let af = if core == 1 || core == 2 || core == 3 {7}
@@ -187,7 +188,8 @@ impl UART {
   }
 
   pub fn end(self) {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let rcc = &peripheral_ptr.RCC;
 
     match self.core {
@@ -238,7 +240,8 @@ impl UART {
   }
 
   pub fn print(&self, data: &str) -> Result<(), SerialError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     
     let bytes = data.as_bytes();
     
@@ -311,7 +314,8 @@ impl UART {
   }
 
   pub fn write(&self, data: u8) -> Result<(), SerialError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     match self.core {
       1 => {
@@ -363,7 +367,8 @@ impl UART {
   }
 
   pub fn read_char(&self) -> Option<char> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     let buffer: u8;
     
@@ -417,7 +422,8 @@ impl UART {
   }
 
   pub fn read_byte(&self) -> Option<u8> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     let buffer: u8;
     
@@ -485,7 +491,8 @@ fn check_uart_errors(sr: u32) -> Result<(), SerialError> {
 }
 
 fn set_baud(core: u8, baud: u32) {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   
   // (Mantisse, Fractal)
   let uartdiv: (f64, f64) = modf(16000000.0 / (16.0 * baud as f64));

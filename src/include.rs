@@ -80,17 +80,6 @@ pub mod pins {
 
 
 #[doc(hidden)]
-pub fn core_peripherals() -> cortex_m::Peripherals {
-  unsafe {return cortex_m::Peripherals::steal();}
-}
-
-#[doc(hidden)]
-pub fn stm_peripherals() -> stm32f4::stm32f446::Peripherals {
-  unsafe {return stm32f4::stm32f446::Peripherals::steal();}
-}
-
-
-#[doc(hidden)]
 pub struct ADCMap {
   pub pins: [(char, u8); 16],
   pub adcs: [u8; 16],

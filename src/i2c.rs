@@ -1,4 +1,4 @@
-use crate::include::{stm_peripherals, I2cError, ProgError, I2C_MAP, PIN_CONF};
+use crate::include::{I2cError, ProgError, I2C_MAP, PIN_CONF};
 use crate::gpio::{pinmode_alternate_function, open_drain, set_bias, GpioBias::Pullup, Pin, AlternateFunction};
 use heapless::Vec;
 use rtt_target::rprintln;
@@ -18,7 +18,8 @@ pub struct I2C<const N: usize> {
 
 impl<const N: usize> I2C<N> {
   pub fn new(core: u8, scl_pin: (char, u8), sda_pin: (char, u8), pullup: bool, addr: u8) -> Result<Self, ProgError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let rcc = &peripheral_ptr.RCC;
   
     if I2C_MAP.scl_pins.iter().zip(I2C_MAP.sda_pins.iter()).zip(I2C_MAP.cores.iter()).any(|i| i == ((&scl_pin, &sda_pin), &core)) == false {
@@ -124,7 +125,8 @@ impl<const N: usize> I2C<N> {
   }
 
   pub fn end(self) {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let rcc = &peripheral_ptr.RCC;
 
     match self.core {
@@ -173,7 +175,8 @@ impl<const N: usize> I2C<N> {
   }
 
   pub fn end_transmission(&mut self, stop: bool) -> Result<(), I2cError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let _sr: u32;
   
     match self.core {
@@ -238,7 +241,8 @@ impl<const N: usize> I2C<N> {
   }
 
   pub fn request_bytes(&mut self, addr: u8, nbytes: u8, stop: bool) -> Result<usize, I2cError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let _sr: u32;
 
     if nbytes == 0 || nbytes as usize > N {
@@ -453,7 +457,8 @@ impl<const N: usize> I2C<N> {
   }
 
   pub fn set_clock(&self, clk: u32) -> Result<(), I2cError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     if clk < 10000 || clk > 400000 {
       rtt_target::rprint!("Clock speed is not compatible with this device! | .set_clock()");

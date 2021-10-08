@@ -1,13 +1,14 @@
-//! This module contains everything that is related to the analog IO functionality.
+//! Contains everything that is related to the analog IO functionality.
 
-use crate::include::{stm_peripherals, GpioError, ProgError, ADC_MAP};
+use crate::include::{GpioError, ProgError, ADC_MAP};
 use crate::gpio::{Pin, AnalogIn, AnalogOut};
 use rtt_target::rprintln;
 
 
-// Public Functions ===============================================================================
+#[doc(hidden)]
 pub fn enable_channel(pin: (char, u8), dma: bool) -> Result<(u8, u8), ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
   let adcc = &peripheral_ptr.ADC_COMMON;
 
@@ -79,8 +80,9 @@ pub fn enable_channel(pin: (char, u8), dma: bool) -> Result<(u8, u8), ProgError>
   return Ok((core, channel));
 }
 
-pub fn adc_resolution(pin: Pin<AnalogIn>, res: u8) {
-  let peripheral_ptr = stm_peripherals();
+pub fn adc_resolution(pin: &Pin<AnalogIn>, res: u8) {
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
   let enc_res = match res {
     6  => 3,
@@ -110,8 +112,9 @@ pub fn adc_resolution(pin: Pin<AnalogIn>, res: u8) {
   };
 }
 
-pub fn analog_read(pin: Pin<AnalogIn>) -> u16 {
-  let peripheral_ptr = stm_peripherals();
+pub fn analog_read(pin: &Pin<AnalogIn>) -> u16 {
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
   let buffer = match pin.inner.core {
     1 => {
@@ -141,8 +144,9 @@ pub fn analog_read(pin: Pin<AnalogIn>) -> u16 {
   return buffer;
 }
 
-pub fn analog_write(pin: Pin<AnalogOut>, value: u16) -> Result<(), GpioError> {
-  let peripheral_ptr = stm_peripherals();
+pub fn analog_write(pin: &Pin<AnalogOut>, value: u16) -> Result<(), GpioError> {
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let dac = &peripheral_ptr.DAC;
 
   if pin.inner.core != 0 {
@@ -180,8 +184,9 @@ pub fn analog_write(pin: Pin<AnalogOut>, value: u16) -> Result<(), GpioError> {
   return Ok(());
 }
 
-pub fn analog_write_noise(pin: Pin<AnalogOut>, level: u8) -> Result<(), GpioError> {
-  let peripheral_ptr = stm_peripherals();
+pub fn analog_write_noise(pin: &Pin<AnalogOut>, level: u8) -> Result<(), GpioError> {
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let dac = &peripheral_ptr.DAC;
 
   if pin.inner.core != 0 {
@@ -218,8 +223,9 @@ pub fn analog_write_noise(pin: Pin<AnalogOut>, level: u8) -> Result<(), GpioErro
   return Ok(());
 }
 
-pub fn analog_write_triangle(pin: Pin<AnalogOut>, level: u8) -> Result<(), GpioError> {
-  let peripheral_ptr = stm_peripherals();
+pub fn analog_write_triangle(pin: &Pin<AnalogOut>, level: u8) -> Result<(), GpioError> {
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let dac = &peripheral_ptr.DAC;
 
   if pin.inner.core != 0 {
@@ -256,7 +262,8 @@ pub fn analog_write_triangle(pin: Pin<AnalogOut>, level: u8) -> Result<(), GpioE
 }
 
 pub fn analog_wave_freq(freq: u32) {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let tim5 = &peripheral_ptr.TIM5;
 
   // Max. 16MHz -> arr = 16000000 / freq
@@ -284,7 +291,8 @@ fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), Prog
 }
 
 fn start_dac_timer() {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
   let tim5 = &peripheral_ptr.TIM5;
 

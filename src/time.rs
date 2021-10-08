@@ -1,6 +1,6 @@
 //! This module contains everything that is related to timer based functions.
 
-use crate::include::{stm_peripherals, GpioError, ProgError, PWM_MAP};
+use crate::include::{GpioError, ProgError, PWM_MAP};
 use crate::gpio::{Pin, PWM};
 use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 use cortex_m::interrupt::{Mutex, free};
@@ -12,7 +12,8 @@ static TIME_COUNTER: Mutex<RefCell<usize>> = Mutex::new(RefCell::new(0));
 
 // Public PWM Functions ===========================================================================
 pub fn setup_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError>{
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
 
   let (timer, ccch, af) = match check_pwm(pin) {
@@ -95,8 +96,9 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError>{
   return Ok((timer, ccch, af));
 }
 
-pub fn pwm_write(pin: Pin<PWM>, value: u8) -> Result<(), GpioError> {
-  let peripheral_ptr = stm_peripherals();
+pub fn pwm_write(pin: &Pin<PWM>, value: u8) -> Result<(), GpioError> {
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
   match pin.inner.timer {
     1 => {
@@ -183,7 +185,8 @@ fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError> {
 /// }
 /// ```
 pub fn delay(ms: u16) {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
   let tim6 = &peripheral_ptr.TIM6;
 
@@ -225,7 +228,8 @@ pub fn delay(ms: u16) {
 /// }
 /// ```
 pub fn start_time() {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
   let tim7 = &peripheral_ptr.TIM7;
 
@@ -266,7 +270,8 @@ pub fn start_time() {
 /// }
 /// ```
 pub fn millis() -> usize {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let tim7 = &peripheral_ptr.TIM6;
 
   let buffer: usize;

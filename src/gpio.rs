@@ -2,21 +2,37 @@
 
 use crate::analog::enable_channel;
 use crate::time::setup_pwm;
-use crate::include::{stm_peripherals, ProgError, PIN_CONF};
+use crate::include::{ProgError, PIN_CONF};
 use rtt_target::rprintln;
 
 pub struct Pin<T> {
   pub block: char,
   pub number: u8,
+  #[doc(hidden)]
   pub inner: T
 }
 
 pub struct Input;
 pub struct Output;
 pub struct AlternateFunction(u32);
-pub struct AnalogIn {pub core: u8, pub channel: u8}
-pub struct AnalogOut {pub core: u8, pub channel: u8}
-pub struct PWM {pub timer: u8, pub ccch: u8}
+pub struct AnalogIn {
+  #[doc(hidden)]
+  pub core: u8,
+  #[doc(hidden)]
+  pub channel: u8
+}
+pub struct AnalogOut {
+  #[doc(hidden)]
+  pub core: u8,
+  #[doc(hidden)]
+  pub channel: u8
+}
+pub struct PWM {
+  #[doc(hidden)]
+  pub timer: u8,
+  #[doc(hidden)]
+  pub ccch: u8
+}
 
 /// Represents the options to configure the GPIO speed of a pin.
 ///
@@ -40,7 +56,8 @@ pub enum GpioBias {
 
 // Public Functions ===============================================================================
 pub fn pinmode_input(pin: (char, u8)) -> Result<Pin<Input>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
   let rcc = &peripheral_ptr.RCC;
 
   if let Err(error) = check_pin(pin) {return Err(error);}
@@ -90,7 +107,7 @@ pub fn pinmode_input(pin: (char, u8)) -> Result<Pin<Input>, ProgError> {
 }
 
 pub unsafe fn pinmode_input_force(pin: (char, u8)) -> Result<Pin<Input>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
   let rcc = &peripheral_ptr.RCC;
 
   if let Err(error) = check_pin(pin) {return Err(error);}
@@ -132,7 +149,8 @@ pub unsafe fn pinmode_input_force(pin: (char, u8)) -> Result<Pin<Input>, ProgErr
 }
 
 pub fn pinmode_output(pin: (char, u8)) -> Result<Pin<Output>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
   let rcc = &peripheral_ptr.RCC;
 
   if let Err(error) = check_pin(pin) {return Err(error);}
@@ -182,7 +200,7 @@ pub fn pinmode_output(pin: (char, u8)) -> Result<Pin<Output>, ProgError> {
 }
 
 pub unsafe fn pinmode_output_force(pin: (char, u8)) -> Result<Pin<Output>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
   let rcc = &peripheral_ptr.RCC;
 
   if let Err(error) = check_pin(pin) {return Err(error);}
@@ -224,7 +242,8 @@ pub unsafe fn pinmode_output_force(pin: (char, u8)) -> Result<Pin<Output>, ProgE
 }
 
 pub fn pinmode_alternate_function(pin: (char, u8), af: u32) -> Result<Pin<AlternateFunction>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
   let rcc = &peripheral_ptr.RCC;
 
   if let Err(error) = check_pin(pin) {return Err(error);}
@@ -288,7 +307,7 @@ pub fn pinmode_alternate_function(pin: (char, u8), af: u32) -> Result<Pin<Altern
 }
 
 pub unsafe fn pinmode_alternate_function_force(pin: (char, u8), af: u32) -> Result<Pin<AlternateFunction>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
   let rcc = &peripheral_ptr.RCC;
 
   if let Err(error) = check_pin(pin) {return Err(error);}
@@ -344,7 +363,8 @@ pub unsafe fn pinmode_alternate_function_force(pin: (char, u8), af: u32) -> Resu
 }
 
 pub fn pinmode_analog_in(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
   let rcc = &peripheral_ptr.RCC;
 
   let channel_data: (u8, u8);
@@ -419,7 +439,7 @@ pub fn pinmode_analog_in(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
 }
 
 pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
   let rcc = &peripheral_ptr.RCC;
 
   let channel_data: (u8, u8);
@@ -486,7 +506,8 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<AnalogIn>, Pro
 }
 
 pub fn pinmode_analog_out(pin: (char, u8)) -> Result<Pin<AnalogOut>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
   let rcc = &peripheral_ptr.RCC;
 
   let channel_data: (u8, u8);
@@ -525,7 +546,7 @@ pub fn pinmode_analog_out(pin: (char, u8)) -> Result<Pin<AnalogOut>, ProgError> 
 }
 
 pub unsafe fn pinmode_analog_out_force(pin: (char, u8)) -> Result<Pin<AnalogOut>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
   let rcc = &peripheral_ptr.RCC;
 
   let channel_data: (u8, u8);
@@ -556,7 +577,8 @@ pub unsafe fn pinmode_analog_out_force(pin: (char, u8)) -> Result<Pin<AnalogOut>
 }
 
 pub fn pinmode_pwm(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
   let rcc = &peripheral_ptr.RCC;
 
   if let Err(error) = check_pin(pin) {return Err(error);}
@@ -624,7 +646,7 @@ pub fn pinmode_pwm(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> {
 }
 
 pub unsafe fn pinmode_pwm_force(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
   let rcc = &peripheral_ptr.RCC;
 
   if let Err(error) = check_pin(pin) {return Err(error);}
@@ -690,7 +712,8 @@ pub unsafe fn pinmode_pwm_force(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> 
 }
 
 pub fn digital_write(pin: &Pin<Output>, value: bool) {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
 
   match pin.block {
     'a' => {
@@ -723,7 +746,8 @@ pub fn digital_write(pin: &Pin<Output>, value: bool) {
 }
 
 pub fn digital_read(pin: &Pin<Input>) -> bool {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
 
   let bits = match pin.block {
     'a' => {
@@ -754,7 +778,8 @@ pub fn digital_read(pin: &Pin<Input>) -> bool {
 }
 
 pub fn digital_state(pin: &Pin<Output>) -> bool {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
 
   let bits = match pin.block {
     'a' => {
@@ -785,7 +810,8 @@ pub fn digital_state(pin: &Pin<Output>) -> bool {
 }
 
 pub fn set_bias<T>(pin: &Pin<T>, bias: GpioBias) {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
 
   let num = pin.number;
 
@@ -835,7 +861,8 @@ pub fn set_bias<T>(pin: &Pin<T>, bias: GpioBias) {
 }
 
 pub fn set_speed<T>(pin: &Pin<T>, speed: GpioSpeed) {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
 
   let num = pin.number;
 
@@ -890,7 +917,8 @@ pub fn set_speed<T>(pin: &Pin<T>, speed: GpioSpeed) {
 }
 
 pub fn open_drain<T>(pin: &Pin<T>, op: bool) {
-  let peripheral_ptr = stm_peripherals();
+  let peripheral_ptr;
+  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
 
   match pin.block {
     'a' => {

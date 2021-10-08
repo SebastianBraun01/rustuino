@@ -1,4 +1,4 @@
-use crate::include::{stm_peripherals, SpiError, ProgError, SPI_DATA, PIN_CONF};
+use crate::include::{SpiError, ProgError, SPI_DATA, PIN_CONF};
 use crate::gpio::{pinmode_output, pinmode_alternate_function, digital_write, Pin, Output, AlternateFunction};
 use heapless::FnvIndexMap;
 use rtt_target::rprintln;
@@ -49,7 +49,8 @@ pub struct SPI {
 
 impl SPI {
   pub fn new(core: u8, sck: (char, u8), miso: (char, u8), mosi: (char, u8)) -> Result<Self, ProgError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let rcc = &peripheral_ptr.RCC;
 
     let af = match check_spi(core, sck, miso, mosi) {
@@ -146,7 +147,8 @@ impl SPI {
   }
 
   pub fn end(self) {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let rcc = &peripheral_ptr.RCC;
 
     match self.core {
@@ -173,7 +175,8 @@ impl SPI {
   }
 
   pub fn set_mode(&mut self, mode: SpiMode) -> Result<(), SpiError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     if self.active == true {
       rprintln!("Cannot configure SPI core while active! | .set_mode()");
@@ -240,7 +243,8 @@ impl SPI {
   }
 
   pub fn set_clk(&self, clk: ClockMode, br: SpiBr) -> Result<(), SpiError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     if self.active == true {
       rprintln!("Cannot configure SPI core while active! | .set_clk()");
@@ -319,7 +323,8 @@ impl SPI {
   }
 
   pub fn set_frame_format(&self, frame: FrameFormat) -> Result<(), SpiError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     if self.active == true {
       rprintln!("Cannot configure SPI core while active! | .set_frame_format()");
@@ -396,7 +401,8 @@ impl SPI {
   }
 
   pub fn write(&self, data: u8) -> Result<(), SpiError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
     if let SpiMode::SIMPLEX_INPUT = self.mode {
       rprintln!("Cannot send data in SIMPLEX_INPUT configuration! | .write()");
@@ -435,7 +441,8 @@ impl SPI {
   }
 
   pub fn read(&self) -> Result<u8, SpiError> {
-    let peripheral_ptr = stm_peripherals();
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let buffer: u8;
 
     if let SpiMode::SIMPLEX_OUTPUT = self.mode {
