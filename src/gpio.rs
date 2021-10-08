@@ -2,7 +2,7 @@
 
 use crate::analog::enable_channel;
 use crate::time::setup_pwm;
-use crate::include::{stm_peripherals, ProgError, pins::PIN_CONF};
+use crate::include::{stm_peripherals, ProgError, PIN_CONF};
 use rtt_target::rprintln;
 
 pub struct Pin<T> {
@@ -14,7 +14,8 @@ pub struct Pin<T> {
 pub struct Input;
 pub struct Output;
 pub struct AlternateFunction(u32);
-pub struct Analog {pub core: u8, pub channel: u8}
+pub struct AnalogIn {pub core: u8, pub channel: u8}
+pub struct AnalogOut {pub core: u8, pub channel: u8}
 pub struct PWM {pub timer: u8, pub ccch: u8}
 
 /// Represents the options to configure the GPIO speed of a pin.
@@ -342,7 +343,7 @@ pub unsafe fn pinmode_alternate_function_force(pin: (char, u8), af: u32) -> Resu
   });
 }
 
-pub fn pinmode_analog(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
+pub fn pinmode_analog_in(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
   let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
 
@@ -363,7 +364,7 @@ pub fn pinmode_analog(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
       let gpioa = &peripheral_ptr.GPIOA;
       rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
       gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin) {
+      channel_data = match enable_channel(pin, false) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -372,7 +373,7 @@ pub fn pinmode_analog(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
       let gpiob = &peripheral_ptr.GPIOB;
       rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
       gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin) {
+      channel_data = match enable_channel(pin, false) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -381,7 +382,7 @@ pub fn pinmode_analog(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
       let gpioc = &peripheral_ptr.GPIOC;
       rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
       gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin) {
+      channel_data = match enable_channel(pin, false) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -390,7 +391,7 @@ pub fn pinmode_analog(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
       let gpiod = &peripheral_ptr.GPIOD;
       rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
       gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin) {
+      channel_data = match enable_channel(pin, false) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -399,7 +400,7 @@ pub fn pinmode_analog(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
       let gpioh = &peripheral_ptr.GPIOH;
       rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
       gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin) {
+      channel_data = match enable_channel(pin, false) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -410,14 +411,14 @@ pub fn pinmode_analog(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
   return Ok(Pin {
     block: pin.0,
     number: pin.1,
-    inner: Analog {
+    inner: AnalogIn {
       core: channel_data.0,
       channel: channel_data.1
     }
   });
 }
 
-pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
+pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
   let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
 
@@ -430,7 +431,7 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<Analog>, ProgE
       let gpioa = &peripheral_ptr.GPIOA;
       rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
       gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin) {
+      channel_data = match enable_channel(pin, false) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -439,7 +440,7 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<Analog>, ProgE
       let gpiob = &peripheral_ptr.GPIOB;
       rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
       gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin) {
+      channel_data = match enable_channel(pin, false) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -448,7 +449,7 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<Analog>, ProgE
       let gpioc = &peripheral_ptr.GPIOC;
       rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
       gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin) {
+      channel_data = match enable_channel(pin, false) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -457,7 +458,7 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<Analog>, ProgE
       let gpiod = &peripheral_ptr.GPIOD;
       rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
       gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin) {
+      channel_data = match enable_channel(pin, false) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -466,7 +467,7 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<Analog>, ProgE
       let gpioh = &peripheral_ptr.GPIOH;
       rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
       gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin) {
+      channel_data = match enable_channel(pin, false) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -477,7 +478,77 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<Analog>, ProgE
   return Ok(Pin {
     block: pin.0,
     number: pin.1,
-    inner: Analog {
+    inner: AnalogIn {
+      core: channel_data.0,
+      channel: channel_data.1
+    }
+  });
+}
+
+pub fn pinmode_analog_out(pin: (char, u8)) -> Result<Pin<AnalogOut>, ProgError> {
+  let peripheral_ptr = stm_peripherals();
+  let rcc = &peripheral_ptr.RCC;
+
+  let channel_data: (u8, u8);
+
+  if pin != ('a', 4) && pin != ('a', 5) {return Err(ProgError::InvalidConfiguration);}
+
+  unsafe {
+    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    else {
+      rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
+      return Err(ProgError::AlreadyConfigured);
+    }
+  }
+
+  match pin.0 {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin, true) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
+      };
+    },
+    _   => unreachable!()
+  };
+
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: AnalogOut {
+      core: channel_data.0,
+      channel: channel_data.1
+    }
+  });
+}
+
+pub unsafe fn pinmode_analog_out_force(pin: (char, u8)) -> Result<Pin<AnalogOut>, ProgError> {
+  let peripheral_ptr = stm_peripherals();
+  let rcc = &peripheral_ptr.RCC;
+
+  let channel_data: (u8, u8);
+
+  if pin != ('a', 4) && pin != ('a', 5) {return Err(ProgError::InvalidConfiguration);}
+
+  match pin.0 {
+    'a' => {
+      let gpioa = &peripheral_ptr.GPIOA;
+      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
+      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
+      channel_data = match enable_channel(pin, true) {
+        Ok(value) => value,
+        Err(error) => return Err(error)
+      };
+    },
+    _   => unreachable!()
+  };
+
+  return Ok(Pin {
+    block: pin.0,
+    number: pin.1,
+    inner: AnalogOut {
       core: channel_data.0,
       channel: channel_data.1
     }

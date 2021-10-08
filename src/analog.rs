@@ -1,17 +1,17 @@
 //! This module contains everything that is related to the analog IO functionality.
 
 use crate::include::{stm_peripherals, GpioError, ProgError, ADC_MAP};
-use crate::gpio::{Pin, Analog};
+use crate::gpio::{Pin, AnalogIn, AnalogOut};
 use rtt_target::rprintln;
 
 
 // Public Functions ===============================================================================
-pub fn enable_channel(pin: (char, u8)) -> Result<(u8, u8), ProgError> {
+pub fn enable_channel(pin: (char, u8), dma: bool) -> Result<(u8, u8), ProgError> {
   let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
   let adcc = &peripheral_ptr.ADC_COMMON;
 
-  let (core, channel) = match check_channel(pin, true, true) {
+  let (core, channel) = match check_channel(pin, !dma, dma) {
     Ok(values) => values,
     Err(error) => {
       rprintln!("P{}{} is not available for analog functions! | enable_channel()", pin.0.to_uppercase(), pin.1);
@@ -79,7 +79,7 @@ pub fn enable_channel(pin: (char, u8)) -> Result<(u8, u8), ProgError> {
   return Ok((core, channel));
 }
 
-pub fn adc_resolution(pin: Pin<Analog>, res: u8) {
+pub fn adc_resolution(pin: Pin<AnalogIn>, res: u8) {
   let peripheral_ptr = stm_peripherals();
 
   let enc_res = match res {
@@ -110,7 +110,7 @@ pub fn adc_resolution(pin: Pin<Analog>, res: u8) {
   };
 }
 
-pub fn analog_read(pin: Pin<Analog>) -> u16 {
+pub fn analog_read(pin: Pin<AnalogIn>) -> u16 {
   let peripheral_ptr = stm_peripherals();
 
   let buffer = match pin.inner.core {
@@ -141,7 +141,7 @@ pub fn analog_read(pin: Pin<Analog>) -> u16 {
   return buffer;
 }
 
-pub fn analog_write(pin: Pin<Analog>, value: u16) -> Result<(), GpioError> {
+pub fn analog_write(pin: Pin<AnalogOut>, value: u16) -> Result<(), GpioError> {
   let peripheral_ptr = stm_peripherals();
   let dac = &peripheral_ptr.DAC;
 
@@ -180,7 +180,7 @@ pub fn analog_write(pin: Pin<Analog>, value: u16) -> Result<(), GpioError> {
   return Ok(());
 }
 
-pub fn analog_write_noise(pin: Pin<Analog>, level: u8) -> Result<(), GpioError> {
+pub fn analog_write_noise(pin: Pin<AnalogOut>, level: u8) -> Result<(), GpioError> {
   let peripheral_ptr = stm_peripherals();
   let dac = &peripheral_ptr.DAC;
 
@@ -218,7 +218,7 @@ pub fn analog_write_noise(pin: Pin<Analog>, level: u8) -> Result<(), GpioError> 
   return Ok(());
 }
 
-pub fn analog_write_triangle(pin: Pin<Analog>, level: u8) -> Result<(), GpioError> {
+pub fn analog_write_triangle(pin: Pin<AnalogOut>, level: u8) -> Result<(), GpioError> {
   let peripheral_ptr = stm_peripherals();
   let dac = &peripheral_ptr.DAC;
 
