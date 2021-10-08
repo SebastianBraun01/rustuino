@@ -6,20 +6,19 @@ use crate::include::{stm_peripherals, GpioError, ProgError};
 use rtt_target::rprintln;
 use heapless::Vec;
 
-// Represents available GPIO modes.
+/// Represents available GPIO modes.
 pub enum GpioMode {
+  /// Input mode for reading digital voltages from a pin.
   Input,
+  /// Output mode for writing digital voltages to a pin.
   Output,
+  /// Mode to configure a pin as alternate function.
   AlternateFunction(u32),
+  /// Analog pin mode.
   Analog,
+  /// Configure a pin to use PWM by using alternate function in combination with a timer.
   PWM
 }
-
-// pub struct Pin<T> {
-//   block: char,
-//   pin: u8,
-//   internal: T
-// }
 
 /// Represents the options to configure the GPIO speed of a pin.
 ///
@@ -32,18 +31,26 @@ pub enum GpioMode {
 /// | Fast   | 50MHz             |
 /// | High   | 100MHz            |
 pub enum GpioSpeed {
-  Low, Medium, Fast, High
+  Low,
+  Medium,
+  Fast,
+  High
 }
 
-// Represents the options for pullup-/pulldown-resistors.
+/// Represents the options for using a pullup- or pulldown-resistor on a pin.
 pub enum GpioBias {
-  None, Pullup, Pulldown
+  /// No bias.
+  None,
+  /// Use pullup resistor.
+  Pullup,
+  /// Use pulldown resistor.
+  Pulldown
 }
 
-
-
-
-// Public Functions ===============================================================================
+/// Set the mode of a pin.
+///
+/// Returns [`Ok()`](Result::Ok) if the pin supports a given mode or `Err(`[`ProgError`]`)`
+/// if an invalid configuration was requested.
 pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), ProgError> {
   let peripheral_ptr = stm_peripherals();
   let rcc = &peripheral_ptr.RCC;
@@ -163,6 +170,12 @@ pub fn pin_mode(pin: (char, u8), mode: GpioMode) -> Result<(), ProgError> {
   return Ok(());
 }
 
+/// Set a digital voltage on a pin.
+///
+/// The voltage is set to `LOW` if value is [`false`] and `HIGH` if value is [`true`].
+///
+/// Returns [`Ok()`](Result::Ok) if the function succeeds or `Err(`[`GpioError`]`)`
+/// if the pin wasn't configured as [`GpioMode::Output`] or doesn't exist.
 pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
   let peripheral_ptr = stm_peripherals();
 
@@ -220,6 +233,12 @@ pub fn digital_write(pin: (char, u8), value: bool) -> Result<(), GpioError> {
   return Ok(());
 }
 
+/// Read the digital voltage from a pin.
+///
+/// The voltage returned value is [`false`] if the value is `LOW` and [`true`] if the value is `HIGH`.
+///
+/// Returns [`Ok()`](Result::Ok) if the function succeeds or `Err(`[`GpioError`]`)`
+/// if the pin wasn't configured as [`GpioMode::Input`] or doesn't exist.
 pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
   let peripheral_ptr = stm_peripherals();
 
@@ -278,6 +297,10 @@ pub fn digital_read(pin: (char, u8)) -> Result<bool, GpioError> {
   else {return Ok(false);}
 }
 
+/// Set the bias of a pin.
+///
+/// Returns [`Ok()`](Result::Ok) if the function succeeds or `Err(`[`GpioError`]`)`
+/// if the pin doesn't exist.
 pub fn set_bias(pin: (char, u8), bias: GpioBias) -> Result<(), GpioError> {
   let peripheral_ptr = stm_peripherals();
 
@@ -330,6 +353,10 @@ pub fn set_bias(pin: (char, u8), bias: GpioBias) -> Result<(), GpioError> {
   return Ok(());
 }
 
+/// Set the IO speed of a pin.
+///
+/// Returns [`Ok()`](Result::Ok) if the function succeeds or `Err(`[`GpioError`]`)`
+/// if the pin doesn't exist.
 pub fn set_speed(pin: (char, u8), speed: GpioSpeed) -> Result<(), GpioError> {
   let peripheral_ptr = stm_peripherals();
 
@@ -387,6 +414,10 @@ pub fn set_speed(pin: (char, u8), speed: GpioSpeed) -> Result<(), GpioError> {
   return Ok(());
 }
 
+/// Enable or disable the drain of a pin.
+///
+/// Returns [`Ok()`](Result::Ok) if the function succeeds or `Err(`[`GpioError`]`)`
+/// if the pin doesn't exist.
 pub fn open_drain(pin: (char, u8), op: bool) -> Result<(), GpioError> {
   let peripheral_ptr = stm_peripherals();
 
@@ -424,6 +455,10 @@ pub fn open_drain(pin: (char, u8), op: bool) -> Result<(), GpioError> {
   return Ok(());
 }
 
+/// Get the pin mode of a pin.
+///
+/// Returns [`Ok()`](Result::Ok) if the function succeeds or `Err(`[`GpioError`]`)`
+/// if the pin doesn't exist.
 pub fn return_pinmode(pin: (char, u8)) -> Result<GpioMode, GpioError> {
   let peripheral_ptr = stm_peripherals();
 
@@ -487,17 +522,16 @@ pub fn return_pinmode(pin: (char, u8)) -> Result<GpioMode, GpioError> {
   if pin.1 > 7 {af = (af & (15 << (4 * (pin.1 - 8)))) >> (4 * (pin.1 - 8))}
   else {af = (af & (15 << (4 * pin.1))) >> (4 * pin.1)}
 
-  match bits {
-    0 => return Ok(GpioMode::Input),
-    1 => return Ok(GpioMode::Output),
-    2 => return Ok(GpioMode::AlternateFunction(af)),
-    3 => return Ok(GpioMode::Analog),
+  return match bits {
+    0 => Ok(GpioMode::Input),
+    1 => Ok(GpioMode::Output),
+    2 => Ok(GpioMode::AlternateFunction(af)),
+    3 => Ok(GpioMode::Analog),
     _   => unreachable!()
   };
 }
 
-
-// Private Functions ==============================================================================
+/// Check if a pin exists
 fn check_pin(pin: (char, u8)) -> Result<(), ProgError> {
   if pin.1 > 15 || (pin.1 != 2 && pin.0 == 'd') || ((pin.1 != 0 && pin.0 == 'h') && (pin.1 != 1 && pin.0 == 'h')) {
     rprintln!("P{}{} is not an available GPIO Pin!", pin.0.to_uppercase(), pin.1);
