@@ -1,5 +1,5 @@
 use crate::include::{stm_peripherals, SpiError, ProgError, SPI_DATA, pins::PIN_CONF};
-use crate::gpio::{pinmode_output, pinmode_alternate_function, digital_write, Pin, Output};
+use crate::gpio::{pinmode_output, pinmode_alternate_function, digital_write, Pin, Output, AlternateFunction};
 use heapless::FnvIndexMap;
 use rtt_target::rprintln;
 
@@ -38,6 +38,9 @@ pub enum SpiBr {
 
 pub struct SPI {
   core: u8,
+  _sck_pin: Pin<AlternateFunction>,
+  _miso_pin: Pin<AlternateFunction>,
+  _mosi_pin: Pin<AlternateFunction>,
   mode: SpiMode,
   nss: FnvIndexMap<u8, Pin<Output>, 5>,
   active: bool,
@@ -66,9 +69,20 @@ impl SPI {
       }
     }
 
-    if let Err(_) = pinmode_alternate_function(sck, af.into()) {return Err(ProgError::Internal);}
-    if let Err(_) = pinmode_alternate_function(miso, af.into()) {return Err(ProgError::Internal);}
-    if let Err(_) = pinmode_alternate_function(mosi, af.into()) {return Err(ProgError::Internal);}
+    let sck_pin = match pinmode_alternate_function(sck, af.into()) {
+      Ok(value) => value,
+      Err(_) => return Err(ProgError::Internal)
+    };
+
+    let miso_pin = match pinmode_alternate_function(miso, af.into()) {
+      Ok(value) => value,
+      Err(_) => return Err(ProgError::Internal)
+    };
+
+    let mosi_pin = match pinmode_alternate_function(mosi, af.into()) {
+      Ok(value) => value,
+      Err(_) => return Err(ProgError::Internal)
+    };
 
     match core {
       1 => {
@@ -121,6 +135,9 @@ impl SPI {
 
     return Ok(Self {
       core,
+      _sck_pin: sck_pin,
+      _miso_pin: miso_pin,
+      _mosi_pin: mosi_pin,
       mode: SpiMode::FULL_DUPLEX,
       nss: FnvIndexMap::new(),
       active: false,

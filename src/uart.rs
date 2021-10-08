@@ -1,7 +1,7 @@
 //! This module contains everything that is used for UART communication.
 
 use crate::include::{stm_peripherals, SerialError, ProgError, UART_MAP, pins::PIN_CONF};
-use crate::gpio::pinmode_alternate_function;
+use crate::gpio::{pinmode_alternate_function, Pin, AlternateFunction};
 use stm32f4::stm32f446::{NVIC, Interrupt};
 use rtt_target::rprintln;
 
@@ -20,7 +20,9 @@ pub const UART_9O1: u8 = 10;
 pub const UART_9O2: u8 = 14;
 
 pub struct UART {
-  core: u8
+  core: u8,
+  _tx_pin: Pin<AlternateFunction>,
+  _rx_pin: Pin<AlternateFunction>
 }
 
 impl UART {
@@ -48,8 +50,15 @@ impl UART {
       }
     }
 
-    if let Err(_) = pinmode_alternate_function(tx_pin, af) {return Err(ProgError::Internal);}
-    if let Err(_) = pinmode_alternate_function(rx_pin, af) {return Err(ProgError::Internal);}
+    let tx = match pinmode_alternate_function(tx_pin, af) {
+      Ok(value) => value,
+      Err(_) => return Err(ProgError::Internal)
+    };
+
+    let rx = match pinmode_alternate_function(rx_pin, af) {
+      Ok(value) => value,
+      Err(_) => return Err(ProgError::Internal)
+    };
     
     match core {
       1 => {
@@ -167,7 +176,9 @@ impl UART {
     };
 
     return Ok(Self {
-      core
+      core,
+      _tx_pin: tx,
+      _rx_pin: rx
     });
   }
 

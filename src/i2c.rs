@@ -1,5 +1,5 @@
 use crate::include::{stm_peripherals, I2cError, ProgError, I2C_MAP, pins::PIN_CONF};
-use crate::gpio::{pinmode_alternate_function, open_drain, set_bias, GpioBias::Pullup};
+use crate::gpio::{pinmode_alternate_function, open_drain, set_bias, GpioBias::Pullup, Pin, AlternateFunction};
 use heapless::Vec;
 use rtt_target::rprintln;
 
@@ -8,6 +8,8 @@ const I2C_FREQ: u32 = 100000;
 
 pub struct I2C<const N: usize> {
   core: u8,
+  _scl_pin: Pin<AlternateFunction>,
+  _sda_pin: Pin<AlternateFunction>,
   tx_buffer: Vec<u8, N>,
   rx_buffer: Vec<u8, N>,
   tx_addr: u8,
@@ -112,6 +114,8 @@ impl<const N: usize> I2C<N> {
 
     return Ok(Self {
       core,
+      _scl_pin: scl,
+      _sda_pin: sda,
       tx_buffer: Vec::new(),
       rx_buffer: Vec::new(),
       tx_addr: 0,
