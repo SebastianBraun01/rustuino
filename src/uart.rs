@@ -1,23 +1,27 @@
 //! This module contains everything that is used for UART communication.
 
-use crate::include::{stm_peripherals, SerialError, ProgError, UART_MAP, pins::PIN_CONF};
+use crate::include::{stm_peripherals, SerialError, ProgError, UART_MAP, PIN_CONF};
 use crate::gpio::{pinmode_alternate_function, Pin, AlternateFunction};
 use stm32f4::stm32f446::{NVIC, Interrupt};
 use rtt_target::rprintln;
 
-// 8 = bits, 4 = stops, 2,1 = parity
-pub const UART_8N1: u8 = 0;
-pub const UART_8N2: u8 = 4;
-pub const UART_8E1: u8 = 1;
-pub const UART_8E2: u8 = 5;
-pub const UART_8O1: u8 = 2;
-pub const UART_8O2: u8 = 6;
-pub const UART_9N1: u8 = 8;
-pub const UART_9N2: u8 = 12;
-pub const UART_9E1: u8 = 9;
-pub const UART_9E2: u8 = 13;
-pub const UART_9O1: u8 = 10;
-pub const UART_9O2: u8 = 14;
+
+pub mod constants {
+  // 8 = bits, 4 = stops, 2,1 = parity
+  pub const UART_8N1: u8 = 0;
+  pub const UART_8N2: u8 = 4;
+  pub const UART_8E1: u8 = 1;
+  pub const UART_8E2: u8 = 5;
+  pub const UART_8O1: u8 = 2;
+  pub const UART_8O2: u8 = 6;
+  pub const UART_9N1: u8 = 8;
+  pub const UART_9N2: u8 = 12;
+  pub const UART_9E1: u8 = 9;
+  pub const UART_9E2: u8 = 13;
+  pub const UART_9O1: u8 = 10;
+  pub const UART_9O2: u8 = 14;
+}
+
 
 pub struct UART {
   core: u8,

@@ -1,4 +1,4 @@
-use crate::include::{stm_peripherals, SpiError, ProgError, SPI_DATA, pins::PIN_CONF};
+use crate::include::{stm_peripherals, SpiError, ProgError, SPI_DATA, PIN_CONF};
 use crate::gpio::{pinmode_output, pinmode_alternate_function, digital_write, Pin, Output, AlternateFunction};
 use heapless::FnvIndexMap;
 use rtt_target::rprintln;

@@ -1,4 +1,4 @@
-use crate::include::{stm_peripherals, I2cError, ProgError, I2C_MAP, pins::PIN_CONF};
+use crate::include::{stm_peripherals, I2cError, ProgError, I2C_MAP, PIN_CONF};
 use crate::gpio::{pinmode_alternate_function, open_drain, set_bias, GpioBias::Pullup, Pin, AlternateFunction};
 use heapless::Vec;
 use rtt_target::rprintln;

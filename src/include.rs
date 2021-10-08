@@ -1,9 +1,12 @@
-/// Pin aliases for function parameters.
+//! Contains all pinmaps for pinmode and init functions and error enums.
+
+use pins::*;
+
+#[doc(hidden)]
+pub static mut PIN_CONF: heapless::Vec<(char, u8), 50> = heapless::Vec::new();
+
+/// Pin aliases for function parameters. Use with pinmode- and init functions.
 pub mod pins {
-  use heapless::Vec;
-
-  pub static mut PIN_CONF: Vec<(char, u8), 50> = Vec::new();
-
   macro_rules! generate_pins {
     ($([$block:literal, $pin:literal]),+) => {
       use paste::paste;
@@ -76,67 +79,133 @@ pub mod pins {
 }
 
 
-// Register structs ===============================================================================
+#[doc(hidden)]
 pub fn core_peripherals() -> cortex_m::Peripherals {
   unsafe {return cortex_m::Peripherals::steal();}
 }
 
+#[doc(hidden)]
 pub fn stm_peripherals() -> stm32f4::stm32f446::Peripherals {
   unsafe {return stm32f4::stm32f446::Peripherals::steal();}
 }
 
 
-// Pin maps =======================================================================================
-use pins::*;
-
+#[doc(hidden)]
 pub struct ADCMap {
   pub pins: [(char, u8); 16],
   pub adcs: [u8; 16],
   pub channels: [u8; 16]
 }
 
+/// Pinmap of the available analog inputs and outputs.
+/// 
+/// In [`pinmode_analog_in()`](crate::gpio::pinmode_analog_in) and [`pinmode_analog_out()`](crate::gpio::pinmode_analog_out) these pins are available for either analog input over the internal ADC or for output over the internal DAC.
+/// 
+/// ## WARNING:
+/// 
+/// Whitch ADC and channel the pin uses is not important for normal use, but if you intent to use one of these ADCs manually while the pin is configured, normal function of the pin is not guaranteed!
+/// 
+/// | Pin | Channel | ADCs    |
+/// | --- | ------- | ------- |
+/// | PA0 | 0       | 1, 2, 3 |
+/// | PA1 | 1       | 1, 2, 3 |
+/// | PA2 | 2       | 1, 2, 3 |
+/// | PA3 | 3       | 1, 2, 3 |
+/// | PA4 | 1       | DAC     |
+/// | PA5 | 2       | DAC     |
+/// | PA6 | 6       | 1, 2    |
+/// | PA7 | 7       | 1, 2    |
+/// | PB0 | 8       | 1, 2    |
+/// | PB1 | 9       | 1, 2    |
+/// | PC0 | 10      | 1, 2, 3 |
+/// | PC1 | 11      | 1, 2, 3 |
+/// | PC2 | 12      | 1, 2, 3 |
+/// | PC3 | 13      | 1, 2, 3 |
+/// | PC4 | 14      | 1, 2    |
+/// | PC5 | 15      | 1, 2    |
 pub const ADC_MAP: ADCMap = ADCMap {
   pins:     [A0, A1, A2, A3, A4, A5, A6, A7, B0, B1, C0, C1, C2, C3, C4, C5],
   adcs:     [1,  1,  1,  1,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1],
   channels: [0,  1,  2,  3,  1,  2,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15]
 };
 
+#[doc(hidden)]
 pub struct PWMMap {
   pub pins: [(char, u8); 27],
   pub timers: [u8; 27],
   pub ccchs: [u8; 27]
 }
 
+/// Pinmap of the available PWM outputs.
+/// 
+/// In [`pinmode_pwm()`](crate::gpio::pinmode_pwm) these pins are available for PWM output. You see that some channels of timer 2 and 3 are used for multiple pins. If you configure both pin of the same channel, the output on both pin will be the same, regardless of whitch pin you modify.
+/// 
+/// ## WARNING:
+/// 
+/// Whitch timer and channel the pin uses is not important for normal use, but if you intent to use one of these timers for other purposes, be aware that modifying the values of the timer could lead to a broken PWM signal.
+/// 
+/// | Timer | Pin                          | Channel          |
+/// | ----- | ---------------------------- | ---------------- |
+/// | 1     | PA8, PA9, PA10, PA11         | 1, 2, 3, 4       |
+/// | 2     | PA0, PA1, PA2, PA3           | 1, 2, 3, 4       |
+/// | 2     | PA15, PB2, PB3, PB10, PB11   | 1, 1, 4, 2, 3, 4 |
+/// | 3     | PA6, PA7, PB0, PB1           | 1, 2, 3, 4       |
+/// | 3     | PB4, PB5, PC6, PC7, PC8, PC9 | 1, 2, 1, 2, 3, 4 |
+/// | 4     | PB6, PB7, PB8, PB9           | 1, 2, 3, 4       |
 pub const PWM_MAP: PWMMap = PWMMap {
   pins:   [A8, A9, A10, A11, A0, A1, A2, A3, A15, B2, B3, B10, B11, A6, A7, B0, B1, B4, B5, C6, C7, C8, C9, B6, B7, B8, B9],
   timers: [1,  1,  1,   1,   2,  2,  2,  2,  2,   2,  2,  2,   2,   3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  4,  4,  4,  4],
   ccchs:  [1,  2,  3,   4,   1,  2,  3,  4,  1,   4,  2,  3,   4,   1,  2,  3,  4,  1,  2,  1,  2,  3,  4,  1,  2,  3,  4]
 };
 
+#[doc(hidden)]
 pub struct UARTMap {
   pub tx_pins: [(char, u8); 16],
   pub rx_pins: [(char, u8); 16],
   pub cores: [u8; 16]
 }
 
+/// Pinmap for the UART peripheral.
+/// 
+/// In [`UART::new()`](crate::uart::UART::new) choose the desired peripheral and a combination of available pins for it. Here are the available pins for each core:
+/// 
+/// | UART Core  | TX Pins    | RX Pins         |
+/// | ---------- | ---------- | --------------- |
+/// | 1          | PA9, PB6   | PA10, PB7       |
+/// | 2 (Serial) | PA2        | PA3             |
+/// | 3          | PB10, PC10 | PB11, PC5, PC11 |
+/// | 4          | PA0, PC10  | PA1, PC11       |
+/// | 5          | PC12       | PD2             |
+/// | 6          | PC6        | PC7             |
 pub const UART_MAP: UARTMap = UARTMap {
   tx_pins: [A9,  A9, B6,  B6, B10, B10, B10, C10, C10, C10, A0, A0,  C10, C10, C12, C6],
   rx_pins: [A10, B7, A10, B7, B11, C5,  C11, B11, C5,  C11, A1, C11, A1,  C11, D2,  C7],
   cores:   [1,   1,  1,   1,  3,   3,   3,   3,   3,   3,   4,  4,   4,   4,   5,   6]
 };
 
+#[doc(hidden)]
 pub struct I2CMap {
   pub scl_pins: [(char, u8); 9],
   pub sda_pins: [(char, u8); 9],
   pub cores: [u8; 9]
 }
 
+/// Pinmap for the I2C peripheral.
+/// 
+/// In [`I2C::new()`](crate::i2c::I2C::new) choose the desired peripheral and a combination of available pins for it. Here are the available pins for each core:
+/// 
+/// | I2C Core | SCL Pins | SDA Pins        |
+/// | -------- | -------- | --------------- |
+/// | I2C1     | PB6, PB8 | PB7, PB9        |
+/// | I2C2     | PB10     | PB3, PB11, PC12 |
+/// | I2C3     | PA8      | PB4, PC3        |
 pub const I2C_MAP: I2CMap = I2CMap {
   scl_pins: [B6, B6, B8, B8, B10, B10, B10, A8, A8],
   sda_pins: [B7, B9, B7, B9, B3,  B11, C12, B4, C3],
   cores:    [1,  1,  1,  1,  2,   2,   2,   3,  3]
 };
 
+#[doc(hidden)]
 pub struct SPIData {
   pub s1_sck: [(char, u8); 2],
   pub s2_sck: [(char, u8); 4],
@@ -149,6 +218,15 @@ pub struct SPIData {
   pub s3_mosi: [(char, u8); 2],
 }
 
+/// Pinmap for the SPI peripheral.
+/// 
+/// In [`SPI::new()`](crate::spi::SPI::new) choose the desired peripheral and a combination of available pins for it. Here are the available pins for each core:
+/// 
+/// | Core | SCK Pins             | MISO Pins | MOSI Pins |
+/// | ---- | -------------------- | --------- | --------- |
+/// | 1    | PA5, PB3             | PA6, PB4  | PA7, PB5  |
+/// | 2    | PA9, PB10, PB13, PC7 | PB14, PC2 | PB15, PC3 |
+/// | 3    | PB3, PC10            | PB4, PC11 | PB5, PC12 |
 pub const SPI_DATA: SPIData = SPIData {
   s1_sck: [A5, B3],
   s2_sck: [A9, B10, B13, C7],
@@ -162,13 +240,13 @@ pub const SPI_DATA: SPIData = SPIData {
 };
 
 
-// Embedded Errors ================================================================================
 /// A universal implementation specific error.
 ///
 /// These error kinds can be used to signal implementation specific errors unrelated to the
-/// specific peripheral. This will be used for all sorts of connectivity problems, e.g. if an
-/// adapter to the peripheral is used or the target peripheral is connected to indirectly (like bus
-/// expanders) or an operating system is controlling the access and denying access.
+/// specific peripheral. This will be used for all sorts of connectivity and configuraton problems.
+/// 
+/// All of the enums in this crate are marked as `#[non_exhaustive]` to allow for additions of new
+/// error kinds without requiring a breaking change and version bump.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ProgError {
@@ -188,19 +266,9 @@ pub enum ProgError {
   PermissionDenied
 }
 
-/// This crate contains a variety of universal error types which can be used to universally model
-/// conditions which can typically arise for certain peripherals.
-///
-/// When used by HAL implementations, they allow drivers and applications alike to generically
-/// handle those situations without the error handling being specific to the hardware it is
-/// supposed to run on (which is usually not possible to implement in drivers).
-///
-/// All of the enums in this crate are marked as `#[non_exhaustive]` to allow for additions of new
-/// error kinds without requiring a breaking change and version bump.
-
 /// A GPIO (General input/output) specific error.
 ///
-/// This error type contains errors specific to GPIO peripherals. Also it has an `Impl` kind to
+/// This error type contains errors specific to GPIO peripherals. Also it has an "Prog" kind to
 /// pass through implementation specific errors occuring while trying to use a GPIO peripheral.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -213,7 +281,7 @@ pub enum GpioError {
 
 /// A Serial specific error.
 ///
-/// This error type contains errors specific to Serial peripherals. Also it has an `Impl` kind to pass
+/// This error type contains errors specific to Serial peripherals. Also it has an "Prog" kind to pass
 /// through implementation specific errors occurring while trying to use a Serial peripheral.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -233,7 +301,7 @@ pub enum SerialError {
 
 /// An I2C specific error.
 ///
-/// This error type contains errors specific to I2C peripherals. Also it has an `Impl` kind to pass
+/// This error type contains errors specific to I2C peripherals. Also it has an "Prog" kind to pass
 /// through implementation specific errors occurring while trying to use an I2C peripheral.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -255,7 +323,7 @@ pub enum I2cError {
 
 /// A SPI specific error.
 ///
-/// This error type contains errors specific to SPI peripherals. Also it has an `Impl` kind to pass
+/// This error type contains errors specific to SPI peripherals. Also it has an "Prog" kind to pass
 /// through implementation specific errors occuring while trying to use a SPI peripheral.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
