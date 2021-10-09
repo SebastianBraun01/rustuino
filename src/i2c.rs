@@ -72,7 +72,7 @@ impl<const N: usize> I2C<N> {
         i2c1.cr2.modify(|_, w| unsafe {w.freq().bits(BUS_FREQ as u8)});
         i2c1.ccr.modify(|_, w| unsafe {w.ccr().bits(ccr_t as u16)});
         i2c1.trise.write(|w| w.trise().bits(rise_t as u8));
-        if addr > 0 {if addr > 0 {i2c1.oar1.modify(|_, w| w.add().bits((addr << 1).into()));}}
+        if addr > 0 {i2c1.oar1.modify(|_, w| w.add().bits((addr << 1).into()));}
         i2c1.cr1.modify(|_, w| {
           w.ack().set_bit();
           w.pe().enabled()

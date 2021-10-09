@@ -63,7 +63,7 @@ pub fn pinmode_input(pin: (char, u8)) -> Result<Pin<Input>, ProgError> {
   if let Err(error) = check_pin(pin) {return Err(error);}
 
   unsafe {
-    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    if !PIN_CONF.contains(&pin) {PIN_CONF.push(pin).unwrap();}
     else {
       rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
       return Err(ProgError::AlreadyConfigured);
@@ -156,7 +156,7 @@ pub fn pinmode_output(pin: (char, u8)) -> Result<Pin<Output>, ProgError> {
   if let Err(error) = check_pin(pin) {return Err(error);}
 
   unsafe {
-    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    if !PIN_CONF.contains(&pin) {PIN_CONF.push(pin).unwrap();}
     else {
       rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
       return Err(ProgError::AlreadyConfigured);
@@ -253,7 +253,7 @@ pub fn pinmode_alternate_function(pin: (char, u8), af: u32) -> Result<Pin<Altern
   }
 
   unsafe {
-    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    if !PIN_CONF.contains(&pin) {PIN_CONF.push(pin).unwrap();}
     else {
       rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
       return Err(ProgError::AlreadyConfigured);
@@ -372,7 +372,7 @@ pub fn pinmode_analog_in(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
   if let Err(error) = check_pin(pin) {return Err(error);}
 
   unsafe {
-    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    if !PIN_CONF.contains(&pin) {PIN_CONF.push(pin).unwrap();}
     else {
       rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
       return Err(ProgError::AlreadyConfigured);
@@ -515,7 +515,7 @@ pub fn pinmode_analog_out(pin: (char, u8)) -> Result<Pin<AnalogOut>, ProgError> 
   if pin != ('a', 4) && pin != ('a', 5) {return Err(ProgError::InvalidConfiguration);}
 
   unsafe {
-    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    if !PIN_CONF.contains(&pin) {PIN_CONF.push(pin).unwrap();}
     else {
       rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
       return Err(ProgError::AlreadyConfigured);
@@ -584,7 +584,7 @@ pub fn pinmode_pwm(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> {
   if let Err(error) = check_pin(pin) {return Err(error);}
 
   unsafe {
-    if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+    if !PIN_CONF.contains(&pin) {PIN_CONF.push(pin).unwrap();}
     else {
       rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
       return Err(ProgError::AlreadyConfigured);
@@ -651,7 +651,7 @@ pub unsafe fn pinmode_pwm_force(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> 
 
   if let Err(error) = check_pin(pin) {return Err(error);}
 
-  if PIN_CONF.contains(&pin) == false {PIN_CONF.push(pin).unwrap();}
+  if !PIN_CONF.contains(&pin) {PIN_CONF.push(pin).unwrap();}
   else {
     rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
     return Err(ProgError::AlreadyConfigured);
@@ -718,27 +718,27 @@ pub fn digital_write(pin: &Pin<Output>, value: bool) {
   match pin.block {
     'a' => {
       let gpioa = &peripheral_ptr.GPIOA;
-      if value == true {gpioa.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
+      if value {gpioa.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
       else {gpioa.bsrr.write(|w| unsafe {w.bits(1 << (pin.number + 16))});}
     },
     'b' => {
       let gpiob = &peripheral_ptr.GPIOB;
-      if value == true {gpiob.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
+      if value {gpiob.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
       else {gpiob.bsrr.write(|w| unsafe {w.bits(1 << (pin.number + 16))});}
     },
     'c' => {
       let gpioc = &peripheral_ptr.GPIOC;
-      if value == true {gpioc.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
+      if value {gpioc.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
       else {gpioc.bsrr.write(|w| unsafe {w.bits(1 << (pin.number + 16))});}
     },
     'd' => {
       let gpiod = &peripheral_ptr.GPIOD;
-      if value == true {gpiod.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
+      if value {gpiod.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
       else {gpiod.bsrr.write(|w| unsafe {w.bits(1 << (pin.number + 16))});}
     },
     'h' => {
       let gpioh = &peripheral_ptr.GPIOH;
-      if value == true {gpioh.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
+      if value {gpioh.bsrr.write(|w| unsafe {w.bits(1 << pin.number)});}
       else {gpioh.bsrr.write(|w| unsafe {w.bits(1 << (pin.number + 16))});}
     },
     _   => unreachable!()
@@ -773,8 +773,7 @@ pub fn digital_read(pin: &Pin<Input>) -> bool {
     _   => unreachable!()
   };
 
-  if bits & (1 << pin.number) == (1 << pin.number) {return true;}
-  else {return false;}
+  return bits & (1 << pin.number) == (1 << pin.number);
 }
 
 pub fn digital_state(pin: &Pin<Output>) -> bool {
@@ -805,8 +804,7 @@ pub fn digital_state(pin: &Pin<Output>) -> bool {
     _   => unreachable!()
   };
 
-  if bits & (1 << pin.number) == (1 << pin.number) {return true;}
-  else {return false;}
+  return bits & (1 << pin.number) == (1 << pin.number);
 }
 
 pub fn set_bias<T>(pin: &Pin<T>, bias: GpioBias) {
@@ -923,27 +921,27 @@ pub fn open_drain<T>(pin: &Pin<T>, op: bool) {
   match pin.block {
     'a' => {
       let gpioa = &peripheral_ptr.GPIOA;
-      if op == true {gpioa.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
+      if op {gpioa.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
       else {gpioa.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.number))});}
     },
     'b' => {
       let gpiob = &peripheral_ptr.GPIOB;
-      if op == true {gpiob.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
+      if op {gpiob.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
       else {gpiob.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.number))});}
     },
     'c' => {
       let gpioc = &peripheral_ptr.GPIOC;
-      if op == true {gpioc.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
+      if op {gpioc.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
       else {gpioc.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.number))});}
     },
     'd' => {
       let gpiod = &peripheral_ptr.GPIOD;
-      if op == true {gpiod.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
+      if op {gpiod.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
       else {gpiod.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.number))});}
     },
     'h' => {
       let gpioh = &peripheral_ptr.GPIOH;
-      if op == true {gpioh.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
+      if op {gpioh.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (1 << pin.number))});}
       else {gpioh.otyper.modify(|r, w| unsafe {w.bits(r.bits() | (0 << pin.number))});}
     },
     _   => unreachable!()
@@ -953,7 +951,7 @@ pub fn open_drain<T>(pin: &Pin<T>, op: bool) {
 
 // Private Functions ==============================================================================
 fn check_pin(pin: (char, u8)) -> Result<(), ProgError> {
-  if pin.1 > 15 || (pin.1 != 2 && pin.0 == 'd') || ((pin.1 != 0 && pin.0 == 'h') && (pin.1 != 1 && pin.0 == 'h')) {
+  if pin.1 > 15 || pin.0 == 'd' && pin.1 != 2 || pin.0 == 'h' && pin.1 != 0 && pin.1 != 1 {
     rprintln!("P{}{} is not an available GPIO Pin!", pin.0.to_uppercase(), pin.1);
     return Err(ProgError::InvalidConfiguration);
   }
