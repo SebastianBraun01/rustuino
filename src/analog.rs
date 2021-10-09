@@ -80,9 +80,13 @@ pub fn enable_channel(pin: (char, u8), dma: bool) -> Result<(u8, u8), ProgError>
   return Ok((core, channel));
 }
 
-pub fn adc_resolution(pin: &Pin<AnalogIn>, res: u8) {
+pub fn adc_resolution(res: u8) {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+  let rcc = &peripheral_ptr.RCC;
+  let adc1 = &peripheral_ptr.ADC1;
+  let adc2 = &peripheral_ptr.ADC2;
+  let adc3 = &peripheral_ptr.ADC3;
 
   let enc_res = match res {
     6  => 3,
@@ -95,21 +99,9 @@ pub fn adc_resolution(pin: &Pin<AnalogIn>, res: u8) {
     }
   };
 
-  match pin.inner.core {
-    1 => {
-      let adc1 = &peripheral_ptr.ADC1;
-      adc1.cr1.modify(|_, w| w.res().bits(enc_res));
-    },
-    2 => {
-      let adc2 = &peripheral_ptr.ADC2;
-      adc2.cr1.modify(|_, w| w.res().bits(enc_res));
-    },
-    3 => {
-      let adc3 = &peripheral_ptr.ADC3;
-      adc3.cr1.modify(|_, w| w.res().bits(enc_res));
-    },
-    _ => unreachable!()
-  };
+  if rcc.apb2enr.read().adc1en().is_enabled() == true {adc1.cr1.modify(|_, w| w.res().bits(enc_res));}
+  if rcc.apb2enr.read().adc2en().is_enabled() == true {adc2.cr1.modify(|_, w| w.res().bits(enc_res));}
+  if rcc.apb2enr.read().adc3en().is_enabled() == true {adc3.cr1.modify(|_, w| w.res().bits(enc_res));}
 }
 
 pub fn analog_read(pin: &Pin<AnalogIn>) -> u16 {
