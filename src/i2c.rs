@@ -22,7 +22,7 @@ impl<const N: usize> I2C<N> {
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let rcc = &peripheral_ptr.RCC;
   
-    if I2C_MAP.scl_pins.iter().zip(I2C_MAP.sda_pins.iter()).zip(I2C_MAP.cores.iter()).any(|i| i == ((&scl_pin, &sda_pin), &core)) == false {
+    if !I2C_MAP.scl_pins.iter().zip(I2C_MAP.sda_pins.iter()).zip(I2C_MAP.cores.iter()).any(|i| i == ((&scl_pin, &sda_pin), &core)) {
       rprintln!("These pins are not available for I2C communication! | I2C::new()");
       return Err(ProgError::InvalidConfiguration);
     }
@@ -54,7 +54,7 @@ impl<const N: usize> I2C<N> {
       Err(_) => return Err(ProgError::Internal)
     };
 
-    if pullup == true {
+    if pullup {
       set_bias(&scl, Pullup);
       set_bias(&sda, Pullup);
     }
@@ -64,7 +64,7 @@ impl<const N: usize> I2C<N> {
     match core {
       1 => {
         let i2c1 = &peripheral_ptr.I2C1;
-        if rcc.apb1enr.read().i2c1en().is_enabled() == true {
+        if rcc.apb1enr.read().i2c1en().is_enabled() {
           rprintln!("I2C{} is already configured! | I2C::new()", core);
           return Err(ProgError::AlreadyConfigured);
         }
@@ -80,7 +80,7 @@ impl<const N: usize> I2C<N> {
       },
       2 => {
         let i2c2 = &peripheral_ptr.I2C2;
-        if rcc.apb1enr.read().i2c2en().is_enabled() == true {
+        if rcc.apb1enr.read().i2c2en().is_enabled() {
           rprintln!("I2C{} is already configured! | I2C::new()", core);
           return Err(ProgError::AlreadyConfigured);
         }
@@ -96,7 +96,7 @@ impl<const N: usize> I2C<N> {
       },
       3 => {
         let i2c3 = &peripheral_ptr.I2C3;
-        if rcc.apb1enr.read().i2c3en().is_enabled() == true {
+        if rcc.apb1enr.read().i2c3en().is_enabled() {
           rprintln!("I2C{} is already configured! | I2C::new()", core);
           return Err(ProgError::AlreadyConfigured);
         }
@@ -167,10 +167,10 @@ impl<const N: usize> I2C<N> {
     self.tx_buffer.clear();
   }
 
-  pub fn write(&mut self, data: u8) -> Result<(), ()> {
-    if self.transmitting == false {return Err(());}
+  pub fn write(&mut self, data: u8) -> Result<(), ProgError> {
+    if !self.transmitting {return Err(ProgError::PermissionDenied);}
 
-    if self.tx_buffer.push(data).is_err() {return Err(());}
+    if self.tx_buffer.push(data).is_err() {return Err(ProgError::OutOfMemory);}
     else {return Ok(());}
   }
 
@@ -183,55 +183,55 @@ impl<const N: usize> I2C<N> {
       1 => {
         let i2c1 = &peripheral_ptr.I2C1;
         i2c1.cr1.write(|w| w.start().set_bit());
-        while i2c1.sr1.read().sb().is_no_start() == true {}
+        while i2c1.sr1.read().sb().is_no_start() {}
         i2c1.dr.write(|w| w.dr().bits(self.tx_addr));
-        while i2c1.sr1.read().addr().is_not_match() == true {
+        while i2c1.sr1.read().addr().is_not_match() {
           if let Err(error) = scan_i2c_error(i2c1.sr1.read().bits() as u16) {return Err(error);}
         }
         _sr = i2c1.sr2.read().bits();
         for byte in self.tx_buffer.iter() {
-          i2c1.dr.write(|w| w.dr().bits(byte.clone()));
-          while i2c1.sr1.read().tx_e().is_not_empty() == true {
+          i2c1.dr.write(|w| w.dr().bits(*byte));
+          while i2c1.sr1.read().tx_e().is_not_empty() {
             if let Err(error) = scan_i2c_error(i2c1.sr1.read().bits() as u16) {return Err(error);}
           }
         }
-        if stop == true {i2c1.cr1.write(|w| w.stop().set_bit());}
+        if stop {i2c1.cr1.write(|w| w.stop().set_bit());}
         else {i2c1.cr1.write(|w| w.start().set_bit());}
       },
       2 => {
         let i2c2 = &peripheral_ptr.I2C2;
         i2c2.cr1.write(|w| w.start().set_bit());
-        while i2c2.sr1.read().sb().is_no_start() == true {}
+        while i2c2.sr1.read().sb().is_no_start() {}
         i2c2.dr.write(|w| w.dr().bits(self.tx_addr));
-        while i2c2.sr1.read().addr().is_not_match() == true {
+        while i2c2.sr1.read().addr().is_not_match() {
           if let Err(error) = scan_i2c_error(i2c2.sr1.read().bits() as u16) {return Err(error);}
         }
         _sr= i2c2.sr2.read().bits();
         for byte in self.tx_buffer.iter() {
-          i2c2.dr.write(|w| w.dr().bits(byte.clone()));
-          while i2c2.sr1.read().tx_e().is_not_empty() == true {
+          i2c2.dr.write(|w| w.dr().bits(*byte));
+          while i2c2.sr1.read().tx_e().is_not_empty() {
             if let Err(error) = scan_i2c_error(i2c2.sr1.read().bits() as u16) {return Err(error);}
           }
         }
-        if stop == true {i2c2.cr1.write(|w| w.stop().set_bit());}
+        if stop {i2c2.cr1.write(|w| w.stop().set_bit());}
         else {i2c2.cr1.write(|w| w.start().set_bit());}
       },
       3 => {
         let i2c3 = &peripheral_ptr.I2C3;
         i2c3.cr1.write(|w| w.start().set_bit());
-        while i2c3.sr1.read().sb().is_no_start() == true {}
+        while i2c3.sr1.read().sb().is_no_start() {}
         i2c3.dr.write(|w| w.dr().bits(self.tx_addr));
-        while i2c3.sr1.read().addr().is_not_match() == true {
+        while i2c3.sr1.read().addr().is_not_match() {
           if let Err(error) = scan_i2c_error(i2c3.sr1.read().bits() as u16) {return Err(error);}
         }
         _sr = i2c3.sr2.read().bits();
         for byte in self.tx_buffer.iter() {
-          i2c3.dr.write(|w| w.dr().bits(byte.clone()));
-          while i2c3.sr1.read().tx_e().is_not_empty() == true {
+          i2c3.dr.write(|w| w.dr().bits(*byte));
+          while i2c3.sr1.read().tx_e().is_not_empty() {
             if let Err(error) = scan_i2c_error(i2c3.sr1.read().bits() as u16) {return Err(error);}
           }
         }
-        if stop == true {i2c3.cr1.write(|w| w.stop().set_bit());}
+        if stop {i2c3.cr1.write(|w| w.stop().set_bit());}
         else {i2c3.cr1.write(|w| w.start().set_bit());}
       },
       _ => panic!("I2C{} is not a valid core! | .send_bytes(...)", self.core)
@@ -256,21 +256,20 @@ impl<const N: usize> I2C<N> {
       1 => {
         let i2c1 = &peripheral_ptr.I2C1;
         i2c1.cr1.write(|w| w.start().set_bit());
-        while i2c1.sr1.read().sb().is_no_start() == true {}
+        while i2c1.sr1.read().sb().is_no_start() {}
         i2c1.dr.write(|w| w.dr().bits((addr << 1) + 1));
         if nbytes == 1 {i2c1.cr1.modify(|_, w| w.ack().clear_bit());}
-        while i2c1.sr1.read().addr().is_not_match() == true {
+        while i2c1.sr1.read().addr().is_not_match() {
           if let Err(error) = scan_i2c_error(i2c1.sr1.read().bits() as u16) {return Err(error);}
         }
 
         if nbytes == 1 {
           _sr = i2c1.sr2.read().bits();
-          if stop == true {i2c1.cr1.modify(|_, w| w.stop().set_bit());}
+          if stop {i2c1.cr1.modify(|_, w| w.stop().set_bit());}
           else {i2c1.cr1.modify(|_, w| w.start().set_bit());}
-          while i2c1.sr1.read().rx_ne().is_empty() == true {
+          while i2c1.sr1.read().rx_ne().is_empty() {
             if let Err(error) = scan_i2c_error(i2c1.sr1.read().bits() as u16) {return Err(error);}
           }
-          self.rx_buffer.push(i2c1.dr.read().dr().bits()).unwrap();
         }
         else if nbytes == 2 {
           i2c1.cr1.modify(|_, w| {
@@ -278,62 +277,60 @@ impl<const N: usize> I2C<N> {
             w.pos().set_bit()
           });
           _sr = i2c1.sr2.read().bits();
-          while i2c1.sr1.read().btf().is_not_finished() == true {
+          while i2c1.sr1.read().btf().is_not_finished() {
             if let Err(error) = scan_i2c_error(i2c1.sr1.read().bits() as u16) {return Err(error);}
           }
-          if stop == true {i2c1.cr1.modify(|_, w| w.stop().set_bit());}
+          if stop {i2c1.cr1.modify(|_, w| w.stop().set_bit());}
           else {i2c1.cr1.modify(|_, w| w.start().set_bit());}
-          while i2c1.sr1.read().rx_ne().is_empty() == true {}
+          while i2c1.sr1.read().rx_ne().is_empty() {}
           self.rx_buffer.push(i2c1.dr.read().dr().bits()).unwrap();
-          while i2c1.sr1.read().rx_ne().is_empty() == true {}
-          self.rx_buffer.push(i2c1.dr.read().dr().bits()).unwrap();
+          while i2c1.sr1.read().rx_ne().is_empty() {}
         }
         else {
           _sr = i2c1.sr2.read().bits();
           if nbytes > 3 {
             for _ in 0..(nbytes - 3) {
-              while i2c1.sr1.read().btf().is_not_finished() == true {
+              while i2c1.sr1.read().btf().is_not_finished() {
                 if let Err(error) = scan_i2c_error(i2c1.sr1.read().bits() as u16) {return Err(error);}
               }
               self.rx_buffer.push(i2c1.dr.read().dr().bits()).unwrap();
             }
           }
-          while i2c1.sr1.read().btf().is_not_finished() == true {
+          while i2c1.sr1.read().btf().is_not_finished() {
             if let Err(error) = scan_i2c_error(i2c1.sr1.read().bits() as u16) {return Err(error);}
           }
           i2c1.cr1.modify(|_, w| w.ack().clear_bit());
           self.rx_buffer.push(i2c1.dr.read().dr().bits()).unwrap();
-          while i2c1.sr1.read().btf().is_not_finished() == true {
+          while i2c1.sr1.read().btf().is_not_finished() {
             if let Err(error) = scan_i2c_error(i2c1.sr1.read().bits() as u16) {return Err(error);}
           }
-          if stop == true {i2c1.cr1.modify(|_, w| w.stop().set_bit());}
+          if stop {i2c1.cr1.modify(|_, w| w.stop().set_bit());}
           else {i2c1.cr1.modify(|_, w| w.start().set_bit());}
-          while i2c1.sr1.read().rx_ne().is_empty() == true {}
+          while i2c1.sr1.read().rx_ne().is_empty() {}
           self.rx_buffer.push(i2c1.dr.read().dr().bits()).unwrap();
-          while i2c1.sr1.read().rx_ne().is_empty() == true {}
-          self.rx_buffer.push(i2c1.dr.read().dr().bits()).unwrap();
+          while i2c1.sr1.read().rx_ne().is_empty() {}
         }
 
+        self.rx_buffer.push(i2c1.dr.read().dr().bits()).unwrap();
         i2c1.cr1.modify(|_, w| w.ack().set_bit());
       },
       2 => {
         let i2c2 = &peripheral_ptr.I2C2;
         i2c2.cr1.write(|w| w.start().set_bit());
-        while i2c2.sr1.read().sb().is_no_start() == true {}
+        while i2c2.sr1.read().sb().is_no_start() {}
         i2c2.dr.write(|w| w.dr().bits((addr << 1) + 1));
         if nbytes == 1 {i2c2.cr1.modify(|_, w| w.ack().clear_bit());}
-        while i2c2.sr1.read().addr().is_not_match() == true {
+        while i2c2.sr1.read().addr().is_not_match() {
           if let Err(error) = scan_i2c_error(i2c2.sr1.read().bits() as u16) {return Err(error);}
         }
 
         if nbytes == 1 {
           _sr = i2c2.sr2.read().bits();
-          if stop == true {i2c2.cr1.modify(|_, w| w.stop().set_bit());}
+          if stop {i2c2.cr1.modify(|_, w| w.stop().set_bit());}
           else {i2c2.cr1.modify(|_, w| w.start().set_bit());}
-          while i2c2.sr1.read().rx_ne().is_empty() == true {
+          while i2c2.sr1.read().rx_ne().is_empty() {
             if let Err(error) = scan_i2c_error(i2c2.sr1.read().bits() as u16) {return Err(error);}
           }
-          self.rx_buffer.push(i2c2.dr.read().dr().bits()).unwrap();
         }
         else if nbytes == 2 {
           i2c2.cr1.modify(|_, w| {
@@ -341,62 +338,60 @@ impl<const N: usize> I2C<N> {
             w.pos().set_bit()
           });
           _sr = i2c2.sr2.read().bits();
-          while i2c2.sr1.read().btf().is_not_finished() == true {
+          while i2c2.sr1.read().btf().is_not_finished() {
             if let Err(error) = scan_i2c_error(i2c2.sr1.read().bits() as u16) {return Err(error);}
           }
-          if stop == true {i2c2.cr1.modify(|_, w| w.stop().set_bit());}
+          if stop {i2c2.cr1.modify(|_, w| w.stop().set_bit());}
           else {i2c2.cr1.modify(|_, w| w.start().set_bit());}
-          while i2c2.sr1.read().rx_ne().is_empty() == true {}
+          while i2c2.sr1.read().rx_ne().is_empty() {}
           self.rx_buffer.push(i2c2.dr.read().dr().bits()).unwrap();
-          while i2c2.sr1.read().rx_ne().is_empty() == true {}
-          self.rx_buffer.push(i2c2.dr.read().dr().bits()).unwrap();
+          while i2c2.sr1.read().rx_ne().is_empty() {}
         }
         else {
           _sr = i2c2.sr2.read().bits();
           if nbytes > 3 {
             for _ in 0..(nbytes - 3) {
-              while i2c2.sr1.read().btf().is_not_finished() == true {
+              while i2c2.sr1.read().btf().is_not_finished() {
                 if let Err(error) = scan_i2c_error(i2c2.sr1.read().bits() as u16) {return Err(error);}
               }
               self.rx_buffer.push(i2c2.dr.read().dr().bits()).unwrap();
             }
           }
-          while i2c2.sr1.read().btf().is_not_finished() == true {
+          while i2c2.sr1.read().btf().is_not_finished() {
             if let Err(error) = scan_i2c_error(i2c2.sr1.read().bits() as u16) {return Err(error);}
           }
           i2c2.cr1.modify(|_, w| w.ack().clear_bit());
           self.rx_buffer.push(i2c2.dr.read().dr().bits()).unwrap();
-          while i2c2.sr1.read().btf().is_not_finished() == true {
+          while i2c2.sr1.read().btf().is_not_finished() {
             if let Err(error) = scan_i2c_error(i2c2.sr1.read().bits() as u16) {return Err(error);}
           }
-          if stop == true {i2c2.cr1.modify(|_, w| w.stop().set_bit());}
+          if stop {i2c2.cr1.modify(|_, w| w.stop().set_bit());}
           else {i2c2.cr1.modify(|_, w| w.start().set_bit());}
-          while i2c2.sr1.read().rx_ne().is_empty() == true {}
+          while i2c2.sr1.read().rx_ne().is_empty() {}
           self.rx_buffer.push(i2c2.dr.read().dr().bits()).unwrap();
-          while i2c2.sr1.read().rx_ne().is_empty() == true {}
-          self.rx_buffer.push(i2c2.dr.read().dr().bits()).unwrap();
+          while i2c2.sr1.read().rx_ne().is_empty() {}
         }
 
+        self.rx_buffer.push(i2c2.dr.read().dr().bits()).unwrap();
         i2c2.cr1.modify(|_, w| w.ack().set_bit());
       },
       3 => {
         let i2c3 = &peripheral_ptr.I2C3;
         i2c3.cr1.write(|w| w.start().set_bit());
-        while i2c3.sr1.read().sb().is_no_start() == true {}
+        while i2c3.sr1.read().sb().is_no_start() {}
         i2c3.dr.write(|w| w.dr().bits((addr << 1) + 1));
         if nbytes == 1 {i2c3.cr1.modify(|_, w| w.ack().clear_bit());}
-        while i2c3.sr1.read().addr().is_not_match() == true {
+        while i2c3.sr1.read().addr().is_not_match() {
           if let Err(error) = scan_i2c_error(i2c3.sr1.read().bits() as u16) {return Err(error);}
         }
 
         if nbytes == 1 {
           _sr = i2c3.sr2.read().bits();
-          if stop == true {i2c3.cr1.modify(|_, w| w.stop().set_bit());}
+          if stop {i2c3.cr1.modify(|_, w| w.stop().set_bit());}
           else {i2c3.cr1.modify(|_, w| w.start().set_bit());}
-          while i2c3.sr1.read().rx_ne().is_empty() == true {
+          while i2c3.sr1.read().rx_ne().is_empty() {
             if let Err(error) = scan_i2c_error(i2c3.sr1.read().bits() as u16) {return Err(error);}
           }
-          self.rx_buffer.push(i2c3.dr.read().dr().bits()).unwrap();
         }
         else if nbytes == 2 {
           i2c3.cr1.modify(|_, w| {
@@ -404,42 +399,41 @@ impl<const N: usize> I2C<N> {
             w.pos().set_bit()
           });
           _sr = i2c3.sr2.read().bits();
-          while i2c3.sr1.read().btf().is_not_finished() == true {
+          while i2c3.sr1.read().btf().is_not_finished() {
             if let Err(error) = scan_i2c_error(i2c3.sr1.read().bits() as u16) {return Err(error);}
           }
-          if stop == true {i2c3.cr1.modify(|_, w| w.stop().set_bit());}
+          if stop {i2c3.cr1.modify(|_, w| w.stop().set_bit());}
           else {i2c3.cr1.modify(|_, w| w.start().set_bit());}
-          while i2c3.sr1.read().rx_ne().is_empty() == true {}
+          while i2c3.sr1.read().rx_ne().is_empty() {}
           self.rx_buffer.push(i2c3.dr.read().dr().bits()).unwrap();
-          while i2c3.sr1.read().rx_ne().is_empty() == true {}
-          self.rx_buffer.push(i2c3.dr.read().dr().bits()).unwrap();
+          while i2c3.sr1.read().rx_ne().is_empty() {}
         }
         else {
           _sr = i2c3.sr2.read().bits();
           if nbytes > 3 {
             for _ in 0..(nbytes - 3) {
-              while i2c3.sr1.read().btf().is_not_finished() == true {
+              while i2c3.sr1.read().btf().is_not_finished() {
                 if let Err(error) = scan_i2c_error(i2c3.sr1.read().bits() as u16) {return Err(error);}
               }
               self.rx_buffer.push(i2c3.dr.read().dr().bits()).unwrap();
             }
           }
-          while i2c3.sr1.read().btf().is_not_finished() == true {
+          while i2c3.sr1.read().btf().is_not_finished() {
             if let Err(error) = scan_i2c_error(i2c3.sr1.read().bits() as u16) {return Err(error);}
           }
           i2c3.cr1.modify(|_, w| w.ack().clear_bit());
           self.rx_buffer.push(i2c3.dr.read().dr().bits()).unwrap();
-          while i2c3.sr1.read().btf().is_not_finished() == true {
+          while i2c3.sr1.read().btf().is_not_finished() {
             if let Err(error) = scan_i2c_error(i2c3.sr1.read().bits() as u16) {return Err(error);}
           }
-          if stop == true {i2c3.cr1.modify(|_, w| w.stop().set_bit());}
+          if stop {i2c3.cr1.modify(|_, w| w.stop().set_bit());}
           else {i2c3.cr1.modify(|_, w| w.start().set_bit());}
-          while i2c3.sr1.read().rx_ne().is_empty() == true {}
+          while i2c3.sr1.read().rx_ne().is_empty() {}
           self.rx_buffer.push(i2c3.dr.read().dr().bits()).unwrap();
-          while i2c3.sr1.read().rx_ne().is_empty() == true {}
-          self.rx_buffer.push(i2c3.dr.read().dr().bits()).unwrap();
+          while i2c3.sr1.read().rx_ne().is_empty() {}
         }
 
+        self.rx_buffer.push(i2c3.dr.read().dr().bits()).unwrap();
         i2c3.cr1.modify(|_, w| w.ack().set_bit());
       },
       _ => panic!("I2C{} is not a valid core! | .recieve_bytes(...)", self.core)
