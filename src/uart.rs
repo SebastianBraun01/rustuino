@@ -38,8 +38,8 @@ impl UART {
     let af = if core == 1 || core == 2 || core == 3 {7}
     else {8};
     
-    if UART_MAP.tx_pins.iter().zip(UART_MAP.rx_pins.iter())
-    .zip(UART_MAP.cores.iter()).any(|i| i == ((&tx_pin, &rx_pin), &core)) == false {
+    if !UART_MAP.tx_pins.iter().zip(UART_MAP.rx_pins.iter())
+    .zip(UART_MAP.cores.iter()).any(|i| i == ((&tx_pin, &rx_pin), &core)) {
       rprintln!("These pins are not available for UART communication! | UART::new()");
       return Err(ProgError::InvalidConfiguration);
     }
@@ -68,7 +68,7 @@ impl UART {
     match core {
       1 => {
         let uart1 = &peripheral_ptr.USART1;
-        if rcc.apb2enr.read().usart1en().is_enabled() == true {
+        if rcc.apb2enr.read().usart1en().is_enabled() {
           rprintln!("U(S)ART{} is already configured! | UART::new()", core);
           return Err(ProgError::InvalidConfiguration);
         }
@@ -86,7 +86,7 @@ impl UART {
       },
       2 => {
         let uart2 = &peripheral_ptr.USART2;
-        if rcc.apb1enr.read().usart2en().is_enabled() == true {
+        if rcc.apb1enr.read().usart2en().is_enabled() {
           rprintln!("U(S)ART{} is already configured! | UART::new()", core);
           return Err(ProgError::InvalidConfiguration);
         }
@@ -104,7 +104,7 @@ impl UART {
       },
       3 => {
         let uart3 = &peripheral_ptr.USART3;
-        if rcc.apb1enr.read().usart3en().is_enabled() == true {
+        if rcc.apb1enr.read().usart3en().is_enabled() {
           rprintln!("U(S)ART{} is already configured! | UART::new()", core);
           return Err(ProgError::InvalidConfiguration);
         }
@@ -122,7 +122,7 @@ impl UART {
       },
       4 => {
         let uart4 = &peripheral_ptr.UART4;
-        if rcc.apb1enr.read().uart4en().is_enabled() == true {
+        if rcc.apb1enr.read().uart4en().is_enabled() {
           rprintln!("U(S)ART{} is already configured! | UART::new()", core);
           return Err(ProgError::InvalidConfiguration);
         }
@@ -140,7 +140,7 @@ impl UART {
       },
       5 => {
         let uart5 = &peripheral_ptr.UART5;
-        if rcc.apb1enr.read().uart5en().is_enabled() == true {
+        if rcc.apb1enr.read().uart5en().is_enabled() {
           rprintln!("U(S)ART{} is already configured! | UART::new()", core);
           return Err(ProgError::InvalidConfiguration);
         }
@@ -158,7 +158,7 @@ impl UART {
       },
       6 => {
         let uart6 = &peripheral_ptr.USART6;
-        if rcc.apb2enr.read().usart6en().is_enabled() == true {
+        if rcc.apb2enr.read().usart6en().is_enabled() {
           rprintln!("U(S)ART{} is already configured! | UART::new()", core);
           return Err(ProgError::InvalidConfiguration);
         }
@@ -249,55 +249,55 @@ impl UART {
       1 => {
         let uart1 = &peripheral_ptr.USART1;
         for byte in bytes {
-          while uart1.sr.read().txe().bit_is_clear() == true {
+          while uart1.sr.read().txe().bit_is_clear() {
             if let Err(error) = check_uart_errors(uart1.sr.read().bits()) {return Err(error);}
           }
-          uart1.dr.write(|w| w.dr().bits(byte.clone().into()));
+          uart1.dr.write(|w| w.dr().bits((*byte).into()));
         }
       },
       2 => {
         let uart2 = &peripheral_ptr.USART2;
         for byte in bytes {
-          while uart2.sr.read().txe().bit_is_clear() == true {
+          while uart2.sr.read().txe().bit_is_clear() {
             if let Err(error) = check_uart_errors(uart2.sr.read().bits()) {return Err(error);}
           }
-          uart2.dr.write(|w| w.dr().bits(byte.clone().into()));
+          uart2.dr.write(|w| w.dr().bits((*byte).into()));
         }
       },
       3 => {
         let uart3 = &peripheral_ptr.USART3;
         for byte in bytes {
-          while uart3.sr.read().txe().bit_is_clear() == true {
+          while uart3.sr.read().txe().bit_is_clear() {
             if let Err(error) = check_uart_errors(uart3.sr.read().bits()) {return Err(error);}
           }
-          uart3.dr.write(|w| w.dr().bits(byte.clone().into()));
+          uart3.dr.write(|w| w.dr().bits((*byte).into()));
         }
       },
       4 => {
         let uart4 = &peripheral_ptr.UART4;
         for byte in bytes {
-          while uart4.sr.read().txe().bit_is_clear() == true {
+          while uart4.sr.read().txe().bit_is_clear() {
             if let Err(error) = check_uart_errors(uart4.sr.read().bits()) {return Err(error);}
           }
-          uart4.dr.write(|w| w.dr().bits(byte.clone().into()));
+          uart4.dr.write(|w| w.dr().bits((*byte).into()));
         }
       },
       5 => {
         let uart5 = &peripheral_ptr.UART5;
         for byte in bytes {
-          while uart5.sr.read().txe().bit_is_clear() == true {
+          while uart5.sr.read().txe().bit_is_clear() {
             if let Err(error) = check_uart_errors(uart5.sr.read().bits()) {return Err(error);}
           }
-          uart5.dr.write(|w| w.dr().bits(byte.clone().into()));
+          uart5.dr.write(|w| w.dr().bits((*byte).into()));
         }
       },
       6 => {
         let uart6 = &peripheral_ptr.USART6;
         for byte in bytes {
-          while uart6.sr.read().txe().bit_is_clear() == true {
+          while uart6.sr.read().txe().bit_is_clear() {
             if let Err(error) = check_uart_errors(uart6.sr.read().bits()) {return Err(error);}
           }
-          uart6.dr.write(|w| w.dr().bits(byte.clone().into()));
+          uart6.dr.write(|w| w.dr().bits((*byte).into()));
         }
       },
       _ => unreachable!()
@@ -320,42 +320,42 @@ impl UART {
     match self.core {
       1 => {
         let uart1 = &peripheral_ptr.USART1;
-        while uart1.sr.read().txe().bit_is_clear() == true {
+        while uart1.sr.read().txe().bit_is_clear() {
           if let Err(error) = check_uart_errors(uart1.sr.read().bits()) {return Err(error);}
         }
         uart1.dr.write(|w| w.dr().bits(data.into()));
       },
       2 => {
         let uart2 = &peripheral_ptr.USART2;
-        while uart2.sr.read().txe().bit_is_clear() == true {
+        while uart2.sr.read().txe().bit_is_clear() {
           if let Err(error) = check_uart_errors(uart2.sr.read().bits()) {return Err(error);}
         }
         uart2.dr.write(|w| w.dr().bits(data.into()));
       },
       3 => {
         let uart3 = &peripheral_ptr.USART3;
-        while uart3.sr.read().txe().bit_is_clear() == true {
+        while uart3.sr.read().txe().bit_is_clear() {
           if let Err(error) = check_uart_errors(uart3.sr.read().bits()) {return Err(error);}
         }
         uart3.dr.write(|w| w.dr().bits(data.into()));
       },
       4 => {
         let uart4 = &peripheral_ptr.UART4;
-        while uart4.sr.read().txe().bit_is_clear() == true {
+        while uart4.sr.read().txe().bit_is_clear() {
           if let Err(error) = check_uart_errors(uart4.sr.read().bits()) {return Err(error);}
         }
         uart4.dr.write(|w| w.dr().bits(data.into()));
       },
       5 => {
         let uart5 = &peripheral_ptr.UART5;
-        while uart5.sr.read().txe().bit_is_clear() == true {
+        while uart5.sr.read().txe().bit_is_clear() {
           if let Err(error) = check_uart_errors(uart5.sr.read().bits()) {return Err(error);}
         }
         uart5.dr.write(|w| w.dr().bits(data.into()));
       },
       6 => {
         let uart6 = &peripheral_ptr.USART6;
-        while uart6.sr.read().txe().bit_is_clear() == true {
+        while uart6.sr.read().txe().bit_is_clear() {
           if let Err(error) = check_uart_errors(uart6.sr.read().bits()) {return Err(error);}
         }
         uart6.dr.write(|w| w.dr().bits(data.into()));
@@ -375,43 +375,43 @@ impl UART {
     match self.core {
       1 => {
         let uart1 = &peripheral_ptr.USART1;
-        while uart1.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart1.sr.read().bits()) {return None;}
+        while uart1.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart1.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart1.dr.read().dr().bits() as u8;
       },
       2 => {
         let uart2 = &peripheral_ptr.USART2;
-        while uart2.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart2.sr.read().bits()) {return None;}
+        while uart2.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart2.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart2.dr.read().dr().bits() as u8;
       },
       3 => {
         let uart3 = &peripheral_ptr.USART3;
-        while uart3.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart3.sr.read().bits()) {return None;}
+        while uart3.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart3.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart3.dr.read().dr().bits() as u8;
       },
       4 => {
         let uart4 = &peripheral_ptr.UART4;
-        while uart4.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart4.sr.read().bits()) {return None;}
+        while uart4.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart4.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart4.dr.read().dr().bits() as u8;
       },
       5 => {
         let uart5 = &peripheral_ptr.UART5;
-        while uart5.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart5.sr.read().bits()) {return None;}
+        while uart5.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart5.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart5.dr.read().dr().bits() as u8;
       },
       6 => {
         let uart6 = &peripheral_ptr.USART6;
-        while uart6.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart6.sr.read().bits()) {return None;}
+        while uart6.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart6.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart6.dr.read().dr().bits() as u8;
       },
@@ -430,43 +430,43 @@ impl UART {
     match self.core {
       1 => {
         let uart1 = &peripheral_ptr.USART1;
-        while uart1.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart1.sr.read().bits()) {return None;}
+        while uart1.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart1.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart1.dr.read().dr().bits() as u8;
       },
       2 => {
         let uart2 = &peripheral_ptr.USART2;
-        while uart2.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart2.sr.read().bits()) {return None;}
+        while uart2.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart2.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart2.dr.read().dr().bits() as u8;
       },
       3 => {
         let uart3 = &peripheral_ptr.USART3;
-        while uart3.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart3.sr.read().bits()) {return None;}
+        while uart3.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart3.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart3.dr.read().dr().bits() as u8;
       },
       4 => {
         let uart4 = &peripheral_ptr.UART4;
-        while uart4.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart4.sr.read().bits()) {return None;}
+        while uart4.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart4.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart4.dr.read().dr().bits() as u8;
       },
       5 => {
         let uart5 = &peripheral_ptr.UART5;
-        while uart5.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart5.sr.read().bits()) {return None;}
+        while uart5.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart5.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart5.dr.read().dr().bits() as u8;
       },
       6 => {
         let uart6 = &peripheral_ptr.USART6;
-        while uart6.sr.read().rxne().bit_is_clear() == true {
-          if let Err(_) = check_uart_errors(uart6.sr.read().bits()) {return None;}
+        while uart6.sr.read().rxne().bit_is_clear() {
+          if check_uart_errors(uart6.sr.read().bits()).is_err() {return None;}
         }
         buffer = uart6.dr.read().dr().bits() as u8;
       },
@@ -482,10 +482,10 @@ impl UART {
 fn check_uart_errors(sr: u32) -> Result<(), SerialError> {
   let bits = sr & 0xF;
 
-  if bits & 0x8 > 1 {return Err(SerialError::Overrun);}
-  else if bits & 0x4 > 1 {return Err(SerialError::Noise);}
-  else if bits & 0x2 > 1 {return Err(SerialError::FrameFormat);}
-  else if bits & 0x1 > 1 {return Err(SerialError::Parity);}
+  if bits & 0x8 == 8 {return Err(SerialError::Overrun);}
+  else if bits & 0x4 == 4 {return Err(SerialError::Noise);}
+  else if bits & 0x2 == 2 {return Err(SerialError::FrameFormat);}
+  else if bits & 0x1 == 1 {return Err(SerialError::Parity);}
 
   return Ok(());
 }
