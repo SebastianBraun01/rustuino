@@ -46,7 +46,7 @@ pub fn enable_channel(pin: (char, u8), dma: bool) -> Result<(u8, u8), ProgError>
     },
     1 => {
       let adc1 = &peripheral_ptr.ADC1;
-      if rcc.apb2enr.read().adc1en().is_disabled() == true {
+      if rcc.apb2enr.read().adc1en().is_disabled() {
         rcc.apb2enr.modify(|_, w| w.adc1en().enabled());
         adcc.ccr.modify(|_, w| w.adcpre().div2());
         adc1.smpr2.modify(|_, w| w.smp0().cycles144());
@@ -56,7 +56,7 @@ pub fn enable_channel(pin: (char, u8), dma: bool) -> Result<(u8, u8), ProgError>
     },
     2 => {
       let adc2 = &peripheral_ptr.ADC2;
-      if rcc.apb2enr.read().adc2en().is_disabled() == true {
+      if rcc.apb2enr.read().adc2en().is_disabled() {
         rcc.apb2enr.modify(|_, w| w.adc2en().enabled());
         adcc.ccr.modify(|_, w| w.adcpre().div2());
         adc2.smpr2.modify(|_, w| w.smp0().cycles144());
@@ -66,7 +66,7 @@ pub fn enable_channel(pin: (char, u8), dma: bool) -> Result<(u8, u8), ProgError>
     },
     3 => {
       let adc3 = &peripheral_ptr.ADC3;
-      if rcc.apb2enr.read().adc3en().is_disabled() == true {
+      if rcc.apb2enr.read().adc3en().is_disabled() {
         rcc.apb2enr.modify(|_, w| w.adc3en().enabled());
         adcc.ccr.modify(|_, w| w.adcpre().div2());
         adc3.smpr2.modify(|_, w| w.smp0().cycles144());
@@ -99,9 +99,9 @@ pub fn adc_resolution(res: u8) {
     }
   };
 
-  if rcc.apb2enr.read().adc1en().is_enabled() == true {adc1.cr1.modify(|_, w| w.res().bits(enc_res));}
-  if rcc.apb2enr.read().adc2en().is_enabled() == true {adc2.cr1.modify(|_, w| w.res().bits(enc_res));}
-  if rcc.apb2enr.read().adc3en().is_enabled() == true {adc3.cr1.modify(|_, w| w.res().bits(enc_res));}
+  if rcc.apb2enr.read().adc1en().is_enabled() {adc1.cr1.modify(|_, w| w.res().bits(enc_res));}
+  if rcc.apb2enr.read().adc2en().is_enabled() {adc2.cr1.modify(|_, w| w.res().bits(enc_res));}
+  if rcc.apb2enr.read().adc3en().is_enabled() {adc3.cr1.modify(|_, w| w.res().bits(enc_res));}
 }
 
 pub fn analog_read(pin: &Pin<AnalogIn>) -> u16 {
@@ -113,21 +113,21 @@ pub fn analog_read(pin: &Pin<AnalogIn>) -> u16 {
       let adc1 = &peripheral_ptr.ADC1;
       adc1.sqr3.modify(|_, w| unsafe {w.sq1().bits(pin.number)});
       adc1.cr2.write(|w| w.swstart().start());
-      while adc1.sr.read().eoc().is_not_complete() == true {}
+      while adc1.sr.read().eoc().is_not_complete() {}
       adc1.dr.read().data().bits()
     },
     2 => {
       let adc2 = &peripheral_ptr.ADC2;
       adc2.sqr3.modify(|_, w| unsafe {w.sq1().bits(pin.number)});
       adc2.cr2.write(|w| w.swstart().start());
-      while adc2.sr.read().eoc().is_not_complete() == true {}
+      while adc2.sr.read().eoc().is_not_complete() {}
       adc2.dr.read().data().bits()
     },
     3 => {
       let adc3 = &peripheral_ptr.ADC3;
       adc3.sqr3.modify(|_, w| unsafe {w.sq1().bits(pin.number)});
       adc3.cr2.write(|w| w.swstart().start());
-      while adc3.sr.read().eoc().is_not_complete() == true {}
+      while adc3.sr.read().eoc().is_not_complete() {}
       adc3.dr.read().data().bits()
     },
     _ => unreachable!()
@@ -153,7 +153,7 @@ pub fn analog_write(pin: &Pin<AnalogOut>, value: u16) -> Result<(), GpioError> {
   else {value};
 
   if pin.inner.channel == 1 {
-    if dac.cr.read().wave1().is_disabled() == false {
+    if !dac.cr.read().wave1().is_disabled() {
       dac.cr.modify(|_, w| {
       w.tsel1().software();
       w.wave1().disabled()
@@ -163,7 +163,7 @@ pub fn analog_write(pin: &Pin<AnalogOut>, value: u16) -> Result<(), GpioError> {
     dac.swtrigr.write(|w| w.swtrig1().enabled());
   }
   else {
-    if dac.cr.read().wave2().is_disabled() == false {
+    if !dac.cr.read().wave2().is_disabled() {
       dac.cr.modify(|_, w| {
       w.tsel2().software();
       w.wave2().disabled()
@@ -265,19 +265,18 @@ pub fn analog_wave_freq(freq: u32) {
   }
   else {16000000 / freq};
 
-  tim5.arr.write(|w| w.arr().bits(val.into()));
+  tim5.arr.write(|w| w.arr().bits(val));
 }
 
 
 // Private Functions ==============================================================================
 fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), ProgError> {
-  if ADC_MAP.pins.contains(&pin) == false {return Err(ProgError::InvalidConfiguration);}
+  if !ADC_MAP.pins.contains(&pin) {return Err(ProgError::InvalidConfiguration);}
   else {
     let core = ADC_MAP.adcs[ADC_MAP.pins.iter().position(|&i| i == pin).unwrap()];
     let channel = ADC_MAP.channels[ADC_MAP.pins.iter().position(|&i| i == pin).unwrap()];
 
-    if dac == false && core == 0 {return Err(ProgError::InvalidConfiguration);}
-    else if adc == false && core != 0 {return Err(ProgError::InvalidConfiguration);}
+    if (!dac && core == 0) || (!adc && core != 0) {return Err(ProgError::InvalidConfiguration);}
     else {return Ok((core, channel));}
   }
 }
@@ -288,7 +287,7 @@ fn start_dac_timer() {
   let rcc = &peripheral_ptr.RCC;
   let tim5 = &peripheral_ptr.TIM5;
 
-  if rcc.apb1enr.read().tim5en().is_enabled() == true {return;}
+  if rcc.apb1enr.read().tim5en().is_enabled() {return;}
   
   rcc.apb1enr.modify(|_, w| w.tim5en().enabled());
   tim5.cr1.modify(|_, w| w.arpe().enabled());
