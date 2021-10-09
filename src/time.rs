@@ -150,7 +150,7 @@ pub fn pwm_write(pin: &Pin<PWM>, value: u8) -> Result<(), GpioError> {
 
 // Private PWM Functions ==========================================================================
 fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError> {
-  if PWM_MAP.pins.contains(&pin) == false {return Err(ProgError::InvalidConfiguration);}
+  if !PWM_MAP.pins.contains(&pin) {return Err(ProgError::InvalidConfiguration);}
   else {
     let timer = PWM_MAP.timers[PWM_MAP.pins.iter().position(|&i| i == pin).unwrap()];
     let ccch = PWM_MAP.ccchs[PWM_MAP.pins.iter().position(|&i| i == pin).unwrap()];
@@ -190,7 +190,7 @@ pub fn delay(ms: u16) {
   let rcc = &peripheral_ptr.RCC;
   let tim6 = &peripheral_ptr.TIM6;
 
-  if rcc.apb1enr.read().tim6en().is_disabled() == true {
+  if rcc.apb1enr.read().tim6en().is_disabled() {
     rcc.apb1enr.modify(|_, w| w.tim6en().enabled());
     tim6.cr1.modify(|_, w| {
       w.arpe().enabled();
@@ -204,7 +204,7 @@ pub fn delay(ms: u16) {
   tim6.arr.write(|w| w.arr().bits(ms));
   tim6.egr.write(|w| w.ug().update());
   tim6.cr1.modify(|_, w| w.cen().enabled());
-  while tim6.cr1.read().cen().bit_is_set() == true {}
+  while tim6.cr1.read().cen().bit_is_set() {}
 }
 
 /// Starts a timer that will continuously count the time in milliseconds.
@@ -233,7 +233,7 @@ pub fn start_time() {
   let rcc = &peripheral_ptr.RCC;
   let tim7 = &peripheral_ptr.TIM7;
 
-  if rcc.apb1enr.read().tim7en().is_enabled() == true {
+  if rcc.apb1enr.read().tim7en().is_enabled() {
     rprintln!("Millis Timer already configured! | start_time()");
     return;
   }
