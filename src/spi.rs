@@ -103,7 +103,7 @@ impl SPI {
       },
       2 => {
         let spi2 = &peripheral_ptr.SPI2;
-        if rcc.apb1enr.read().spi2en().is_enabled() == true {
+        if rcc.apb1enr.read().spi2en().is_enabled() {
           rprintln!("SPI{} is already configured! | SPI::new()", core);
           return Err(ProgError::AlreadyConfigured);
         }
@@ -118,7 +118,7 @@ impl SPI {
       },
       3 => {
         let spi3 = &peripheral_ptr.SPI3;
-        if rcc.apb1enr.read().spi3en().is_enabled() == true {
+        if rcc.apb1enr.read().spi3en().is_enabled() {
           rprintln!("SPI{} is already configured! | SPI::new()", core);
           return Err(ProgError::AlreadyConfigured);
         }
@@ -178,7 +178,7 @@ impl SPI {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
-    if self.active == true {
+    if self.active {
       rprintln!("Cannot configure SPI core while active! | .set_mode()");
       return Err(SpiError::Prog(ProgError::PermissionDenied));
     }
@@ -246,7 +246,7 @@ impl SPI {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
-    if self.active == true {
+    if self.active {
       rprintln!("Cannot configure SPI core while active! | .set_clk()");
       return Err(SpiError::Prog(ProgError::PermissionDenied));
     }
@@ -326,7 +326,7 @@ impl SPI {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
-    if self.active == true {
+    if self.active {
       rprintln!("Cannot configure SPI core while active! | .set_frame_format()");
       return Err(SpiError::Prog(ProgError::PermissionDenied));
     }
@@ -367,7 +367,7 @@ impl SPI {
       }
     }
 
-    if self.nss.contains_key(&id) == true {
+    if self.nss.contains_key(&id) {
       rprintln!("ID {} already registered for an NSS pin! | .add_slave()", id);
       return Err(ProgError::InvalidConfiguration);
     }
@@ -383,12 +383,12 @@ impl SPI {
   }
 
   pub fn begin_transaction(&mut self, id: u8) -> Result<(), SpiError> {
-    if self.nss.contains_key(&id) == false {
+    if !self.nss.contains_key(&id) {
       rprintln!("ID {} not registered! | .begin_transaction()", id);
       return Err(SpiError::Prog(ProgError::InvalidConfiguration));
     }
 
-    if self.active == true {
+    if self.active {
       rprintln!("SPI already active! | .begin_transaction()");
       return Err(SpiError::Prog(ProgError::InvalidConfiguration));
     }
@@ -413,7 +413,7 @@ impl SPI {
       1 => {
         let spi1 = &peripheral_ptr.SPI1;
         if let SpiMode::HALF_DUPLEX = self.mode {spi1.cr1.modify(|_, w| w.bidioe().set_bit());}
-        while spi1.sr.read().txe().bit_is_clear() == true {
+        while spi1.sr.read().txe().bit_is_clear() {
           if let Err(error) = scan_spi_error(spi1.sr.read().bits() as u16) {return Err(error);}
         }
         spi1.dr.write(|w| w.dr().bits(data.into()));
@@ -421,7 +421,7 @@ impl SPI {
       2 => {
         let spi2 = &peripheral_ptr.SPI2;
         if let SpiMode::HALF_DUPLEX = self.mode {spi2.cr1.modify(|_, w| w.bidioe().set_bit());}
-        while spi2.sr.read().txe().bit_is_clear() == true {
+        while spi2.sr.read().txe().bit_is_clear() {
           if let Err(error) = scan_spi_error(spi2.sr.read().bits() as u16) {return Err(error);}
         }
         spi2.dr.write(|w| w.dr().bits(data.into()));
@@ -429,7 +429,7 @@ impl SPI {
       3 => {
         let spi3 = &peripheral_ptr.SPI3;
         if let SpiMode::HALF_DUPLEX = self.mode {spi3.cr1.modify(|_, w| w.bidioe().set_bit());}
-        while spi3.sr.read().txe().bit_is_clear() == true {
+        while spi3.sr.read().txe().bit_is_clear() {
           if let Err(error) = scan_spi_error(spi3.sr.read().bits() as u16) {return Err(error);}
         }
         spi3.dr.write(|w| w.dr().bits(data.into()));
@@ -454,11 +454,11 @@ impl SPI {
       1 => {
         let spi1 = &peripheral_ptr.SPI1;
         if let SpiMode::HALF_DUPLEX = self.mode {spi1.cr1.modify(|_, w| w.bidioe().set_bit());}
-        while spi1.sr.read().txe().bit_is_clear() == true {
+        while spi1.sr.read().txe().bit_is_clear() {
           if let Err(error) = scan_spi_error(spi1.sr.read().bits() as u16) {return Err(error);}
         }
         spi1.dr.write(|w| w.dr().bits(0xFF));
-        while spi1.sr.read().rxne().bit_is_clear() == true {
+        while spi1.sr.read().rxne().bit_is_clear() {
           if let Err(error) = scan_spi_error(spi1.sr.read().bits() as u16) {return Err(error);}
         }
         if let SpiMode::HALF_DUPLEX = self.mode {spi1.cr1.modify(|_, w| w.bidioe().clear_bit());}
@@ -467,11 +467,11 @@ impl SPI {
       2 => {
         let spi2 = &peripheral_ptr.SPI2;
         if let SpiMode::HALF_DUPLEX = self.mode {spi2.cr1.modify(|_, w| w.bidioe().set_bit());}
-        while spi2.sr.read().txe().bit_is_clear() == true {
+        while spi2.sr.read().txe().bit_is_clear() {
           if let Err(error) = scan_spi_error(spi2.sr.read().bits() as u16) {return Err(error);}
         }
         spi2.dr.write(|w| w.dr().bits(0xFF));
-        while spi2.sr.read().rxne().bit_is_clear() == true {
+        while spi2.sr.read().rxne().bit_is_clear() {
           if let Err(error) = scan_spi_error(spi2.sr.read().bits() as u16) {return Err(error);}
         }
         if let SpiMode::HALF_DUPLEX = self.mode {spi2.cr1.modify(|_, w| w.bidioe().clear_bit());}
@@ -480,11 +480,11 @@ impl SPI {
       3 => {
         let spi3 = &peripheral_ptr.SPI3;
         if let SpiMode::HALF_DUPLEX = self.mode {spi3.cr1.modify(|_, w| w.bidioe().set_bit());}
-        while spi3.sr.read().txe().bit_is_clear() == true {
+        while spi3.sr.read().txe().bit_is_clear() {
           if let Err(error) = scan_spi_error(spi3.sr.read().bits() as u16) {return Err(error);}
         }
         spi3.dr.write(|w| w.dr().bits(0xFF));
-        while spi3.sr.read().rxne().bit_is_clear() == true {
+        while spi3.sr.read().rxne().bit_is_clear() {
           if let Err(error) = scan_spi_error(spi3.sr.read().bits() as u16) {return Err(error);}
         }
         if let SpiMode::HALF_DUPLEX = self.mode {spi3.cr1.modify(|_, w| w.bidioe().clear_bit());}
@@ -512,21 +512,21 @@ fn check_spi(core: u8, sck: (char, u8), miso: (char, u8), mosi: (char, u8)) -> R
 
   match core {
     1 => {
-      if SPI_DATA.s1_sck.contains(&sck) == false {return Err(ProgError::InvalidConfiguration);}
-      else if SPI_DATA.s1_miso.contains(&miso) == false {return Err(ProgError::InvalidConfiguration);}
-      else if SPI_DATA.s1_mosi.contains(&mosi) == false {return Err(ProgError::InvalidConfiguration);}
+      if !SPI_DATA.s1_sck.contains(&sck) || !SPI_DATA.s1_miso.contains(&miso) || !SPI_DATA.s1_mosi.contains(&mosi) {
+        return Err(ProgError::InvalidConfiguration);
+      }
       else {return Ok(5);}
     },
     2 => {
-      if SPI_DATA.s2_sck.contains(&sck) == false {return Err(ProgError::InvalidConfiguration);}
-      else if SPI_DATA.s2_miso.contains(&miso) == false {return Err(ProgError::InvalidConfiguration);}
-      else if SPI_DATA.s2_mosi.contains(&mosi) == false {return Err(ProgError::InvalidConfiguration);}
+      if !SPI_DATA.s2_sck.contains(&sck) || !SPI_DATA.s2_miso.contains(&miso) || !SPI_DATA.s2_mosi.contains(&mosi) {
+        return Err(ProgError::InvalidConfiguration);
+      }
       else {return Ok(5);}
     },
     3 => {
-      if SPI_DATA.s3_sck.contains(&sck) == false {return Err(ProgError::InvalidConfiguration);}
-      else if SPI_DATA.s3_miso.contains(&miso) == false {return Err(ProgError::InvalidConfiguration);}
-      else if SPI_DATA.s3_mosi.contains(&mosi) == false {return Err(ProgError::InvalidConfiguration);}
+      if !SPI_DATA.s3_sck.contains(&sck) || !SPI_DATA.s3_miso.contains(&miso) || !SPI_DATA.s3_mosi.contains(&mosi) {
+        return Err(ProgError::InvalidConfiguration);
+      }
       else {return Ok(6);}
     },
     _ => {
