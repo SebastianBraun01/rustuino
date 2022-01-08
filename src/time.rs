@@ -1,4 +1,28 @@
 //! This module contains everything that is related to timer based functions.
+//! 
+//! For information on whitch pins have PWM capabilities, check [`PWM_MAP`](crate::include::PWM_MAP)
+//! 
+//! # Examples
+//! 
+//! ```no_run
+//! #![no_std]
+//! #![no_main]
+//! 
+//! use rustuino::*;
+//! 
+//! #[entry]
+//! fn main() -> ! {
+//!   // Configure A8 for PWM use
+//!   let pwm_pin = pinmode_pwm(PA8).unwrap();
+//! 
+//!   loop {
+//!     for i in 0..256 {
+//!       pwm_write(&pwm_pin, i).unwrap();
+//!       delay(100);
+//!     }    
+//!   }
+//! }
+//! ```
 
 use crate::include::{GpioError, ProgError, PWM_MAP};
 use crate::gpio::{Pin, PWM};
@@ -11,6 +35,7 @@ static TIME_COUNTER: Mutex<RefCell<usize>> = Mutex::new(RefCell::new(0));
 
 
 // Public PWM Functions ===========================================================================
+#[doc(hidden)]
 pub fn setup_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError>{
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -96,6 +121,21 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError>{
   return Ok((timer, ccch, af));
 }
 
+/// Sets the duty cycle of a PWM pin.
+/// 
+/// Takes pin identifier [A0, C5, etc.](crate::include::pins) and an 8bit value as arguments and sets the duty cycle
+/// of the pin.
+/// Panics if provided value is out of bounds (<0 or >255).
+/// 
+/// # Examples
+/// 
+/// ```no_run
+/// // Configure pin as an PWM output
+/// let pin = pinmode_pwm(PA8).unwrap();
+/// 
+/// // Set the duty cycle of the pin
+/// let mut value: u16 = pwm_write(&pin, 128).unwrap();
+/// ```
 pub fn pwm_write(pin: &Pin<PWM>, value: u8) -> Result<(), GpioError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -168,7 +208,8 @@ fn check_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError> {
 
 
 // Public Time Functions ==========================================================================
-/// Lets the microcontroller wait for the specified time in milliseconds. In this time no other instructions can be run.
+/// Lets the microcontroller wait for the specified time in milliseconds. In this time no other instructions
+/// other than interrupts can be run.
 ///
 /// # Example
 ///
