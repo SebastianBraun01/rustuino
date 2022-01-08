@@ -1,32 +1,60 @@
 //! This module contains everything that is related to the digital IO functionality.
+//! 
+//! # Examples
+//! 
+//! ```no_run
+//! #![no_std]
+//! #![no_main]
+//! 
+//! use rustuino::*;
+//! 
+//! #[entry]
+//! fn main() -> ! {
+//!   // Configure pins and get the pin-structs
+//!   let in_pin = pinmode_input(PA0).unwrap();
+//!   let out_pin = pinmode_output(PA1).unwrap();
+//!   let af_pin = pinmode_alternate_function(PA2, 7).unwrap();
+//!   let analog_pin = pinmode_analog(PA4).unwrap();
+//! 
+//!   loop {
+//!     // Read from the input pin
+//!     let value = digital_read(&in_pin);
+//!     
+//!     // Set the output pin
+//!     digital_write(&out_pin, true);
+//!   }
+//! }
+//! ```
 
 use crate::analog::enable_channel;
 use crate::time::setup_pwm;
 use crate::include::{ProgError, PIN_CONF};
 use rtt_target::rprintln;
 
+/// Represents a configured pin. Is returned from pinmode-functions.
 pub struct Pin<T> {
+  #[doc(hidden)]
   pub block: char,
+  #[doc(hidden)]
   pub number: u8,
   #[doc(hidden)]
   pub inner: T
 }
 
+#[doc(hidden)]
 pub struct Input;
+#[doc(hidden)]
 pub struct Output;
+#[doc(hidden)]
 pub struct AlternateFunction(u32);
-pub struct AnalogIn {
+#[doc(hidden)]
+pub struct Analog {
   #[doc(hidden)]
   pub core: u8,
   #[doc(hidden)]
   pub channel: u8
 }
-pub struct AnalogOut {
-  #[doc(hidden)]
-  pub core: u8,
-  #[doc(hidden)]
-  pub channel: u8
-}
+#[doc(hidden)]
 pub struct PWM {
   #[doc(hidden)]
   pub timer: u8,
@@ -48,13 +76,18 @@ pub enum GpioSpeed {
   Low, Medium, Fast, High
 }
 
-// Represents the options for pullup-/pulldown-resistors.
+/// Represents the options for pullup-/pulldown-resistors.
 pub enum GpioBias {
   None, Pullup, Pulldown
 }
 
 
 // Public Functions ===============================================================================
+/// Configures a pin to be a digital input.
+/// 
+/// Takes pin identifier [A0, C5, etc.](crate::include::pins) as an argument and returns a [pin-struct](crate::gpio::Pin)
+/// for other functions.
+/// Panics if pin identifier is not a valid pin.
 pub fn pinmode_input(pin: (char, u8)) -> Result<Pin<Input>, ProgError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
@@ -106,6 +139,16 @@ pub fn pinmode_input(pin: (char, u8)) -> Result<Pin<Input>, ProgError> {
   });
 }
 
+/// Configures a pin to be a digital input. Disregard if pin is already configured.
+/// 
+/// Takes pin identifier [A0, C5, etc.](crate::include::pins) as an argument and returns a [pin-struct](crate::gpio::Pin)
+/// for other functions.
+/// Panics if pin identifier is not a valid pin.
+/// 
+/// # Safety
+/// 
+/// This function can be used to get more than one pin-structs of a configured pin. Keep in mind that the registers of
+/// the pin will still be configured. This can easily break other functions for the pin.
 pub unsafe fn pinmode_input_force(pin: (char, u8)) -> Result<Pin<Input>, ProgError> {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
   let rcc = &peripheral_ptr.RCC;
@@ -148,6 +191,11 @@ pub unsafe fn pinmode_input_force(pin: (char, u8)) -> Result<Pin<Input>, ProgErr
   });
 }
 
+/// Configures a pin to be a digital output.
+/// 
+/// Takes pin identifier [A0, C5, etc.](crate::include::pins) as an argument and returns a [pin-struct](crate::gpio::Pin)
+/// for other functions.
+/// Panics if pin identifier is not a valid pin.
 pub fn pinmode_output(pin: (char, u8)) -> Result<Pin<Output>, ProgError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
@@ -199,6 +247,16 @@ pub fn pinmode_output(pin: (char, u8)) -> Result<Pin<Output>, ProgError> {
   });
 }
 
+/// Configures a pin to be a digital output. Disregard if pin is already configured.
+/// 
+/// Takes pin identifier [A0, C5, etc.](crate::include::pins) as an argument and returns a [pin-struct](crate::gpio::Pin)
+/// for other functions.
+/// Panics if pin identifier is not a valid pin.
+/// 
+/// # Safety
+/// 
+/// This function can be used to get more than one pin-structs of a configured pin. Keep in mind that the registers of
+/// the pin will still be configured. This can easily break other functions for the pin.
 pub unsafe fn pinmode_output_force(pin: (char, u8)) -> Result<Pin<Output>, ProgError> {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
   let rcc = &peripheral_ptr.RCC;
@@ -241,6 +299,11 @@ pub unsafe fn pinmode_output_force(pin: (char, u8)) -> Result<Pin<Output>, ProgE
   });
 }
 
+/// Configures an alternate function for a pin.
+/// 
+/// Takes pin identifier [A0, C5, etc.](crate::include::pins) and a AF number as arguments and returns a [pin-struct](crate::gpio::Pin)
+/// for other functions.
+/// Panics if either pin identifier is not a valid pin or the AF value is not valid.
 pub fn pinmode_alternate_function(pin: (char, u8), af: u32) -> Result<Pin<AlternateFunction>, ProgError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
@@ -306,6 +369,16 @@ pub fn pinmode_alternate_function(pin: (char, u8), af: u32) -> Result<Pin<Altern
   });
 }
 
+/// Configures an alternate function for a pin.
+/// 
+/// Takes pin identifier [A0, C5, etc.](crate::include::pins) and a AF number as arguments and returns a [pin-struct](crate::gpio::Pin)
+/// for other functions.
+/// Panics if either pin identifier is not a valid pin or the AF value is not valid.
+/// 
+/// # Safety
+/// 
+/// This function can be used to get more than one pin-structs of a configured pin. Keep in mind that the registers of
+/// the pin will still be configured. This can easily break other functions for the pin.
 pub unsafe fn pinmode_alternate_function_force(pin: (char, u8), af: u32) -> Result<Pin<AlternateFunction>, ProgError> {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
   let rcc = &peripheral_ptr.RCC;
@@ -362,7 +435,13 @@ pub unsafe fn pinmode_alternate_function_force(pin: (char, u8), af: u32) -> Resu
   });
 }
 
-pub fn pinmode_analog_in(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
+/// Configures a pin to be an analog input.
+/// 
+/// Takes pin identifier [A0, C5, etc.](crate::include::pins) as an argument and returns a [pin-struct](crate::gpio::Pin)
+/// for other functions.
+/// Panics if pin identifier is not a pin that can be used the the internal ADCs. To see witch pins are available for
+/// analog functionality see the docs of [ADC_MAP](crate::include::ADC_MAP).
+pub fn pinmode_analog(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
   let rcc = &peripheral_ptr.RCC;
@@ -384,7 +463,7 @@ pub fn pinmode_analog_in(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
       let gpioa = &peripheral_ptr.GPIOA;
       rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
       gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, false) {
+      channel_data = match enable_channel(pin) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -393,7 +472,7 @@ pub fn pinmode_analog_in(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
       let gpiob = &peripheral_ptr.GPIOB;
       rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
       gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, false) {
+      channel_data = match enable_channel(pin) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -402,7 +481,7 @@ pub fn pinmode_analog_in(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
       let gpioc = &peripheral_ptr.GPIOC;
       rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
       gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, false) {
+      channel_data = match enable_channel(pin) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -411,7 +490,7 @@ pub fn pinmode_analog_in(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
       let gpiod = &peripheral_ptr.GPIOD;
       rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
       gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, false) {
+      channel_data = match enable_channel(pin) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -420,7 +499,7 @@ pub fn pinmode_analog_in(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
       let gpioh = &peripheral_ptr.GPIOH;
       rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
       gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, false) {
+      channel_data = match enable_channel(pin) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -431,15 +510,27 @@ pub fn pinmode_analog_in(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
   return Ok(Pin {
     block: pin.0,
     number: pin.1,
-    inner: AnalogIn {
+    inner: Analog {
       core: channel_data.0,
       channel: channel_data.1
     }
   });
 }
 
-pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<AnalogIn>, ProgError> {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
+/// Configures a pin to be an analog input.
+/// 
+/// Takes pin identifier [A0, C5, etc.](crate::include::pins) as an argument and returns a [pin-struct](crate::gpio::Pin)
+/// for other functions.
+/// Panics if pin identifier is not a pin that can be used the the internal ADCs.  To see witch pins are available
+/// for analog functionality see the docs of [ADC_MAP](crate::include::ADC_MAP).
+/// 
+/// # Safety
+/// 
+/// This function can be used to get more than one pin-structs of a configured pin. Keep in mind that the registers of
+/// the pin will still be configured. This can easily break other functions for the pin.
+pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<Analog>, ProgError> {
+  let peripheral_ptr;
+  peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
   let rcc = &peripheral_ptr.RCC;
 
   let channel_data: (u8, u8);
@@ -451,7 +542,7 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<AnalogIn>, Pro
       let gpioa = &peripheral_ptr.GPIOA;
       rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
       gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, false) {
+      channel_data = match enable_channel(pin) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -460,7 +551,7 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<AnalogIn>, Pro
       let gpiob = &peripheral_ptr.GPIOB;
       rcc.ahb1enr.modify(|_, w| w.gpioben().enabled());
       gpiob.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, false) {
+      channel_data = match enable_channel(pin) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -469,7 +560,7 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<AnalogIn>, Pro
       let gpioc = &peripheral_ptr.GPIOC;
       rcc.ahb1enr.modify(|_, w| w.gpiocen().enabled());
       gpioc.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, false) {
+      channel_data = match enable_channel(pin) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -478,7 +569,7 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<AnalogIn>, Pro
       let gpiod = &peripheral_ptr.GPIOD;
       rcc.ahb1enr.modify(|_, w| w.gpioden().enabled());
       gpiod.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, false) {
+      channel_data = match enable_channel(pin) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -487,7 +578,7 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<AnalogIn>, Pro
       let gpioh = &peripheral_ptr.GPIOH;
       rcc.ahb1enr.modify(|_, w| w.gpiohen().enabled());
       gpioh.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, false) {
+      channel_data = match enable_channel(pin) {
         Ok(value) => value,
         Err(error) => return Err(error)
       };
@@ -498,84 +589,19 @@ pub unsafe fn pinmode_analog_force(pin: (char, u8)) -> Result<Pin<AnalogIn>, Pro
   return Ok(Pin {
     block: pin.0,
     number: pin.1,
-    inner: AnalogIn {
+    inner: Analog {
       core: channel_data.0,
       channel: channel_data.1
     }
   });
 }
 
-pub fn pinmode_analog_out(pin: (char, u8)) -> Result<Pin<AnalogOut>, ProgError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
-  let rcc = &peripheral_ptr.RCC;
-
-  let channel_data: (u8, u8);
-
-  if pin != ('a', 4) && pin != ('a', 5) {return Err(ProgError::InvalidConfiguration);}
-
-  unsafe {
-    if !PIN_CONF.contains(&pin) {PIN_CONF.push(pin).unwrap();}
-    else {
-      rprintln!("P{}{} is already configured! | pin_mode()", pin.0.to_uppercase(), pin.1);
-      return Err(ProgError::AlreadyConfigured);
-    }
-  }
-
-  match pin.0 {
-    'a' => {
-      let gpioa = &peripheral_ptr.GPIOA;
-      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
-      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, true) {
-        Ok(value) => value,
-        Err(error) => return Err(error)
-      };
-    },
-    _   => unreachable!()
-  };
-
-  return Ok(Pin {
-    block: pin.0,
-    number: pin.1,
-    inner: AnalogOut {
-      core: channel_data.0,
-      channel: channel_data.1
-    }
-  });
-}
-
-pub unsafe fn pinmode_analog_out_force(pin: (char, u8)) -> Result<Pin<AnalogOut>, ProgError> {
-  let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
-  let rcc = &peripheral_ptr.RCC;
-
-  let channel_data: (u8, u8);
-
-  if pin != ('a', 4) && pin != ('a', 5) {return Err(ProgError::InvalidConfiguration);}
-
-  match pin.0 {
-    'a' => {
-      let gpioa = &peripheral_ptr.GPIOA;
-      rcc.ahb1enr.modify(|_, w| w.gpioaen().enabled());
-      gpioa.moder.modify(|r, w| unsafe {w.bits(r.bits() & !(3 << (2 * pin.1)) | (3 << (2 * pin.1)))});
-      channel_data = match enable_channel(pin, true) {
-        Ok(value) => value,
-        Err(error) => return Err(error)
-      };
-    },
-    _   => unreachable!()
-  };
-
-  return Ok(Pin {
-    block: pin.0,
-    number: pin.1,
-    inner: AnalogOut {
-      core: channel_data.0,
-      channel: channel_data.1
-    }
-  });
-}
-
+/// Configures a pin to be a PWM output.
+/// 
+/// Takes pin identifier [A0, C5, etc.](crate::include::pins) as an argument and returns a [pin-struct](crate::gpio::Pin)
+/// for other functions.
+/// Panics if pin identifier is not a pin that can be used as a PWM output with the internal timers. To see witch pins
+/// are available for PWM functionality see the docs of [PWM_MAP](crate::include::PWM_MAP).
 pub fn pinmode_pwm(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
@@ -645,6 +671,17 @@ pub fn pinmode_pwm(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> {
   });
 }
 
+/// Configures a pin to be a PWM output.
+/// 
+/// Takes pin identifier [A0, C5, etc.](crate::include::pins) as an argument and returns a [pin-struct](crate::gpio::Pin)
+/// for other functions.
+/// Panics if pin identifier is not a pin that can be used as a PWM output with the internal timers. To see witch pins
+/// are available for PWM functionality see the docs of [PWM_MAP](crate::include::PWM_MAP).
+/// 
+/// # Safety
+/// 
+/// This function can be used to get more than one pin-structs of a configured pin. Keep in mind that the registers of
+/// the pin will still be configured. This can easily break other functions for the pin.
 pub unsafe fn pinmode_pwm_force(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> {
   let peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();
   let rcc = &peripheral_ptr.RCC;
@@ -711,6 +748,9 @@ pub unsafe fn pinmode_pwm_force(pin: (char, u8)) -> Result<Pin<PWM>, ProgError> 
   });
 }
 
+/// Sets the state of an output pin.
+/// 
+/// Takes [pin-struct](crate::gpio::Pin) of an output pin and a boolean value as arguments and sets the pin to that value.
 pub fn digital_write(pin: &Pin<Output>, value: bool) {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
@@ -745,6 +785,9 @@ pub fn digital_write(pin: &Pin<Output>, value: bool) {
   };
 }
 
+/// Reads the state of an input pin.
+/// 
+/// Takes [pin-struct](crate::gpio::Pin) of an output pin as an argument and returns the boolean value of that pin.
 pub fn digital_read(pin: &Pin<Input>) -> bool {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
@@ -776,6 +819,9 @@ pub fn digital_read(pin: &Pin<Input>) -> bool {
   return bits & (1 << pin.number) == (1 << pin.number);
 }
 
+/// Reads the set state of an output pin.
+/// 
+/// Takes [pin-struct](crate::gpio::Pin) of an output pin as an argument and returns the set state of that pin.
 pub fn digital_state(pin: &Pin<Output>) -> bool {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
@@ -807,6 +853,10 @@ pub fn digital_state(pin: &Pin<Output>) -> bool {
   return bits & (1 << pin.number) == (1 << pin.number);
 }
 
+/// Sets if the pin has a pullup-, pulldown- or no bias-resistor connected internally.
+/// 
+/// Takes [pin-struct](crate::gpio::Pin) of a pin and the [config](crate::gpio::GpioBias) as arguments and sets the
+/// bias of that pin.
 pub fn set_bias<T>(pin: &Pin<T>, bias: GpioBias) {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
@@ -858,6 +908,11 @@ pub fn set_bias<T>(pin: &Pin<T>, bias: GpioBias) {
   };
 }
 
+/// Sets the driving speed of the pin.
+/// 
+/// Takes [pin-struct](crate::gpio::Pin) of a pin and the [speed](crate::gpio::GpioSpeed) as arguments and sets the
+/// speed of that pin.
+/// See the documentation of [GpioSpeed](crate::gpio::GpioSpeed) for frequency ratings.
 pub fn set_speed<T>(pin: &Pin<T>, speed: GpioSpeed) {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
@@ -914,6 +969,10 @@ pub fn set_speed<T>(pin: &Pin<T>, speed: GpioSpeed) {
   };
 }
 
+/// Sets if the pin is driven in push-pull- or open-drain-configuration.
+/// 
+/// Takes [pin-struct](crate::gpio::Pin) of a pin and a boolean value as arguments and sets the drive-mode of that pin.
+/// If the value is false the config is push-pull, if the value is true the config is open-drain.
 pub fn open_drain<T>(pin: &Pin<T>, op: bool) {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();} 
