@@ -1,18 +1,55 @@
 //! Contains everything that is related to the analog IO functionality.
+//! 
+//! For information on whitch pins have analog IO capabilities, check [`ADC_MAP`](crate::include::ADC_MAP)
+//! 
+//! # Examples
+//! 
+//! ```no_run
+//! #![no_std]
+//! #![no_main]
+//! 
+//! use rustuino::*;
+//! 
+//! #[entry]
+//! fn main() -> ! {
+//!   // Configure an analog input, analog output and a a digital output
+//!   let in_pin = pinmode_analog(PA0).unwrap();
+//!   let led_pin = pinmode_output(PA1).unwrap();
+//! 
+//!   // Variable to store the analog value
+//!   let mut value = 0;
+//! 
+//!   // Change the ADC resolution to 12 bits
+//!   analog_resolution(12);
+//! 
+//!   loop {
+//!     // Read from the analog input
+//!     value = analog_read(&in_pin);
+//!     
+//!     // If voltage is above 5V turn on led, otherwise turn it off
+//!     if value > 2046 {
+//!       digital_write(&led_pin, true);
+//!     }
+//!     else {
+//!       digital_write(&led_pin, false);
+//!     }
+//!   }
+//! }
+//! ```
 
-use crate::include::{GpioError, ProgError, ADC_MAP};
-use crate::gpio::{Pin, AnalogIn, AnalogOut};
+use crate::include::{ProgError, ADC_MAP};
+use crate::gpio::{Pin, Analog};
 use rtt_target::rprintln;
 
 
 #[doc(hidden)]
-pub fn enable_channel(pin: (char, u8), dma: bool) -> Result<(u8, u8), ProgError> {
+pub fn enable_channel(pin: (char, u8)) -> Result<(u8, u8), ProgError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
   let adcc = &peripheral_ptr.ADC_COMMON;
 
-  let (core, channel) = match check_channel(pin, !dma, dma) {
+  let (core, channel) = match return_channel(pin) {
     Ok(values) => values,
     Err(error) => {
       rprintln!("P{}{} is not available for analog functions! | enable_channel()", pin.0.to_uppercase(), pin.1);
@@ -21,29 +58,6 @@ pub fn enable_channel(pin: (char, u8), dma: bool) -> Result<(u8, u8), ProgError>
   };
 
   match core {
-    0 => {
-      let dac = &peripheral_ptr.DAC;
-      rcc.apb1enr.modify(|_, w| w.dacen().enabled());
-      if channel == 1 {
-        dac.cr.modify(|_, w| {
-          w.boff1().enabled();
-          w.ten1().enabled();
-          w.tsel1().software();
-          w.en1().enabled()
-        });
-      }
-      else {
-        dac.cr.modify(|_, w| {
-          w.boff2().enabled();
-          w.ten2().enabled();
-          w.tsel2().software();
-          w.en2().enabled()
-        });
-      }
-
-      start_dac_timer();
-      return Ok((core, channel));
-    },
     1 => {
       let adc1 = &peripheral_ptr.ADC1;
       if rcc.apb2enr.read().adc1en().is_disabled() {
@@ -80,7 +94,11 @@ pub fn enable_channel(pin: (char, u8), dma: bool) -> Result<(u8, u8), ProgError>
   return Ok((core, channel));
 }
 
-pub fn adc_resolution(res: u8) {
+/// Changes the resolution for all analog pins
+/// 
+/// Possible values are 6, 8, 10 and 12 bit resolutions. 10 bits are the default.
+/// Panics if resolution value is invalid.
+pub fn adc_resolution(res: u8) -> Result<(), ProgError> {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
   let rcc = &peripheral_ptr.RCC;
@@ -94,17 +112,30 @@ pub fn adc_resolution(res: u8) {
     10 => 1,
     12 => 0,
     _ => {
-      rprintln!("{} is not a available ADC resolution! Keep default (10) | adc_resolution()", res);
-      1
+      rprintln!("{} is not a available ADC resolution! | adc_resolution()", res);
+      return Err(ProgError::InvalidConfiguration);
     }
   };
 
   if rcc.apb2enr.read().adc1en().is_enabled() {adc1.cr1.modify(|_, w| w.res().bits(enc_res));}
   if rcc.apb2enr.read().adc2en().is_enabled() {adc2.cr1.modify(|_, w| w.res().bits(enc_res));}
   if rcc.apb2enr.read().adc3en().is_enabled() {adc3.cr1.modify(|_, w| w.res().bits(enc_res));}
+
+  return Ok(());
 }
 
-pub fn analog_read(pin: &Pin<AnalogIn>) -> u16 {
+/// Performs an ADC conversion on the pin and gives back the analog value
+/// 
+/// # Examples
+/// 
+/// ```no_run
+/// // Configure pin as an analog input
+/// let pin = pinmode_analog(PA0).unwrap();
+/// 
+/// // Read the analog value on the pin
+/// let mut value: u16 = analog_read(&pin);
+/// ```
+pub fn analog_read(pin: &Pin<Analog>) -> u16 {
   let peripheral_ptr;
   unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
 
@@ -136,164 +167,14 @@ pub fn analog_read(pin: &Pin<AnalogIn>) -> u16 {
   return buffer;
 }
 
-pub fn analog_write(pin: &Pin<AnalogOut>, value: u16) -> Result<(), GpioError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  let dac = &peripheral_ptr.DAC;
-
-  if pin.inner.core != 0 {
-    rprintln!("Analog write not available for inputs! | analog_write()");
-    return Err(GpioError::WrongMode);
-  }
-
-  let val = if value > 4095 {
-    rprintln!("Analog value outside of bounds! | analog_write()");
-    4095
-  }
-  else {value};
-
-  if pin.inner.channel == 1 {
-    if !dac.cr.read().wave1().is_disabled() {
-      dac.cr.modify(|_, w| {
-      w.tsel1().software();
-      w.wave1().disabled()
-      });
-    }
-    dac.dhr12r1.write(|w| w.dacc1dhr().bits(val));
-    dac.swtrigr.write(|w| w.swtrig1().enabled());
-  }
-  else {
-    if !dac.cr.read().wave2().is_disabled() {
-      dac.cr.modify(|_, w| {
-      w.tsel2().software();
-      w.wave2().disabled()
-      });
-    }
-    dac.dhr12r2.write(|w| w.dacc2dhr().bits(val));
-    dac.swtrigr.write(|w| w.swtrig2().enabled());
-  }
-
-  return Ok(());
-}
-
-pub fn analog_write_noise(pin: &Pin<AnalogOut>, level: u8) -> Result<(), GpioError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  let dac = &peripheral_ptr.DAC;
-
-  if pin.inner.core != 0 {
-    rprintln!("Analog write not available for inputs! | analog_write()");
-    return Err(GpioError::WrongMode);
-  }
-
-
-  let lvl = if level > 15 {
-    rprintln!("DAC level value outside of bounds! | analog_write_noise()");
-    15
-  }
-  else {level};
-  
-  if pin.inner.channel == 1 {
-    dac.cr.modify(|_, w| {
-      w.ten1().disabled();
-      w.wave1().noise();
-      unsafe {w.tsel1().bits(0x011);}
-      w.mamp1().bits(lvl);
-      w.ten1().enabled()
-    });
-  }
-  else {
-    dac.cr.modify(|_, w| {
-      w.ten2().disabled();
-      w.wave2().noise();
-      w.tsel2().bits(0x011);
-      w.mamp2().bits(lvl);
-      w.ten2().enabled()
-    });
-  }
-
-  return Ok(());
-}
-
-pub fn analog_write_triangle(pin: &Pin<AnalogOut>, level: u8) -> Result<(), GpioError> {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  let dac = &peripheral_ptr.DAC;
-
-  if pin.inner.core != 0 {
-    rprintln!("Analog write not available for inputs! | analog_write()");
-    return Err(GpioError::WrongMode);
-  }
-
-  let lvl = if level > 15 {
-    rprintln!("DAC level value outside of bounds! | analog_write_triangle()");
-    15
-  }
-  else {level};
-
-  if pin.inner.channel == 1 {
-    dac.cr.modify(|_, w| {
-      w.ten1().disabled();
-      w.wave1().triangle();
-      unsafe {w.tsel1().bits(0x011);}
-      w.mamp1().bits(lvl);
-      w.ten1().enabled()
-    });
-  }
-  else {
-    dac.cr.modify(|_, w| {
-      w.ten2().disabled();
-      w.wave2().triangle();
-      w.tsel2().bits(0x011);
-      w.mamp2().bits(lvl);
-      w.ten2().enabled()
-    });
-  }
-
-  return Ok(());
-}
-
-pub fn analog_wave_freq(freq: u32) {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  let tim5 = &peripheral_ptr.TIM5;
-
-  // Max. 16MHz -> arr = 16000000 / freq
-  let val = if freq > 16000000 {
-    rprintln!("Outside limits of internal clock! | analog_wave_freq()");
-    1
-  }
-  else {16000000 / freq};
-
-  tim5.arr.write(|w| w.arr().bits(val));
-}
-
 
 // Private Functions ==============================================================================
-fn check_channel(pin: (char, u8), adc: bool, dac: bool) -> Result<(u8, u8), ProgError> {
+fn return_channel(pin: (char, u8)) -> Result<(u8, u8), ProgError> {
   if !ADC_MAP.pins.contains(&pin) {return Err(ProgError::InvalidConfiguration);}
   else {
     let core = ADC_MAP.adcs[ADC_MAP.pins.iter().position(|&i| i == pin).unwrap()];
     let channel = ADC_MAP.channels[ADC_MAP.pins.iter().position(|&i| i == pin).unwrap()];
 
-    if (!dac && core == 0) || (!adc && core != 0) {return Err(ProgError::InvalidConfiguration);}
-    else {return Ok((core, channel));}
+    return Ok((core, channel));
   }
-}
-
-fn start_dac_timer() {
-  let peripheral_ptr;
-  unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
-  let rcc = &peripheral_ptr.RCC;
-  let tim5 = &peripheral_ptr.TIM5;
-
-  if rcc.apb1enr.read().tim5en().is_enabled() {return;}
-  
-  rcc.apb1enr.modify(|_, w| w.tim5en().enabled());
-  tim5.cr1.modify(|_, w| w.arpe().enabled());
-  tim5.psc.write(|w| w.psc().bits(1));
-  tim5.arr.write(|w| w.arr().bits(16000000 / 1000));
-  tim5.egr.write(|w| w.ug().update());
-  tim5.cr2.modify(|_, w| w.mms().update());
-  tim5.cr1.modify(|_, w| w.cen().enabled());
 }
