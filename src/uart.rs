@@ -1,28 +1,34 @@
 //! This module contains everything that is used for UART communication.
+//! 
+//! For information on whitch pins have UART capabilities, check [`UART_MAP`](crate::include::UART_MAP)
+//! 
+//! # Examples
+//! 
+//! ```no_run
+//! #![no_std]
+//! #![no_main]
+//! 
+//! use rustuino::*;
+//! 
+//! #[entry]
+//! fn main() -> ! {
+//!   // Configure the serial connection
+//!   let uart = UART::new(2, PA2, PA3, 115200).unwrap();
+//! 
+//!   loop {
+//!     // Send Message
+//!     uart.println("Hello World!");
+//!     delay(1000);   
+//!   }
+//! }
+//! ```
 
-use crate::include::{SerialError, ProgError, UART_MAP, PIN_CONF};
+use crate::include::{SerialError, ProgError, UART_MAP, PIN_CONF, UART_CONF};
 use crate::gpio::{pinmode_alternate_function, Pin, AlternateFunction};
 use stm32f4::stm32f446::{NVIC, Interrupt};
 use rtt_target::rprintln;
 
-
-pub mod constants {
-  // 8 = bits, 4 = stops, 2,1 = parity
-  pub const UART_8N1: u8 = 0;
-  pub const UART_8N2: u8 = 4;
-  pub const UART_8E1: u8 = 1;
-  pub const UART_8E2: u8 = 5;
-  pub const UART_8O1: u8 = 2;
-  pub const UART_8O2: u8 = 6;
-  pub const UART_9N1: u8 = 8;
-  pub const UART_9N2: u8 = 12;
-  pub const UART_9E1: u8 = 9;
-  pub const UART_9E2: u8 = 13;
-  pub const UART_9O1: u8 = 10;
-  pub const UART_9O2: u8 = 14;
-}
-
-
+/// This struct represents a configured UART peripheral.
 pub struct UART {
   core: u8,
   _tx_pin: Pin<AlternateFunction>,
@@ -30,7 +36,10 @@ pub struct UART {
 }
 
 impl UART {
-  pub fn new(core: u8, tx_pin: (char, u8), rx_pin: (char, u8), baud: u32, conf: u8) -> Result<Self, ProgError> {
+  /// Configure a serial connection with one of the internal UART peripherals.
+  /// 
+  /// This Method expects the used UART core, two [pin identifiers](crate::include::pins) for the tx and rx-pins and a baudrate as parameters and returns the [UART Struct](crate::uart::UART). Panics if the core or pins are already used or invalid.
+  pub fn new(core: u8, tx_pin: (char, u8), rx_pin: (char, u8), baud: u32) -> Result<Self, ProgError> {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     let rcc = &peripheral_ptr.RCC;
@@ -45,13 +54,14 @@ impl UART {
     }
 
     unsafe {
-      if PIN_CONF.contains(&tx_pin) || PIN_CONF.contains(&rx_pin) {
+      if PIN_CONF.contains(&tx_pin) || PIN_CONF.contains(&rx_pin) || UART_CONF[(core as usize) - 1] {
         rprintln!("These pins are already configured for another function! | UART::new()");
         return Err(ProgError::InvalidConfiguration);
       }
       else {
         PIN_CONF.push(tx_pin).expect("Could not store pin number! | UART::new()");
         PIN_CONF.push(rx_pin).expect("Could not store pin number! | UART::new()");
+        UART_CONF[(core as usize) - 1] = true;
       }
     }
 
@@ -74,10 +84,6 @@ impl UART {
         }
         rcc.apb2enr.modify(|_, w| w.usart1en().enabled());
         set_baud(core, baud);
-        if conf & 8 > 0 {uart1.cr1.modify(|_, w| w.m().m9());}
-        if conf & 4 > 0 {uart1.cr2.modify(|_, w| w.stop().stop2());}
-        if conf & 3 == 1 {uart1.cr1.modify(|_, w| w.pce().enabled());}
-        else if conf & 3 == 2 {uart1.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
         uart1.cr1.modify(|_, w| {
           w.te().enabled();
           w.re().enabled();
@@ -92,10 +98,6 @@ impl UART {
         }
         rcc.apb1enr.modify(|_, w| w.usart2en().enabled());
         set_baud(core, baud);
-        if conf & 8 > 0 {uart2.cr1.modify(|_, w| w.m().m9());}
-        if conf & 4 > 0 {uart2.cr2.modify(|_, w| w.stop().stop2());}
-        if conf & 3 == 1 {uart2.cr1.modify(|_, w| w.pce().enabled());}
-        else if conf & 3 == 2 {uart2.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
         uart2.cr1.modify(|_, w| {
           w.te().enabled();
           w.re().enabled();
@@ -110,10 +112,6 @@ impl UART {
         }
         rcc.apb1enr.modify(|_, w| w.usart3en().enabled());
         set_baud(core, baud);
-        if conf & 8 > 0 {uart3.cr1.modify(|_, w| w.m().m9());}
-        if conf & 4 > 0 {uart3.cr2.modify(|_, w| w.stop().stop2());}
-        if conf & 3 == 1 {uart3.cr1.modify(|_, w| w.pce().enabled());}
-        else if conf & 3 == 2 {uart3.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
         uart3.cr1.modify(|_, w| {
           w.te().enabled();
           w.re().enabled();
@@ -128,10 +126,6 @@ impl UART {
         }
         rcc.apb1enr.modify(|_, w| w.uart4en().enabled());
         set_baud(core, baud);
-        if conf & 8 > 0 {uart4.cr1.modify(|_, w| w.m().m9());}
-        if conf & 4 > 0 {uart4.cr2.modify(|_, w| w.stop().stop2());}
-        if conf & 3 == 1 {uart4.cr1.modify(|_, w| w.pce().enabled());}
-        else if conf & 3 == 2 {uart4.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
         uart4.cr1.modify(|_, w| {
           w.te().enabled();
           w.re().enabled();
@@ -146,10 +140,6 @@ impl UART {
         }
         rcc.apb1enr.modify(|_, w| w.uart5en().enabled());
         set_baud(core, baud);
-        if conf & 8 > 0 {uart5.cr1.modify(|_, w| w.m().m9());}
-        if conf & 4 > 0 {uart5.cr2.modify(|_, w| w.stop().stop2());}
-        if conf & 3 == 1 {uart5.cr1.modify(|_, w| w.pce().enabled());}
-        else if conf & 3 == 2 {uart5.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
         uart5.cr1.modify(|_, w| {
           w.te().enabled();
           w.re().enabled();
@@ -164,10 +154,6 @@ impl UART {
         }
         rcc.apb2enr.modify(|_, w| w.usart6en().enabled());
         set_baud(core, baud);
-        if conf & 8 > 0 {uart6.cr1.modify(|_, w| w.m().m9());}
-        if conf & 4 > 0 {uart6.cr2.modify(|_, w| w.stop().stop2());}
-        if conf & 3 == 1 {uart6.cr1.modify(|_, w| w.pce().enabled());}
-        else if conf & 3 == 2 {uart6.cr1.modify(|_, w| {w.ps().odd(); w.pce().enabled()});}
         uart6.cr1.modify(|_, w| {
           w.te().enabled();
           w.re().enabled();
@@ -187,6 +173,7 @@ impl UART {
     });
   }
 
+  /// Deacitivates the UART connection and destroys the struct, freeing the core and pins.
   pub fn end(self) {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -237,8 +224,11 @@ impl UART {
       },
       _ => unreachable!()
     };
+
+    drop(self);
   }
 
+  /// Sends an ASCII string over the serial connection. Returns an error-enum if problems with the connection are detected.
   pub fn print(&self, data: &str) -> Result<(), SerialError> {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -306,6 +296,7 @@ impl UART {
     return Ok(());
   }
 
+  /// Acts like [print](crate::uart::UART::print) except it prints a newline at the end of the string.
   pub fn println(&self, data: &str) -> Result<(), SerialError> {
     if let Err(error) = self.print(data) {return Err(error);}
     if let Err(error) = self.print("\r\n") {return Err(error);}
@@ -313,6 +304,7 @@ impl UART {
     return Ok(());
   }
 
+  /// Sends a raw byte over the serial connection. Returns an error-enum if problems with the connection are detected.
   pub fn write(&self, data: u8) -> Result<(), SerialError> {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -366,6 +358,7 @@ impl UART {
     return Ok(());
   }
 
+  /// Waits until it recieves an ASCII char. Returns an error-enum if problems with the connection are detected.
   pub fn read_char(&self) -> Option<char> {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -421,6 +414,7 @@ impl UART {
     return Some(buffer as char);
   }
 
+  /// Waits until it recieves a byte. Returns an error-enum if problems with the connection are detected.
   pub fn read_byte(&self) -> Option<u8> {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -545,6 +539,7 @@ fn set_baud(core: u8, baud: u32) {
 }
 
 
+#[doc(hidden)]
 pub fn modf(x: f64) -> (f64, f64) {
   let rv2: f64;
   let mut u = x.to_bits();
