@@ -1,4 +1,6 @@
 #![no_std]
+#![allow(clippy::needless_return)]
+// #![deny(missing_docs)]
 
 // Library includes ===============================================================================
 pub use cortex_m_rt::{entry, exception};
@@ -9,10 +11,8 @@ pub use rtt_target::{rtt_init_print, rprint, rprintln};
 
 pub use include::pins::*;
 pub use gpio::{*, GpioBias::*, GpioSpeed::*};
-pub use analog::{adc_resolution, analog_read, analog_write, analog_write_noise, analog_write_triangle, analog_wave_freq};
+pub use analog::{adc_resolution, analog_read};
 pub use time::{pwm_write, delay, start_time, millis};
-pub use uart::constants::*;
-pub use spi::{ClockMode::*, SpiMode::*, FrameFormat::*, SpiBr::*};
 
 
 // Submodule includes =============================================================================

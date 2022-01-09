@@ -88,34 +88,34 @@ pub struct ADCMap {
 
 /// Pinmap of the available analog inputs and outputs.
 /// 
-/// In [`pinmode_analog_in()`](crate::gpio::pinmode_analog_in) and [`pinmode_analog_out()`](crate::gpio::pinmode_analog_out) these pins are available for either analog input over the internal ADC or for output over the internal DAC.
+/// These pins are available for [pinmode_analog()](crate::gpio::pinmode_analog) as an analog input over the internal ADC.
 /// 
 /// ## WARNING:
 /// 
 /// Whitch ADC and channel the pin uses is not important for normal use, but if you intent to use one of these ADCs manually while the pin is configured, normal function of the pin is not guaranteed!
 /// 
-/// | Pin | Channel | ADCs    |
-/// | --- | ------- | ------- |
-/// | PA0 | 0       | 1, 2, 3 |
-/// | PA1 | 1       | 1, 2, 3 |
-/// | PA2 | 2       | 1, 2, 3 |
-/// | PA3 | 3       | 1, 2, 3 |
-/// | PA4 | 1       | DAC     |
-/// | PA5 | 2       | DAC     |
-/// | PA6 | 6       | 1, 2    |
-/// | PA7 | 7       | 1, 2    |
-/// | PB0 | 8       | 1, 2    |
-/// | PB1 | 9       | 1, 2    |
-/// | PC0 | 10      | 1, 2, 3 |
-/// | PC1 | 11      | 1, 2, 3 |
-/// | PC2 | 12      | 1, 2, 3 |
-/// | PC3 | 13      | 1, 2, 3 |
-/// | PC4 | 14      | 1, 2    |
-/// | PC5 | 15      | 1, 2    |
+/// | Pin | Channel | ADCs      |
+/// | --- | ------- | --------- |
+/// | PA0 | 0       | 1, 2, 3   |
+/// | PA1 | 1       | 1, 2, 3   |
+/// | PA2 | 2       | 1, 2, 3   |
+/// | PA3 | 3       | 1, 2, 3   |
+/// | PA4 | 1       | 1, 2, DAC |
+/// | PA5 | 2       | 1, 2, DAC |
+/// | PA6 | 6       | 1, 2      |
+/// | PA7 | 7       | 1, 2      |
+/// | PB0 | 8       | 1, 2      |
+/// | PB1 | 9       | 1, 2      |
+/// | PC0 | 10      | 1, 2, 3   |
+/// | PC1 | 11      | 1, 2, 3   |
+/// | PC2 | 12      | 1, 2, 3   |
+/// | PC3 | 13      | 1, 2, 3   |
+/// | PC4 | 14      | 1, 2      |
+/// | PC5 | 15      | 1, 2      |
 pub const ADC_MAP: ADCMap = ADCMap {
   pins:     [A0, A1, A2, A3, A4, A5, A6, A7, B0, B1, C0, C1, C2, C3, C4, C5],
-  adcs:     [1,  1,  1,  1,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1],
-  channels: [0,  1,  2,  3,  1,  2,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15]
+  adcs:     [1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1],
+  channels: [0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15]
 };
 
 #[doc(hidden)]
@@ -158,19 +158,22 @@ pub struct UARTMap {
 /// 
 /// In [`UART::new()`](crate::uart::UART::new) choose the desired peripheral and a combination of available pins for it. Here are the available pins for each core:
 /// 
-/// | UART Core  | TX Pins    | RX Pins         |
-/// | ---------- | ---------- | --------------- |
-/// | 1          | PA9, PB6   | PA10, PB7       |
-/// | 2 (Serial) | PA2        | PA3             |
-/// | 3          | PB10, PC10 | PB11, PC5, PC11 |
-/// | 4          | PA0, PC10  | PA1, PC11       |
-/// | 5          | PC12       | PD2             |
-/// | 6          | PC6        | PC7             |
+/// | UART Core      | TX Pins    | RX Pins         |
+/// | -------------- | ---------- | --------------- |
+/// | 1              | PA9, PB6   | PA10, PB7       |
+/// | 2 (USB Serial) | PA2        | PA3             |
+/// | 3              | PB10, PC10 | PB11, PC5, PC11 |
+/// | 4              | PA0, PC10  | PA1, PC11       |
+/// | 5              | PC12       | PD2             |
+/// | 6              | PC6        | PC7             |
 pub const UART_MAP: UARTMap = UARTMap {
   tx_pins: [A9,  A9, B6,  B6, B10, B10, B10, C10, C10, C10, A0, A0,  C10, C10, C12, C6],
   rx_pins: [A10, B7, A10, B7, B11, C5,  C11, B11, C5,  C11, A1, C11, A1,  C11, D2,  C7],
   cores:   [1,   1,  1,   1,  3,   3,   3,   3,   3,   3,   4,  4,   4,   4,   5,   6]
 };
+
+#[doc(hidden)]
+pub static mut UART_CONF: [bool; 6] = [false, false, false, false, false, false];
 
 #[doc(hidden)]
 pub struct I2CMap {

@@ -55,10 +55,10 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError>{
       tim1.arr.write(|w| w.arr().bits(255));
       tim1.egr.write(|w| w.ug().set_bit());
       match ccch {
-        1 => tim1.ccmr1_output_mut().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
-        2 => tim1.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
-        3 => tim1.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
-        4 => tim1.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
+        1 => tim1.ccmr1_output().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
+        2 => tim1.ccmr1_output().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
+        3 => tim1.ccmr2_output().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
+        4 => tim1.ccmr2_output().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
         _ => unreachable!()
       };
       tim1.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
@@ -72,10 +72,10 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError>{
       tim2.arr.write(|w| w.arr().bits(255));
       tim2.egr.write(|w| w.ug().set_bit());
       match ccch {
-        1 => tim2.ccmr1_output_mut().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
-        2 => tim2.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
-        3 => tim2.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
-        4 => tim2.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
+        1 => tim2.ccmr1_output().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
+        2 => tim2.ccmr1_output().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
+        3 => tim2.ccmr2_output().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
+        4 => tim2.ccmr2_output().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
         _ => unreachable!()
       };
       tim2.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
@@ -89,10 +89,10 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError>{
       tim3.arr.write(|w| w.arr().bits(255));
       tim3.egr.write(|w| w.ug().set_bit());
       match ccch {
-        1 => tim3.ccmr1_output_mut().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
-        2 => tim3.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
-        3 => tim3.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
-        4 => tim3.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
+        1 => tim3.ccmr1_output().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
+        2 => tim3.ccmr1_output().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
+        3 => tim3.ccmr2_output().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
+        4 => tim3.ccmr2_output().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
         _ => unreachable!()
       };
       tim3.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
@@ -106,10 +106,10 @@ pub fn setup_pwm(pin: (char, u8)) -> Result<(u8, u8, u8), ProgError>{
       tim4.arr.write(|w| w.arr().bits(255));
       tim4.egr.write(|w| w.ug().set_bit());
       match ccch {
-        1 => tim4.ccmr1_output_mut().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
-        2 => tim4.ccmr1_output_mut().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
-        3 => tim4.ccmr2_output_mut().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
-        4 => tim4.ccmr2_output_mut().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
+        1 => tim4.ccmr1_output().modify(|_, w| { w.oc1pe().enabled(); w.oc1m().pwm_mode1()}),
+        2 => tim4.ccmr1_output().modify(|_, w| { w.oc2pe().enabled(); w.oc2m().pwm_mode1()}),
+        3 => tim4.ccmr2_output().modify(|_, w| { w.oc3pe().enabled(); w.oc3m().pwm_mode1()}),
+        4 => tim4.ccmr2_output().modify(|_, w| { w.oc4pe().enabled(); w.oc4m().pwm_mode1()}),
         _ => unreachable!()
       };
       tim4.ccer.modify(|r, w| unsafe {w.bits(r.bits() | (1 << (4 * (ccch - 1))))});
