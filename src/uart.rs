@@ -23,22 +23,27 @@
 //! }
 //! ```
 
-use crate::include::{SerialError, ProgError, UART_MAP, PIN_CONF, UART_CONF};
+use crate::include::{SerialError, ProgError, UART_MAP, PIN_CONF};
 use crate::gpio::{pinmode_alternate_function, Pin, AlternateFunction};
 use stm32f4::stm32f446::{NVIC, Interrupt};
 use rtt_target::rprintln;
 
 /// This struct represents a configured UART peripheral.
 pub struct UART {
+  #[doc(hidden)]
   core: u8,
+  #[doc(hidden)]
   _tx_pin: Pin<AlternateFunction>,
+  #[doc(hidden)]
   _rx_pin: Pin<AlternateFunction>
 }
 
 impl UART {
   /// Configure a serial connection with one of the internal UART peripherals.
   /// 
-  /// This Method expects the used UART core, two [pin identifiers](crate::include::pins) for the tx and rx-pins and a baudrate as parameters and returns the [UART Struct](crate::uart::UART). Panics if the core or pins are already used or invalid.
+  /// This Method expects the used UART core, two [pin identifiers](crate::include::pins) for the tx and rx-pins
+  /// and a baudrate as parameters and returns the [UART Struct](crate::uart::UART). Panics if the core or pins
+  /// are already used or invalid.
   pub fn new(core: u8, tx_pin: (char, u8), rx_pin: (char, u8), baud: u32) -> Result<Self, ProgError> {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
@@ -54,14 +59,13 @@ impl UART {
     }
 
     unsafe {
-      if PIN_CONF.contains(&tx_pin) || PIN_CONF.contains(&rx_pin) || UART_CONF[(core as usize) - 1] {
+      if PIN_CONF.contains(&tx_pin) || PIN_CONF.contains(&rx_pin) {
         rprintln!("These pins are already configured for another function! | UART::new()");
         return Err(ProgError::InvalidConfiguration);
       }
       else {
         PIN_CONF.push(tx_pin).expect("Could not store pin number! | UART::new()");
         PIN_CONF.push(rx_pin).expect("Could not store pin number! | UART::new()");
-        UART_CONF[(core as usize) - 1] = true;
       }
     }
 

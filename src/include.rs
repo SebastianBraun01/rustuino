@@ -173,9 +173,6 @@ pub const UART_MAP: UARTMap = UARTMap {
 };
 
 #[doc(hidden)]
-pub static mut UART_CONF: [bool; 6] = [false, false, false, false, false, false];
-
-#[doc(hidden)]
 pub struct I2CMap {
   pub scl_pins: [(char, u8); 9],
   pub sda_pins: [(char, u8); 9],
