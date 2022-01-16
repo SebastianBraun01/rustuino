@@ -22,7 +22,7 @@ pub mod analog;
 pub mod time;
 pub mod uart;
 pub mod i2c;
-pub mod spi;
+// pub mod spi;
 
 
 // Panic handler ==================================================================================
