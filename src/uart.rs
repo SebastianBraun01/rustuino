@@ -17,7 +17,7 @@
 //! 
 //!   loop {
 //!     // Send Message
-//!     uart.println("Hello World!");
+//!     uart.println_str("Hello World!");
 //!     delay(1000);   
 //!   }
 //! }
@@ -232,8 +232,62 @@ impl UART {
     drop(self);
   }
 
+  /// Sends an ASCII char over the serial connection. Returns an error-enum if problems with the connection are detected.
+  pub fn print_char(&self, data: char) -> Result<(), SerialError> {
+    let peripheral_ptr;
+    unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
+    
+    match self.core {
+      1 => {
+        let uart1 = &peripheral_ptr.USART1;
+        while uart1.sr.read().txe().bit_is_clear() {
+          if let Err(error) = check_uart_errors(uart1.sr.read().bits()) {return Err(error);}
+        }
+        uart1.dr.write(|w| w.dr().bits(data as u16));
+      },
+      2 => {
+        let uart2 = &peripheral_ptr.USART2;
+        while uart2.sr.read().txe().bit_is_clear() {
+          if let Err(error) = check_uart_errors(uart2.sr.read().bits()) {return Err(error);}
+        }
+        uart2.dr.write(|w| w.dr().bits(data as u16));
+      },
+      3 => {
+        let uart3 = &peripheral_ptr.USART3;
+        while uart3.sr.read().txe().bit_is_clear() {
+          if let Err(error) = check_uart_errors(uart3.sr.read().bits()) {return Err(error);}
+        }
+        uart3.dr.write(|w| w.dr().bits(data as u16));
+      },
+      4 => {
+        let uart4 = &peripheral_ptr.UART4;
+        while uart4.sr.read().txe().bit_is_clear() {
+          if let Err(error) = check_uart_errors(uart4.sr.read().bits()) {return Err(error);}
+        }
+        uart4.dr.write(|w| w.dr().bits(data as u16));
+      },
+      5 => {
+        let uart5 = &peripheral_ptr.UART5;
+        while uart5.sr.read().txe().bit_is_clear() {
+          if let Err(error) = check_uart_errors(uart5.sr.read().bits()) {return Err(error);}
+        }
+        uart5.dr.write(|w| w.dr().bits(data as u16));
+      },
+      6 => {
+        let uart6 = &peripheral_ptr.USART6;
+        while uart6.sr.read().txe().bit_is_clear() {
+          if let Err(error) = check_uart_errors(uart6.sr.read().bits()) {return Err(error);}
+        }
+        uart6.dr.write(|w| w.dr().bits(data as u16));
+      },
+      _ => unreachable!()
+    };
+
+    return Ok(());
+  }
+
   /// Sends an ASCII string over the serial connection. Returns an error-enum if problems with the connection are detected.
-  pub fn print(&self, data: &str) -> Result<(), SerialError> {
+  pub fn print_str(&self, data: &str) -> Result<(), SerialError> {
     let peripheral_ptr;
     unsafe {peripheral_ptr = stm32f4::stm32f446::Peripherals::steal();}
     
@@ -300,11 +354,19 @@ impl UART {
     return Ok(());
   }
 
-  /// Acts like [print](crate::uart::UART::print) except it prints a newline at the end of the string.
-  pub fn println(&self, data: &str) -> Result<(), SerialError> {
-    if let Err(error) = self.print(data) {return Err(error);}
-    if let Err(error) = self.print("\r\n") {return Err(error);}
+  /// Acts like [print_char](crate::uart::UART::print_char) except it prints a newline at the end of the string.
+  pub fn println_char(&self, data: char) -> Result<(), SerialError> {
+    if let Err(error) = self.print_char(data) {return Err(error);}
+    if let Err(error) = self.print_str("\r\n") {return Err(error);}
 
+    return Ok(());
+  }
+
+  /// Acts like [print_str](crate::uart::UART::print_str) except it prints a newline at the end of the string.
+  pub fn println_str(&self, data: &str) -> Result<(), SerialError> {
+    if let Err(error) = self.print_str(data) {return Err(error);}
+    if let Err(error) = self.print_str("\r\n") {return Err(error);}
+    
     return Ok(());
   }
 

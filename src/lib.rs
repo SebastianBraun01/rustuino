@@ -1,11 +1,12 @@
 #![no_std]
 #![allow(clippy::needless_return)]
-// #![deny(missing_docs)]
+#![deny(warnings)]
 
 // Library includes ===============================================================================
-pub use cortex_m_rt::{entry, exception};
-pub use stm32f4::stm32f446::{NVIC, Interrupt, interrupt};
 
+
+pub use stm32f4::stm32f446::{NVIC, Interrupt, interrupt, Peripherals};
+pub use cortex_m_rt::{entry, exception};
 pub use heapless::{Vec, String};
 pub use rtt_target::{rtt_init_print, rprint, rprintln};
 
