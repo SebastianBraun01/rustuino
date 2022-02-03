@@ -1,8 +1,12 @@
 [package]
 name = "rustuino"
-authors = ["SebastianBraun01 <SebastianBraun-Ost@protonmail.com>"]
+authors = ["SebastianBraun01 <SebastianBraun-Ost@protonmail.com>", "Aaron Erhardt"]
 edition = "2021"
 version = "0.1.0"
+description = "A library to for programming the stm32f446re"
+license-file = "LICENSE"
+repository = "https://github.com/SebastianBraun01/rustuino"
+readme = "README.md"
 
 [dependencies]
 cortex-m = "0.7.4"
