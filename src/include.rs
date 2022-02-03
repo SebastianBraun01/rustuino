@@ -209,7 +209,7 @@ pub struct SPIData {
 
 /// Pinmap for the SPI peripheral.
 /// 
-/// In [`SPI::new()`](crate::spi::SPI::new) choose the desired peripheral and a combination of available pins for it. Here are the available pins for each core:
+/// In SPI::new() choose the desired peripheral and a combination of available pins for it. Here are the available pins for each core:
 /// 
 /// | Core | SCK Pins             | MISO Pins | MOSI Pins |
 /// | ---- | -------------------- | --------- | --------- |

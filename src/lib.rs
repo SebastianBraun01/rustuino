@@ -3,8 +3,6 @@
 #![deny(warnings)]
 
 // Library includes ===============================================================================
-
-
 pub use stm32f4::stm32f446::{NVIC, Interrupt, interrupt, Peripherals};
 pub use cortex_m_rt::{entry, exception};
 pub use heapless::{Vec, String};
